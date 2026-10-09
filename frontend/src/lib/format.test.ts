@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   formatAuthors,
   formatCalendarDate,
@@ -39,9 +39,8 @@ describe('format helpers', () => {
 })
 
 describe('calendar dates', () => {
-  const originalTz = process.env.TZ
   afterEach(() => {
-    process.env.TZ = originalTz
+    vi.unstubAllEnvs()
   })
 
   it('formats an exact date in Spanish', () => {
@@ -54,7 +53,8 @@ describe('calendar dates', () => {
 
   it('never moves a date to the day before, whatever the machine timezone', () => {
     for (const tz of ['America/Los_Angeles', 'Pacific/Kiritimati', 'Europe/Madrid', 'UTC']) {
-      process.env.TZ = tz
+      // Node applies a changed TZ to later Date calls.
+      vi.stubEnv('TZ', tz)
       expect(formatCalendarDate('2025-03-01')).toBe('1 de marzo de 2025')
       expect(formatCalendarDate('2025-01-01', true)).toBe('enero de 2025')
     }
