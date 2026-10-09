@@ -3,6 +3,9 @@ import {
   formatAuthors,
   formatCalendarDate,
   formatMeetingDate,
+  formatMeetingDateWithYear,
+  formatMeetingDay,
+  formatMeetingTime,
   formatPageRange,
   formatPercentRange,
   formatReadingDates,
@@ -78,5 +81,38 @@ describe('calendar dates', () => {
     expect(formatReadingDates('2024-10-01', '2024-11-30', true)).toBe('octubre de 2024 – noviembre de 2024 (aprox.)')
     expect(formatReadingDates(null, '2023-06-15', true)).toBe('Hasta junio de 2023 (aprox.)')
     expect(formatReadingDates(null, null, true)).toBe('Fechas de lectura desconocidas')
+  })
+})
+
+describe('meeting dates with the year', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('formats a meeting date-time in Spanish with the year, in the club timezone', () => {
+    // 17:30 UTC is 19:30 in Madrid (CEST).
+    expect(formatMeetingDateWithYear('2026-09-24T17:30:00Z', 'Europe/Madrid')).toBe(
+      'jueves, 24 de septiembre de 2026, 19:30',
+    )
+    expect(formatMeetingDay('2026-09-24T19:30:00+02:00', 'Europe/Madrid')).toBe('jueves, 24 de septiembre de 2026')
+    expect(formatMeetingTime('2026-09-24T19:30:00+02:00', 'Europe/Madrid')).toBe('19:30')
+  })
+
+  it('uses the club calendar day when it differs from the UTC day, even across a new year', () => {
+    // 23:30 UTC on 31 December is 00:30 on 1 January in Madrid (CET).
+    expect(formatMeetingDateWithYear('2025-12-31T23:30:00Z', 'Europe/Madrid')).toBe('jueves, 1 de enero de 2026, 00:30')
+    expect(formatMeetingDateWithYear('2025-12-31T23:30:00Z', 'UTC')).toBe('miércoles, 31 de diciembre de 2025, 23:30')
+  })
+
+  it('does not change with the machine timezone', () => {
+    for (const tz of ['America/Los_Angeles', 'Pacific/Kiritimati', 'Europe/Madrid', 'UTC']) {
+      vi.stubEnv('TZ', tz)
+      expect(formatMeetingDateWithYear('2025-12-31T23:30:00Z', 'Europe/Madrid')).toBe('jueves, 1 de enero de 2026, 00:30')
+      expect(formatMeetingDateWithYear('2026-09-24T19:30:00+02:00')).toBe('jueves, 24 de septiembre de 2026, 19:30')
+    }
+  })
+
+  it('leaves the existing meeting date without the year', () => {
+    expect(formatMeetingDate('2026-09-24T19:30:00+02:00', 'Europe/Madrid')).toBe('jueves, 24 de septiembre, 19:30')
   })
 })

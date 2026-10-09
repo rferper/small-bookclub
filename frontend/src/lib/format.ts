@@ -14,6 +14,30 @@ export function formatMeetingDate(iso: string, timeZone: string = CLUB_TIMEZONE)
   }).format(new Date(iso))
 }
 
+// The day of a meeting with its year, e.g. "jueves, 24 de septiembre de 2026".
+// Used in Reuniones, where meetings from earlier years are listed too.
+export function formatMeetingDay(iso: string, timeZone: string = CLUB_TIMEZONE): string {
+  return new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone,
+  }).format(new Date(iso))
+}
+
+// The start time of a meeting on a 24-hour clock, e.g. "19:30".
+export function formatMeetingTime(iso: string, timeZone: string = CLUB_TIMEZONE): string {
+  return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }).format(
+    new Date(iso),
+  )
+}
+
+// A meeting date-time with the year, e.g. "jueves, 24 de septiembre de 2026, 19:30".
+export function formatMeetingDateWithYear(iso: string, timeZone: string = CLUB_TIMEZONE): string {
+  return `${formatMeetingDay(iso, timeZone)}, ${formatMeetingTime(iso, timeZone)}`
+}
+
 // Short form used inside the weekly label, e.g. "jueves 15".
 export function formatShortDay(iso: string, timeZone: string = CLUB_TIMEZONE): string {
   return new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', timeZone }).format(new Date(iso))
