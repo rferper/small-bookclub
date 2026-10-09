@@ -30,6 +30,21 @@ npm run build   # type-check and production build
 - `?mock-session=anonymous`, `member`, `admin` or `denied`: who is signed in.
 - `?mock-sign-in=member`, `admin` or `denied`: where «Entrar con Discord» leads (default `member`).
 - `?mock-demo=1`: offer the demo sign-in spot (#75).
-- `?mock-data=empty`: a club that has just started, with no books, meetings or activity (for example, the empty Biblioteca). This club has only the admin, so combine it with `admin` or `anonymous` sessions, not `member`.
+- `?mock-data=empty`: a club that has just started, with no books, meetings or activity (for example, the empty Biblioteca or Reuniones). This club has only the admin, so combine it with `admin` or `anonymous` sessions, not `member`.
 
 For example, http://localhost:5173/?mock-session=anonymous&mock-demo=1 shows the sign-in screen with the demo spot. The mock lives in memory, so a full page reload starts again from the query parameters.
+
+## Fixture meetings
+
+The default mock's «now» is 9 October 2026. Each meeting in Reuniones shows one case of the meeting page (#65). The record is gated for the signed-in user, admin included, so some cases depend on the session:
+
+| Meeting | Case |
+|---|---|
+| `/reuniones/mt0` | Cancelled (17 September 2026). |
+| `/reuniones/mt1` | Visible record: summary with paragraphs, a quote with one speaker, a paraphrase with two, one with no speaker; a draft highlight that is never shown; attendance recorded. |
+| `/reuniones/mt2` | Locked until week 2 is read: locked for the default admin, visible with `?mock-session=member`. |
+| `/reuniones/mt3`, `/reuniones/mt4` | Upcoming, with no attendance section; locked until weeks 3 and 4 are read. Marking week 3 on Inicio unlocks `mt3` (its summary is still empty). |
+| `/reuniones/mt5` | No linked week, marked safe: visible to everyone («Niebla»). |
+| `/reuniones/mt6` | No linked week, not marked safe: locked for everyone («Cumbres borrascosas»). |
+| `/reuniones/mt7` | No book, marked safe, with a draft summary that is not published: «no summary yet», no highlights, attendance not recorded. |
+| `/reuniones/no-existe` | Unknown meeting. |

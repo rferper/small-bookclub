@@ -70,7 +70,7 @@ function MeetingView({ meeting }: { meeting: MeetingDetail }) {
         )}
       </div>
 
-      <div className={meeting.cancelled ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start'}>
+      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
         <div className="grid min-w-0 gap-6">
           <MeetingFacts meeting={meeting} />
           {showAttendance && <Attendance attendance={meeting.attendance} />}
