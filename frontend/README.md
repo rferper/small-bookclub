@@ -30,5 +30,6 @@ npm run build   # type-check and production build
 - `?mock-session=anonymous`, `member`, `admin` or `denied`: who is signed in.
 - `?mock-sign-in=member`, `admin` or `denied`: where «Entrar con Discord» leads (default `member`).
 - `?mock-demo=1`: offer the demo sign-in spot (#75).
+- `?mock-data=empty`: a club that has just started, with no books, meetings or activity (for example, the empty Biblioteca). This club has only the admin, so combine it with `admin` or `anonymous` sessions, not `member`.
 
 For example, http://localhost:5173/?mock-session=anonymous&mock-demo=1 shows the sign-in screen with the demo spot. The mock lives in memory, so a full page reload starts again from the query parameters.

@@ -63,3 +63,9 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 **Decision:** The session is one client call, `getSession()`, returning `anonymous`, `denied` (refused sign-in, with no user) or `signedIn` with the user; `getCurrentUser()` was removed so the user has one source. A `SessionGate` root route shows the sign-in, access-denied or session-error screen at the requested URL (no `/entrar` route) until a member is signed in. Club pages get a wrapped client that, on any 401, hides the page and loads the session again.
 **Why:** Anonymous visitors should not learn which routes exist, and an expired or revoked session should land on the right screen instead of a generic error.
 **Consequence:** The gate is cosmetic; the backend still refuses club data to anonymous, denied and revoked users (#4, #5, #7). #5 and #71 may change how a refused sign-in is reported (reversible) without changing the screens. No new dependencies.
+
+## 2026-10-09: Biblioteca data and dates in the frontend (#64)
+
+**Decision:** Biblioteca loads the whole catalogue with one `listBooks()` call and filters, sorts and groups it in the browser; the book page loads one `getBook(id)` that carries no ratings, reviews or meeting summaries. The view, filter and sort live in Spanish query parameters (`vista`, `estado`, `orden`), with defaults left out of the URL. Reading and due dates are calendar dates (`YYYY-MM-DD`) parsed and formatted as UTC, so they never shift with the machine's timezone; approximate dates are full dates with a `datesApproximate` flag and are shown as month and year with «(aprox.)».
+**Why:** The catalogue is about 10–50 books (§5.1), and gated data must be absent from responses rather than hidden in components.
+**Consequence:** Reversible: the backend issues (#17–#19) may move filtering server-side and #71 fixes the contract. No new dependencies.
