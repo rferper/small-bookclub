@@ -20,11 +20,28 @@ export interface MockWeek {
 // schedule and meetings are separate lists, linked by bookId.
 export type MockBook = Omit<BookDetail, 'schedule' | 'meetings'>
 
+export interface MockHighlight {
+  id: string
+  text: string
+  kind: 'quote' | 'paraphrase'
+  speakerIds: string[]
+  // Drafts are only for the admin editor (#70) and never returned.
+  published: boolean
+}
+
 export interface MockMeeting {
   id: string
-  bookId: string
+  // null for a meeting that is not about a book.
+  bookId: string | null
   startsAt: string
   cancelled: boolean
+  // Member ids who attended, or null while not recorded.
+  attendance: string[] | null
+  // Set by the admin for a meeting with no linked week (§5.3).
+  markedSafe: boolean
+  summary: { text: string; published: boolean } | null
+  // In display order.
+  highlights: MockHighlight[]
 }
 
 export interface MockActivity {
@@ -128,15 +145,129 @@ export function createClubState(): MockState {
       { id: 'w5', bookId: 'b3', weekNumber: 5, percentStart: 52, percentEnd: 60, pageStart: 431, pageEnd: 520, meetingId: null, dueDate: '2026-10-29', notes: null },
     ],
     meetings: [
-      { id: 'mt0', bookId: 'b3', startsAt: '2026-09-17T19:30:00+02:00', cancelled: true },
-      { id: 'mt1', bookId: 'b3', startsAt: '2026-09-24T19:30:00+02:00', cancelled: false },
-      { id: 'mt2', bookId: 'b3', startsAt: '2026-10-01T19:30:00+02:00', cancelled: false },
-      { id: 'mt3', bookId: 'b3', startsAt: '2026-10-15T19:30:00+02:00', cancelled: false },
-      { id: 'mt4', bookId: 'b3', startsAt: '2026-10-22T19:30:00+02:00', cancelled: false },
+      meeting({ id: 'mt0', bookId: 'b3', startsAt: '2026-09-17T19:30:00+02:00', cancelled: true }),
+      meeting({
+        id: 'mt1',
+        bookId: 'b3',
+        startsAt: '2026-09-24T19:30:00+02:00',
+        attendance: ['m1', 'm2', 'm3', 'm5', 'm6'],
+        summary: {
+          published: true,
+          text:
+            'Empezamos «La Regenta» con muchas ganas y algo de miedo a su tamaño. Casi todo el mundo coincidió en que ' +
+            'el arranque desde la torre de la catedral es lento pero hipnótico.\n\n' +
+            'Hablamos de Vetusta como un personaje más: sus calles, sus casinos y sus chismes. Carmen trajo un plano ' +
+            'dibujado a mano para seguir los paseos de los personajes.\n\n' +
+            'Para la próxima semana nos propusimos fijarnos en cómo habla cada personaje de Ana Ozores antes de que ella ' +
+            'aparezca del todo.',
+        },
+        highlights: [
+          {
+            id: 'h1',
+            kind: 'quote',
+            text: 'Vetusta no es una ciudad, es un estado de ánimo.',
+            speakerIds: ['m3'],
+            published: true,
+          },
+          {
+            id: 'h2',
+            kind: 'paraphrase',
+            text: 'El primer capítulo se disfruta más leído en voz alta, como una crónica desde el campanario.',
+            speakerIds: ['m3', 'm6'],
+            published: true,
+          },
+          {
+            id: 'h3',
+            kind: 'paraphrase',
+            text: 'Alguien propuso hacer un mapa de Vetusta entre todos para no perderse entre calles y apellidos.',
+            speakerIds: [],
+            published: true,
+          },
+          {
+            id: 'h4',
+            kind: 'quote',
+            text: 'Borrador sin publicar sobre la torre de la catedral.',
+            speakerIds: ['m2'],
+            published: false,
+          },
+        ],
+      }),
+      meeting({
+        id: 'mt2',
+        bookId: 'b3',
+        startsAt: '2026-10-01T19:30:00+02:00',
+        attendance: ['m1', 'm2', 'm3', 'm5', 'm6', 'm7'],
+        summary: {
+          published: true,
+          text:
+            'La segunda semana nos llevó a la confesión y al primer encuentro largo entre Ana y el magistral.\n' +
+            'Hubo debate sobre si el narrador se burla de todos por igual.',
+        },
+        highlights: [
+          {
+            id: 'h5',
+            kind: 'quote',
+            text: 'El narrador no perdona a nadie, ni siquiera al lector.',
+            speakerIds: ['m2'],
+            published: true,
+          },
+        ],
+      }),
+      meeting({ id: 'mt3', bookId: 'b3', startsAt: '2026-10-15T19:30:00+02:00' }),
+      meeting({ id: 'mt4', bookId: 'b3', startsAt: '2026-10-22T19:30:00+02:00' }),
+      // Meetings about earlier books, from before the club used weekly plans.
+      meeting({
+        id: 'mt5',
+        bookId: 'b1',
+        startsAt: '2025-04-10T19:30:00+02:00',
+        attendance: ['m1', 'm2', 'm4', 'm7'],
+        markedSafe: true,
+        summary: {
+          published: true,
+          text: 'Cerramos «Niebla» hablando de Augusto Pérez y de si un personaje puede rebelarse contra su autor.',
+        },
+        highlights: [
+          {
+            id: 'h6',
+            kind: 'paraphrase',
+            text: 'Leer «Niebla» es como discutir con un amigo que siempre tiene otra pregunta.',
+            speakerIds: ['m4'],
+            published: true,
+          },
+        ],
+      }),
+      meeting({
+        id: 'mt6',
+        bookId: 'b2',
+        startsAt: '2024-11-28T19:30:00+01:00',
+        attendance: ['m1', 'm3', 'm5', 'm6'],
+        summary: {
+          published: true,
+          text: 'Despedimos «Cumbres borrascosas» con una charla larga sobre Heathcliff y el páramo.',
+        },
+        highlights: [
+          {
+            id: 'h7',
+            kind: 'quote',
+            text: 'Los páramos dan más miedo que cualquier fantasma.',
+            speakerIds: ['m5'],
+            published: true,
+          },
+        ],
+      }),
+      // The club's first gathering, before choosing any book.
+      meeting({
+        id: 'mt7',
+        bookId: null,
+        startsAt: '2024-09-26T19:30:00+02:00',
+        markedSafe: true,
+        summary: { published: false, text: 'Borrador del resumen de la reunión de bienvenida.' },
+      }),
     ],
     completions: {
       w1: ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'],
-      w2: ['m1', 'm2', 'm3', 'm5', 'm6'],
+      // The admin (m1) has not read week 2, so the mt2 record is locked for her.
+      w2: ['m2', 'm3', 'm5', 'm6'],
       w3: ['m3', 'm6'],
     },
     activity: [
@@ -175,6 +306,12 @@ function book(fields: Pick<MockBook, 'id' | 'title' | 'authors' | 'status'> & Pa
     originVote: null,
     ...fields,
   }
+}
+
+// A meeting with only the given fields: not cancelled, attendance not
+// recorded, not marked safe, and no summary or highlights.
+function meeting(fields: Pick<MockMeeting, 'id' | 'bookId' | 'startsAt'> & Partial<MockMeeting>): MockMeeting {
+  return { cancelled: false, attendance: null, markedSafe: false, summary: null, highlights: [], ...fields }
 }
 
 // A club that has just started: no books, meetings, reviews or quotes yet.

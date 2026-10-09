@@ -163,3 +163,51 @@ export interface BookDetail extends LibraryBook {
   meetings: BookMeeting[]
   originVote: OriginVote | null
 }
+
+// A meeting in Reuniones. The server decides whether it is upcoming or past
+// with its own clock; the frontend never compares dates itself.
+export interface MeetingListItem {
+  id: string
+  // ISO 8601 date-time.
+  startsAt: string
+  cancelled: boolean
+  // null for a meeting that is not about a book.
+  book: BookSummary | null
+  assignment: MeetingAssignment | null
+}
+
+// Upcoming meetings soonest first, past meetings most recent first.
+// Summaries and highlights are never part of the list.
+export interface MeetingList {
+  upcoming: MeetingListItem[]
+  past: MeetingListItem[]
+}
+
+export type HighlightKind = 'quote' | 'paraphrase'
+
+// A published highlight. Plain text, never HTML.
+export interface MeetingHighlight {
+  id: string
+  text: string
+  kind: HighlightKind
+  speakers: MemberSummary[]
+}
+
+// What the signed-in user may see of the meeting's summary and highlights,
+// decided by the server (§5.3). The locked shapes carry no summary or
+// highlights at all, not even empty ones, so nothing gated reaches the browser.
+export type MeetingRecord =
+  // Plain-text summary, or null when none is published; published highlights
+  // in display order. Drafts are never returned.
+  | { status: 'visible'; summary: string | null; highlights: MeetingHighlight[] }
+  // The meeting's linked week, which the user has not marked as read.
+  | { status: 'lockedWeekNotRead'; weekNumber: number }
+  // No linked week, and the admin has not marked the meeting safe.
+  | { status: 'lockedNoWeek' }
+
+export interface MeetingDetail extends MeetingListItem {
+  upcoming: boolean
+  // Who attended, or null while the admin has not recorded it.
+  attendance: MemberSummary[] | null
+  record: MeetingRecord
+}

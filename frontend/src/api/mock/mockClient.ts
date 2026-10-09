@@ -1,6 +1,21 @@
 import { ApiError, type ApiClient } from '../client'
-import type { BookDetail, BookSummary, HomeData, LibraryBook, NextMeeting, ReadingWeek, Session } from '../types'
-import { createClubState, type MockBook, type MockState } from './fixtures'
+import type {
+  BookDetail,
+  BookSummary,
+  HomeData,
+  LibraryBook,
+  MeetingAssignment,
+  MeetingDetail,
+  MeetingList,
+  MeetingListItem,
+  MeetingRecord,
+  MemberSummary,
+  NextMeeting,
+  ReadingWeek,
+  Session,
+} from '../types'
+import { createClubState, type MockBook, type MockMeeting, type MockState } from './fixtures'
+import { meetingGate } from './meetingGate'
 
 type Method = keyof ApiClient
 
@@ -59,7 +74,7 @@ export function createMockClient({
     if (state.session !== 'signedIn') throw new ApiError(401, 'No has iniciado sesión.')
   }
 
-  const toBookSummary = (bookId: string): BookSummary | null => {
+  const toBookSummary = (bookId: string | null): BookSummary | null => {
     const book = state.books.find((b) => b.id === bookId)
     return book ? { id: book.id, title: book.title, authors: book.authors, coverUrl: book.coverUrl } : null
   }
@@ -75,6 +90,61 @@ export function createMockClient({
     readingEndDate: book.readingEndDate,
     datesApproximate: book.datesApproximate,
   })
+
+  const toAssignment = (meetingId: string): MeetingAssignment | null => {
+    const week = state.weeks.find((w) => w.meetingId === meetingId)
+    return week
+      ? {
+          weekNumber: week.weekNumber,
+          percentStart: week.percentStart,
+          percentEnd: week.percentEnd,
+          pageStart: week.pageStart,
+          pageEnd: week.pageEnd,
+        }
+      : null
+  }
+
+  const toMemberSummaries = (ids: string[]): MemberSummary[] =>
+    ids.flatMap((id) => {
+      const member = state.members.find((m) => m.id === id)
+      return member ? [{ id: member.id, displayName: member.displayName, avatarUrl: member.avatarUrl }] : []
+    })
+
+  // Like the server: upcoming from now on, by its own clock (state.now).
+  const isUpcoming = (meeting: MockMeeting) => Date.parse(meeting.startsAt) >= Date.parse(state.now)
+
+  const toMeetingListItem = (meeting: MockMeeting): MeetingListItem => ({
+    id: meeting.id,
+    startsAt: meeting.startsAt,
+    cancelled: meeting.cancelled,
+    book: toBookSummary(meeting.bookId),
+    assignment: toAssignment(meeting.id),
+  })
+
+  // Decided at call time for the signed-in user. Locked records are built
+  // without the summary and highlights, so they cannot leak; drafts are
+  // left out for everyone, the admin included.
+  const toMeetingRecord = (meeting: MockMeeting): MeetingRecord => {
+    const week = state.weeks.find((w) => w.meetingId === meeting.id) ?? null
+    const gate = meetingGate({
+      week,
+      markedSafe: meeting.markedSafe,
+      completions: state.completions,
+      userId: state.currentUserId,
+    })
+    if (!gate.visible) {
+      return gate.reason === 'weekNotRead'
+        ? { status: 'lockedWeekNotRead', weekNumber: gate.weekNumber }
+        : { status: 'lockedNoWeek' }
+    }
+    return {
+      status: 'visible',
+      summary: meeting.summary?.published ? meeting.summary.text : null,
+      highlights: meeting.highlights
+        .filter((h) => h.published)
+        .map((h) => ({ id: h.id, text: h.text, kind: h.kind, speakers: toMemberSummaries(h.speakerIds) })),
+    }
+  }
 
   const nextMeeting = () =>
     state.meetings
@@ -132,20 +202,11 @@ export function createMockClient({
         completedByMe: doneBy.includes(state.currentUserId),
       }
 
-      const meetingWeek = meeting ? state.weeks.find((w) => w.meetingId === meeting.id) : undefined
       const next: NextMeeting | null = meeting && {
         id: meeting.id,
         startsAt: meeting.startsAt,
         book: toBookSummary(meeting.bookId),
-        assignment: meetingWeek
-          ? {
-              weekNumber: meetingWeek.weekNumber,
-              percentStart: meetingWeek.percentStart,
-              percentEnd: meetingWeek.percentEnd,
-              pageStart: meetingWeek.pageStart,
-              pageEnd: meetingWeek.pageEnd,
-            }
-          : null,
+        assignment: toAssignment(meeting.id),
       }
 
       return {
@@ -223,6 +284,34 @@ export function createMockClient({
             weekNumber: state.weeks.find((w) => w.meetingId === m.id)?.weekNumber ?? null,
           })),
         originVote: book.originVote,
+      }
+    },
+
+    async listMeetings(): Promise<MeetingList> {
+      requireSignedIn()
+      failIfConfigured('listMeetings')
+      const byDate = [...state.meetings].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+      // Cancelled meetings stay in the list their date puts them in. No
+      // summaries or highlights here: they live behind getMeeting's gate.
+      return {
+        upcoming: byDate.filter(isUpcoming).map(toMeetingListItem),
+        past: byDate
+          .filter((m) => !isUpcoming(m))
+          .reverse()
+          .map(toMeetingListItem),
+      }
+    },
+
+    async getMeeting(meetingId: string): Promise<MeetingDetail> {
+      requireSignedIn()
+      failIfConfigured('getMeeting')
+      const meeting = state.meetings.find((m) => m.id === meetingId)
+      if (!meeting) throw new ApiError(404, 'No existe esa reunión.')
+      return {
+        ...toMeetingListItem(meeting),
+        upcoming: isUpcoming(meeting),
+        attendance: meeting.attendance && toMemberSummaries(meeting.attendance),
+        record: toMeetingRecord(meeting),
       }
     },
   }
