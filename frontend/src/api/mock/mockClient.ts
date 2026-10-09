@@ -1,11 +1,21 @@
 import { ApiError, type ApiClient } from '../client'
-import type { BookSummary, CurrentUser, HomeData, NextMeeting, ReadingWeek } from '../types'
+import type { BookSummary, HomeData, NextMeeting, ReadingWeek, Session } from '../types'
 import { createClubState, type MockState } from './fixtures'
 
 type Method = keyof ApiClient
 
+// Who is using the mock: nobody, a fixture member or admin, or a refused account.
+export type MockSession = 'anonymous' | 'member' | 'admin' | 'denied'
+
 export interface MockOptions {
   state?: MockState
+  // Starting session. Omitted, the mock is signed in as state.currentUserId
+  // (the fixture admin by default).
+  session?: MockSession
+  // Where startSignIn() leads, as if the Discord round trip had finished.
+  signInResult?: Exclude<MockSession, 'anonymous'>
+  // Whether anonymous and denied sessions offer the demo sign-in (#75).
+  demoSignInAvailable?: boolean
   // Injected so tests can pick a quote deterministically.
   random?: () => number
   // How many calls of each method fail (with a 500 ApiError) before they
@@ -17,6 +27,9 @@ export interface MockOptions {
 // API will, including leaving out data the user may not see.
 export function createMockClient({
   state = createClubState(),
+  session,
+  signInResult = 'member',
+  demoSignInAvailable = false,
   random = Math.random,
   failures = {},
 }: MockOptions = {}): ApiClient {
@@ -27,6 +40,23 @@ export function createMockClient({
       remainingFailures[method] = left - 1
       throw new ApiError(500, 'Error simulado del servidor.')
     }
+  }
+
+  const switchSession = (to: MockSession) => {
+    if (to === 'anonymous' || to === 'denied') {
+      state.session = to
+      return
+    }
+    const user = state.members.find((m) => m.role === to)
+    if (!user) throw new Error(`The mock state has no ${to} to sign in as.`)
+    state.session = 'signedIn'
+    state.currentUserId = user.id
+  }
+  if (session) switchSession(session)
+
+  // Like the backend: club data only for a signed-in member, never partial data.
+  const requireSignedIn = () => {
+    if (state.session !== 'signedIn') throw new ApiError(401, 'No has iniciado sesión.')
   }
 
   const toBookSummary = (bookId: string): BookSummary | null => {
@@ -40,14 +70,37 @@ export function createMockClient({
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null
 
   return {
-    async getCurrentUser(): Promise<CurrentUser> {
-      failIfConfigured('getCurrentUser')
+    async getSession(): Promise<Session> {
+      failIfConfigured('getSession')
       const me = state.members.find((m) => m.id === state.currentUserId)
-      if (!me) throw new ApiError(401, 'No has iniciado sesión.')
-      return { id: me.id, displayName: me.displayName, role: me.role, avatarUrl: me.avatarUrl }
+      if (state.session === 'signedIn' && me) {
+        return {
+          status: 'signedIn',
+          user: { id: me.id, displayName: me.displayName, role: me.role, avatarUrl: me.avatarUrl },
+        }
+      }
+      return { status: state.session === 'denied' ? 'denied' : 'anonymous', demoSignInAvailable }
+    },
+
+    async startSignIn(): Promise<void> {
+      failIfConfigured('startSignIn')
+      switchSession(signInResult)
+    },
+
+    async startDemoSignIn(): Promise<void> {
+      failIfConfigured('startDemoSignIn')
+      // Without demo mode the backend has no demo sign-in at all (#75).
+      if (!demoSignInAvailable) throw new ApiError(404, 'No existe.')
+      switchSession('member')
+    },
+
+    async signOut(): Promise<void> {
+      failIfConfigured('signOut')
+      state.session = 'anonymous'
     },
 
     async getHome(): Promise<HomeData> {
+      requireSignedIn()
       failIfConfigured('getHome')
       const activeBook = state.books.find((b) => b.status === 'leyendo') ?? null
       const meeting = nextMeeting()
@@ -104,6 +157,7 @@ export function createMockClient({
     },
 
     async setWeekCompleted(weekId: string, completed: boolean): Promise<void> {
+      requireSignedIn()
       failIfConfigured('setWeekCompleted')
       if (!state.weeks.some((w) => w.id === weekId)) throw new ApiError(404, 'No existe esa semana de lectura.')
       // Always acts on the signed-in member only, like the real API will.

@@ -35,6 +35,9 @@ export interface MockActivity {
 }
 
 export interface MockState {
+  // Whether someone is signed in. When 'signedIn', currentUserId says who.
+  // Tests may change it after rendering to simulate an expired session.
+  session: 'signedIn' | 'anonymous' | 'denied'
   currentUserId: string
   members: (MemberSummary & { role: CurrentUser['role'] })[]
   books: (BookSummary & { status: 'propuesto' | 'elegido' | 'leyendo' | 'terminado' })[]
@@ -51,6 +54,7 @@ export interface MockState {
 
 export function createClubState(): MockState {
   return {
+    session: 'signedIn',
     currentUserId: 'm1',
     members: [
       { id: 'm1', displayName: 'Lucía', avatarUrl: null, role: 'admin' },

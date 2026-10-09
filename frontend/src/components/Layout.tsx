@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
-import { useApiData } from '../api/hooks'
+import { useFocusOnMount, useSession } from '../session/hooks'
+import { ActionButton } from './ActionButton'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Inicio' },
@@ -15,18 +16,21 @@ const NAV_ITEMS = [
 const ADMIN_ITEM = { to: '/administracion', label: 'Administración' }
 
 export function Layout() {
-  const user = useApiData((api) => api.getCurrentUser())
+  const { session, signOut } = useSession()
   const [menuOpen, setMenuOpen] = useState(false)
+  // After signing in, focus starts at the top of the page, not on the removed button.
+  const top = useRef<HTMLDivElement>(null)
+  useFocusOnMount(top)
 
   // Hiding the admin link is cosmetic; the backend refuses admin actions to members.
-  const isAdmin = user.status === 'ready' && user.data.role === 'admin'
+  const isAdmin = session?.status === 'signedIn' && session.user.role === 'admin'
   const items = isAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `block rounded-md px-3 py-2 ${isActive ? 'bg-sage font-semibold text-forest' : 'text-forest hover:bg-sage/50'}`
 
   return (
-    <div className="min-h-screen">
+    <div ref={top} tabIndex={-1} className="min-h-screen outline-none">
       <a href="#contenido" className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:bg-paper focus:p-2">
         Saltar al contenido
       </a>
@@ -45,21 +49,29 @@ export function Layout() {
             {menuOpen ? 'Cerrar menú' : 'Menú'}
           </button>
         </div>
-        <nav
+        <div
           id="menu-principal"
-          aria-label="Principal"
-          className={`mx-auto max-w-6xl px-4 pb-3 sm:block ${menuOpen ? 'block' : 'hidden'}`}
+          className={`mx-auto max-w-6xl px-4 pb-3 sm:flex sm:items-start sm:justify-between sm:gap-4 ${menuOpen ? 'block' : 'hidden'}`}
         >
-          <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
-            {items.map((item) => (
-              <li key={item.to}>
-                <NavLink to={item.to} end={item.to === '/'} className={linkClass} onClick={() => setMenuOpen(false)}>
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <nav aria-label="Principal">
+            <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
+              {items.map((item) => (
+                <li key={item.to}>
+                  <NavLink to={item.to} end={item.to === '/'} className={linkClass} onClick={() => setMenuOpen(false)}>
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <ActionButton
+            variant="quiet"
+            label="Cerrar sesión"
+            onAction={signOut}
+            errorMessage="No se ha podido cerrar la sesión. Inténtalo de nuevo."
+            className="mt-2 sm:mt-0 sm:max-w-56 sm:shrink-0 sm:text-right"
+          />
+        </div>
       </header>
       <main id="contenido" className="mx-auto max-w-6xl px-4 py-6">
         <Outlet />

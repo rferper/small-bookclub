@@ -10,6 +10,16 @@ export interface CurrentUser {
   avatarUrl: string | null
 }
 
+// Who is using the site. The signed-in user comes only from here, so the
+// app cannot hold two versions of it.
+export type Session =
+  // Nobody is signed in.
+  | { status: 'anonymous'; demoSignInAvailable: boolean }
+  // The last sign-in was refused: the Discord account is not on the
+  // allowlist or was revoked. There is no user and no club data.
+  | { status: 'denied'; demoSignInAvailable: boolean }
+  | { status: 'signedIn'; user: CurrentUser }
+
 export interface MemberSummary {
   id: string
   displayName: string

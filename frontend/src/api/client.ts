@@ -1,13 +1,27 @@
-import type { CurrentUser, HomeData } from './types'
+import type { HomeData, Session } from './types'
 
 // The only way components talk to the backend. Today the app uses the mock
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
-  getCurrentUser(): Promise<CurrentUser>
+  // Session. These never fail with 401: a visitor who is not signed in gets
+  // an anonymous or denied session instead.
+  getSession(): Promise<Session>
+  // Starts Discord sign-in. The HTTP client will hand over to the backend's
+  // OAuth flow; components never build backend or Discord URLs themselves.
+  startSignIn(): Promise<void>
+  // Demo sign-in with fictional data (#75); only offered when the session
+  // says so.
+  startDemoSignIn(): Promise<void>
+  signOut(): Promise<void>
+
+  // Club data. The backend answers 401 while nobody is signed in.
   getHome(): Promise<HomeData>
   setWeekCompleted(weekId: string, completed: boolean): Promise<void>
 }
+
+// Methods that manage the session itself; every other method returns club data.
+export const SESSION_METHODS: readonly (keyof ApiClient)[] = ['getSession', 'startSignIn', 'startDemoSignIn', 'signOut']
 
 export class ApiError extends Error {
   readonly status: number

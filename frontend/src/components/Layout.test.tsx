@@ -11,8 +11,8 @@ describe('Layout', () => {
   it('shows every section, plus Administración for the admin', async () => {
     renderApp()
 
-    const nav = screen.getByRole('navigation', { name: 'Principal' })
-    expect(await within(nav).findByRole('link', { name: 'Administración' })).toBeInTheDocument()
+    const nav = await screen.findByRole('navigation', { name: 'Principal' })
+    expect(within(nav).getByRole('link', { name: 'Administración' })).toBeInTheDocument()
     for (const name of MEMBER_LINKS) expect(within(nav).getByRole('link', { name })).toBeInTheDocument()
   })
 
@@ -30,7 +30,7 @@ describe('Layout', () => {
     const user = userEvent.setup()
     renderApp()
 
-    const button = screen.getByRole('button', { name: 'Menú' })
+    const button = await screen.findByRole('button', { name: 'Menú' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
     await user.click(button)
     expect(screen.getByRole('button', { name: 'Cerrar menú' })).toHaveAttribute('aria-expanded', 'true')
@@ -40,8 +40,8 @@ describe('Layout', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Biblioteca' })).toBeInTheDocument()
   })
 
-  it('shows a friendly page for unknown addresses', () => {
+  it('shows a friendly page for unknown addresses', async () => {
     renderApp({ path: '/no-existe' })
-    expect(screen.getByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument()
   })
 })
