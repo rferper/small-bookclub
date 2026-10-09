@@ -6,6 +6,7 @@ Living document: update it when we learn something about how tests should be wri
 
 - Backend: pytest with pytest-django, run inside `backend/` with `uv run pytest`.
 - Frontend: Vitest with Testing Library, run inside `frontend/` with `npm test`. Render pages with `src/test/renderApp.tsx` and inject a mock client (`createMockClient`) with the state each test needs; use its `failures` option for failing calls instead of spies. Choose who is signed in with its `session` option (`'anonymous'`, `'member'`, `'admin'` or `'denied'`; signed in as the fixture admin when omitted), and where «Entrar con Discord» leads with `signInResult`. To check which client methods were called or to hold a call in flight, wrap the mock with `trackCalls` or `holdCalls` from `src/test/clients.ts`.
+- Frontend timing (#65): `findBy*`/`waitFor` wait up to 5 s (`asyncUtilTimeout` in `src/test/setup.ts`), each test may take 20 s and Vitest uses half the cores (`vite.config.ts`). Role queries by name are slow in jsdom, and the 1000 ms default made the suite flaky on a busy machine. Do not lower these, and keep focus moves in layout effects so a found element already has focus.
 - Browser end-to-end tests (later, #54): Playwright against the Docker Compose stack.
 - CI runs all of them on every push and pull request.
 
