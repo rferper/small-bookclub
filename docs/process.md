@@ -5,8 +5,10 @@ How work moves from the backlog to merged code.
 ## Backlog
 
 - GitHub issues in `rferper/small-bookclub` are the only active backlog. `docs/tasks.md` was the initial draft and is retired; do not update it.
-- Issue numbers match the original task numbers and roughly the build order, but the build order in `product-spec.md` §15 wins: the frontend is built first against a mock API client, then `openapi.yaml`, then the backend. Otherwise pick the lowest-numbered open issue whose dependencies are done, unless the user names one.
-- Many issues were written for server-rendered templates or HTMX. When grooming one, the PM rewrites it for the current stack: `openapi.yaml` change, backend endpoint, frontend screen, and their tests.
+- Issues are grouped into GitHub milestones, one per course phase (`product-spec.md` §15). Finish a phase's milestone before starting the next, unless the user says otherwise.
+- Within **Phase 2: Development**, take issues by label in this order: `frontend` (screens on the mock API), then `contract` (`openapi.yaml`), then `backend`, then `polish`. Within a label, take the lowest-numbered open issue whose dependencies are done, unless the user names one.
+- Many `backend` issues were written for server-rendered templates or HTMX. When grooming one, the PM rewrites it for the current stack: endpoints from `openapi.yaml` (changing the contract first if needed), backend implementation, switching the related screens from the mock to the HTTP client, and unit + integration tests.
+- Infrastructure issues (CI, Docker, deployment, observability, agent pack) follow the same loop; the PM writes criteria that can be checked by running something (e.g. "the pipeline fails when a test fails").
 - Work that falls outside an issue becomes a new issue, never an unplanned change.
 
 ## Roles
@@ -47,4 +49,4 @@ Every loop needs a checkable stop condition, for example:
 - Only the orchestrator closes issues, and only after QA PASS.
 - The engineer never edits acceptance criteria; the QA engineer never edits code.
 - Commit after each meaningful step so any bad change is easy to roll back.
-- Milestone 2 issues (#56–#62) are out of scope for the course and start only after Milestone 1 is stable and the user says so.
+- Milestone 2 issues (#56–#62, milestone "Milestone 2: Discord bot and local AI") are out of scope for the course and start only after the course phases are done and the user says so.

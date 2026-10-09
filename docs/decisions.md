@@ -18,6 +18,12 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 **Why:** The project is also a course final project that requires a separate frontend with centralised API calls, an OpenAPI contract the backend follows, and tests on both sides. Django keeps the ORM, migrations, admin and allauth; Ninja adds typed request and response schemas. The frontend stack matches what Lovable generates, so Lovable can be used for screen prototypes.
 **Consequence:** Spoiler and permission gating stays server-side: endpoints never return data the user may not see, and tests check JSON response bodies. Authentication uses same-site session cookies with CSRF protection (exact flow decided in #5). Issues written for server-rendered templates or HTMX are re-groomed for API + frontend when picked up.
 
+## 2026-10-09: Backlog follows the course phases
+
+**Decision:** GitHub milestones mirror the course modules (Development, Deployment, DevOps and security, Agent extension pack, Final documentation); labels `frontend`, `contract`, `backend`, `polish`, `infra` and `agents` order the work inside a phase. The PM → engineer → QA loop applies to every issue.
+**Why:** The course builds horizontally (frontend prototype, then contract, then backend, then deployment), while the original issues were vertical feature slices.
+**Consequence:** Existing feature issues #2–#50 become backend issues in Development; new issues cover the frontend sections, the contract and phases 3–6. Postgres for deployed environments (as in the course) is decided in the Docker Compose issue.
+
 ## 2026-10-09: Contract-first API
 
 **Decision:** The frontend is built first against a mock API client. `openapi.yaml` is then written by hand from what the screens need; the backend implements it and its tests validate responses against it. Once the contract exists, the frontend's API types are generated from it.

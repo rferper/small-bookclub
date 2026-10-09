@@ -703,15 +703,19 @@ This project is also the author's final project for an AI-assisted development c
 - All spoiler and permission rules still apply in the demo.
 - It must stay free: no paid hosting, domain or service.
 
-### Build order
+### Phases (follow the course modules)
 
-1. Specs and structure (this version).
-2. **Frontend first:** `frontend/` with every Milestone 1 screen, built against a central API client whose mock implementation serves fictional fixture data; frontend tests and CI.
-3. **Contract:** write `openapi.yaml` from what the screens actually need (the mock client's types and calls).
-4. **Backend:** `backend/` implementing the contract, with unit and integration tests; permissions and spoiler gating live here.
-5. **Connect:** swap the mock client for the HTTP client; `docker-compose.yml` runs both; integration and end-to-end tests.
-6. **Deployment:** a cloud demo URL with CI/CD that deploys when tests pass (#63), plus demo mode (#64).
-7. Agent extension pack.
-8. Security, audit and ops hardening; final README.
+Each phase is a GitHub milestone. Every issue in every phase goes through the PM → engineer → QA loop in `docs/process.md`.
+
+| Phase | Course module | What gets built |
+|---|---|---|
+| 1. Spec and backlog | 1. AI-native workflow | This spec, `AGENTS.md`, team roles, GitHub issues. Done. |
+| 2. Development | 2. Development | `frontend` issues first: every screen on a mock API client with fictional data. Then the `contract` issue: `openapi.yaml` derived from the screens. Then `backend` issues: the backend skeleton and each feature's endpoints implemented from the contract, switching its screens from the mock to the HTTP client. Unit and frontend tests throughout; `polish` issues last. |
+| 3. Deployment | 3. Deployment | Integration tests, Dockerfiles and Docker Compose, CI, demo mode, public deployment with staging and production, smoke test and rollback, CD gated on tests. |
+| 4. DevOps and security | 4. DevOps | Environments and versioned releases, OpenTelemetry observability, one user-impact alert, a read-only AI on-call responder, security audits, agent security notes, AI tool/data policy, operations and security report. |
+| 5. Agent extension pack | 5. Agent building blocks | Skills, PM/engineer/QA subagents, a specialist agent, worktrees, MCP server, hooks, permission docs. |
+| 6. Final documentation | Final project | README and AI workflow docs; check every item in this section. |
+
+Milestone 2 (Discord bot and local AI) is not part of the course and starts only when the user says so.
 
 **End of specification.**

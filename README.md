@@ -20,7 +20,7 @@ The site gives the club one private place to:
 
 Only approved members can sign in (Discord login plus an admin-managed allowlist). The full specification is in [`product-spec.md`](product-spec.md).
 
-## Architecture *(to do: completed by #1 and #63)*
+## Architecture
 
 | Part | Technology | Role |
 |---|---|---|
@@ -35,7 +35,7 @@ Only approved members can sign in (Discord login plus an admin-managed allowlist
 
 ## Testing *(to do: #1)*
 
-## Deployment and demo *(to do: #63)*
+## Deployment and demo *(to do: Phase 3)*
 
 ## How AI was used *(to do)*
 
