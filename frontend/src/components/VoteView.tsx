@@ -18,7 +18,8 @@ type HeadingLevel = 2 | 3
 // announce the message.
 export function ConflictNotice({ shown }: { shown: boolean }) {
   return (
-    <div role="status">
+    // Out of the layout while empty, so it adds no gap, but still in the page.
+    <div role="status" className={shown ? '' : 'sr-only'}>
       {shown && <p className="max-w-prose rounded-lg border border-wood/40 bg-paper px-4 py-3">{VOTE_NO_LONGER_OPEN}</p>}
     </div>
   )
@@ -139,7 +140,7 @@ export function VoteView({
         {vote.status === 'open' ? (
           <fieldset className="grid min-w-0 gap-3">
             <legend className="mb-1 font-semibold text-forest">Elige los libros que te gustaría leer</legend>
-            <p role="status" className="text-moss">
+            <p role="status" className={announcement ? 'text-moss' : 'sr-only'}>
               {announcement}
             </p>
             <CandidateList

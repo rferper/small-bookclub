@@ -80,3 +80,16 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 - Meeting dates in Reuniones and on the meeting page include the year (`formatMeetingDateWithYear`, `formatMeetingDay`); Inicio and the book page keep `formatMeetingDate`.
 **Why:** Summaries and highlights must be absent from responses for a member who has not passed the gate (§5.3, §5.8), and the server is the only clock all members share.
 **Consequence:** Reversible: the backend issues (#20, #26, #27, #29) implement the same split and gate, and #71 fixes the contract. No new dependencies.
+
+## 2026-10-09: Votaciones in the frontend (#66)
+
+**Decision:** Votaciones loads one `getVotes()` call that returns `{ curator, current, history }`; the vote page loads one `getVote(id)`; `setApproval(voteId, bookId, approved)` approves or withdraws one candidate for the signed-in user only and returns the updated vote. A closed vote's `outcome` is a discriminated union reported by the server: `winner` (the winning book and a plain-text `tieNote` or `null`) or `tiePending` (the tied book ids, no winner). Votes are public: every member gets the same data, and only `approvedByMe` depends on who asks. The mock answers 401 before 404 and 409, 404 for an unknown vote or a book that is not a candidate, and 409 for an approval on a draft or closed vote. While a change is saved, only its checkbox is disabled and shows the new state; a failure puts it back with an alert next to it, and a 409 shows a calm message and reloads the vote. The curator and admin controls are #91. Reversible assumptions (from the issue):
+- At most one vote is draft or open at a time, and it is the "current" vote. Closed votes, including one whose tie is pending, are in the history.
+- A draft vote's shortlist is visible read-only to every member; approvals start when it opens, so a draft shows no counts or voters.
+- The server reports the outcome of a closed vote; the frontend never computes a winner, and nothing breaks a tie automatically.
+- Candidates stay in shortlist order in every state; a closed vote marks the winner (or the tied books) in text instead of re-sorting.
+- Totals refresh on load and after the user's own changes, with no polling.
+- The `curator` mock session (`?mock-session=curator`) is the member assigned as curator, with the `member` role (§3).
+- The vote page and the current vote on Votaciones are the same component (`VoteView`); the vote dates are shown as day with year in the club timezone (`formatLongDate`).
+**Why:** Approval voting needs public live totals and one equal vote per member per candidate (§5.4), and only the server may decide a winner or a tie.
+**Consequence:** Reversible: the backend issues (#31–#34) implement the same rules and #71 fixes the contract. No new dependencies.
