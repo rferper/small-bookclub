@@ -20,7 +20,7 @@ The PM rewrites each issue body into this format before implementation starts. K
 - <Spec sections that apply, e.g. "product-spec.md §5.5 (independent rating rule)".>
 - <Models, files or helpers to use or not touch, e.g. "Use the permission helpers from #11".>
 - <Dependencies on other issues that must be closed first.>
-- <Technical limits: no new dependencies without asking, Spanish UI copy, etc.>
+- <Technical limits: only free, open-source dependencies recorded in `docs/decisions.md`, Spanish UI copy, etc.>
 ```
 
 ## Guidance

@@ -20,7 +20,7 @@ The frontend exists; backend commands work once `backend/` is created.
 
 - Backend (run inside `backend/`; uv manages all backend dependencies):
   - Install dependencies: `uv sync`
-  - Add a dependency (after asking): `uv add <PACKAGE-NAME>`
+  - Add a dependency (free and open-source, recorded in `docs/decisions.md`): `uv add <PACKAGE-NAME>`
   - Run a Python file: `uv run python <PYTHON-FILE>`
   - Unit tests: `uv run pytest -m "not integration"`; integration tests: `uv run pytest -m integration`; all: `uv run pytest`
   - Lint and format: `uv run ruff check .` and `uv run ruff format .`
@@ -39,7 +39,7 @@ The frontend exists; backend commands work once `backend/` is created.
 - `product-spec.md` is the source of truth for product behaviour. Do not add features it lists as non-goals, and do not re-ask its settled decisions.
 - `openapi.yaml` is the API contract. Change it first, in the same issue, before changing an endpoint or the frontend code that calls it. Backend tests check responses against it.
 - The frontend talks to the backend only through its central API client module; no `fetch` calls scattered in components.
-- Never add a dependency without asking first. Backend dependencies go in `backend/pyproject.toml` via `uv add`; frontend dependencies go in `frontend/package.json` via `npm install`. No paid services, APIs or hosting.
+- Agents may choose free, open-source dependencies, and must record each one and why in `docs/decisions.md`. Anything paid, or needing the user's accounts or secrets, still needs the user's approval first. Backend dependencies go in `backend/pyproject.toml` via `uv add`; frontend dependencies go in `frontend/package.json` via `npm install`. No paid services, APIs or hosting.
 - User-facing text is Spanish; code, comments and docs are English.
 - Every permission and spoiler rule is enforced in the backend, using the central helpers. The API never returns data the user may not see; hiding it in the frontend is never enough.
 - Use fictional data in tests, fixtures and the public demo; never invent real club data.

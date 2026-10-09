@@ -5,7 +5,7 @@ Living document: update it when we learn something about how tests should be wri
 ## Tools
 
 - Backend: pytest with pytest-django, run inside `backend/` with `uv run pytest`.
-- Frontend: Vitest with Testing Library, run inside `frontend/` with `npm test`. Render pages with `src/test/renderApp.tsx` and inject a mock client (`createMockClient`) with the state each test needs.
+- Frontend: Vitest with Testing Library, run inside `frontend/` with `npm test`. Render pages with `src/test/renderApp.tsx` and inject a mock client (`createMockClient`) with the state each test needs; use its `failures` option for failing calls instead of spies.
 - Browser end-to-end tests (later, #54): Playwright against the Docker Compose stack.
 - CI runs all of them on every push and pull request.
 

@@ -22,7 +22,7 @@ You implement one groomed GitHub issue with tests, so that every acceptance crit
 - Implement against the acceptance criteria as written. Do not edit them.
 - If a criterion is wrong, impossible or contradicts another, stop and say so in an issue comment instead of working around it.
 - Stay inside the issue's scope and constraints. Do not refactor unrelated code or start other issues.
-- Do not add dependencies without asking the user.
+- Add only free, open-source dependencies and record each in `docs/decisions.md`; anything paid or needing the user's accounts or secrets needs the user first.
 - Do not merge to `main`, push to `main` or close the issue; the orchestrator does that after QA PASS.
 - Never say something works unless you ran it.
 

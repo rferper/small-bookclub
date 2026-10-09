@@ -46,3 +46,14 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 
 **Decision:** The Discord recording bot and local AI (#56–#62) are out of scope for the course deadline and start only when the user says so.
 **Why:** No course criterion needs them, and they carry the highest technical risk.
+
+## 2026-10-09: Frontend toolchain and dependencies
+
+**Decision:** `frontend/package.json` uses these free, open-source packages:
+- Runtime: `react` and `react-dom` (UI), `react-router` (client-side routes for the nav sections, detail pages and not-found page).
+- Build: `vite` with `@vitejs/plugin-react` (dev server and bundler), `typescript` (type-check in `npm run build`), `tailwindcss` with `@tailwindcss/vite` (design tokens as Tailwind theme colours).
+- Tests: `vitest` (runner sharing Vite's config), `jsdom` (browser DOM for tests), `@testing-library/react`, `@testing-library/jest-dom` and `@testing-library/user-event` (render pages and interact like a user).
+- Lint: `oxlint` instead of ESLint: one fast dependency with sensible defaults and no plugin set to maintain.
+- Types: `@types/react`, `@types/react-dom` and `@types/node` (type definitions needed by TypeScript for React and the Vite/Vitest config files).
+**Why:** The user approved the React + Vite + TypeScript + Tailwind + Vitest/Testing Library set on 2026-10-09, and the same day let agents pick free software when something is problematic; oxlint and the `@types/*` packages were chosen under that rule.
+**Consequence:** From now on agents may add free, open-source dependencies without asking, recording each here (see `AGENTS.md`); anything paid or needing the user's accounts or secrets still needs the user.
