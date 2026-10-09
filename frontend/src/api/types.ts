@@ -35,11 +35,21 @@ export interface ReadingWeek {
   completedByMe: boolean
 }
 
+// The reading assigned for a meeting. Percent and pages are independent
+// facts set by the curator; the frontend shows them as returned.
+export interface MeetingAssignment {
+  weekNumber: number
+  percentStart: number
+  percentEnd: number
+  pageStart: number
+  pageEnd: number
+}
+
 export interface NextMeeting {
   id: string
   startsAt: string
   book: BookSummary | null
-  weekNumber: number | null
+  assignment: MeetingAssignment | null
 }
 
 export interface MemberProgress {

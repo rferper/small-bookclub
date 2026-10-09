@@ -4,7 +4,7 @@ import { initials } from '../lib/format'
 export function Avatar({ member, size = 40 }: { member: MemberSummary; size?: number }) {
   const style = { width: size, height: size }
   if (member.avatarUrl) {
-    return <img src={member.avatarUrl} alt="" style={style} className="rounded-full object-cover" />
+    return <img src={member.avatarUrl} alt={`Foto de ${member.displayName}`} style={style} className="rounded-full object-cover" />
   }
   return (
     <span

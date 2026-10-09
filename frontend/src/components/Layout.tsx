@@ -37,7 +37,7 @@ export function Layout() {
           </NavLink>
           <button
             type="button"
-            className="rounded-md border border-wood/50 px-3 py-1.5 text-forest lg:hidden"
+            className="rounded-md border border-wood/50 px-3 py-1.5 text-forest sm:hidden"
             aria-expanded={menuOpen}
             aria-controls="menu-principal"
             onClick={() => setMenuOpen((open) => !open)}
@@ -48,9 +48,9 @@ export function Layout() {
         <nav
           id="menu-principal"
           aria-label="Principal"
-          className={`mx-auto max-w-6xl px-4 pb-3 lg:block ${menuOpen ? 'block' : 'hidden'}`}
+          className={`mx-auto max-w-6xl px-4 pb-3 sm:block ${menuOpen ? 'block' : 'hidden'}`}
         >
-          <ul className="flex flex-col gap-1 lg:flex-row lg:flex-wrap">
+          <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
             {items.map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} end={item.to === '/'} className={linkClass} onClick={() => setMenuOpen(false)}>

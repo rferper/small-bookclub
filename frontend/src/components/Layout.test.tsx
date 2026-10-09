@@ -21,7 +21,7 @@ describe('Layout', () => {
     state.currentUserId = 'm2'
     renderApp({ client: createMockClient({ state }) })
 
-    await screen.findByRole('heading', { level: 1, name: 'La Regenta' })
+    await screen.findByRole('heading', { name: 'La Regenta' })
     const nav = screen.getByRole('navigation', { name: 'Principal' })
     expect(within(nav).queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument()
   })

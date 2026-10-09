@@ -9,7 +9,13 @@ describe('mock API client', () => {
 
     expect(home.currentBook?.title).toBe('La Regenta')
     expect(home.currentWeek).toMatchObject({ weekNumber: 3, percentStart: 25, percentEnd: 40, pageStart: 205, pageEnd: 330 })
-    expect(home.nextMeeting?.weekNumber).toBe(3)
+    expect(home.nextMeeting?.assignment).toEqual({
+      weekNumber: 3,
+      percentStart: 25,
+      percentEnd: 40,
+      pageStart: 205,
+      pageEnd: 330,
+    })
   })
 
   it('marking a week read changes only the signed-in member', async () => {
@@ -41,6 +47,16 @@ describe('mock API client', () => {
       recentActivity: [],
       quote: null,
     })
+  })
+
+  it('can be configured to fail a call a number of times', async () => {
+    const api = createMockClient({ failures: { getHome: 1, setWeekCompleted: Infinity } })
+
+    await expect(api.getHome()).rejects.toMatchObject({ status: 500 })
+    await expect(api.getHome()).resolves.toMatchObject({ currentBook: { title: 'La Regenta' } })
+    await expect(api.setWeekCompleted('w3', true)).rejects.toBeInstanceOf(ApiError)
+    await expect(api.setWeekCompleted('w3', true)).rejects.toBeInstanceOf(ApiError)
+    await expect(api.getCurrentUser()).resolves.toMatchObject({ id: 'm1' })
   })
 
   it('chooses the quote with the injected random source', async () => {

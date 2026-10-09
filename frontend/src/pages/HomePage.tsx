@@ -22,26 +22,27 @@ export function HomePage() {
   if (home.status === 'error') return <LoadError onRetry={home.reload} />
 
   const { data } = home
+  // Sections follow the homepage priority in product-spec.md §4; the visual
+  // order matches the DOM order at every width.
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="flex flex-col gap-6 lg:col-span-2">
-        <CurrentBook data={data} />
-        {data.currentBook && <ThisWeek week={data.currentWeek} onChanged={home.reload} />}
-        {data.currentWeek && <MemberProgressCard data={data} />}
-      </div>
-      <div className="flex flex-col gap-6">
-        <NextMeetingCard data={data} />
-        <StatsCard data={data} />
-        {data.quote && (
-          <figure className="rounded-xl border-l-4 border-soft-green bg-paper p-5">
+    <div className="grid gap-6 lg:grid-cols-2">
+      <h1 className="sr-only">Inicio</h1>
+      <CurrentBook data={data} />
+      <ThisWeek week={data.currentWeek} onChanged={home.reload} />
+      <NextMeetingCard data={data} />
+      <MemberProgressCard data={data} />
+      <ActivityCard data={data} />
+      <StatsCard data={data} />
+      {data.quote && (
+        <Card title="Una cita para hoy" headingClassName="mb-2 text-sm tracking-wide text-bark uppercase">
+          <figure className="border-l-4 border-soft-green pl-4">
             <blockquote className="font-serif text-lg whitespace-pre-line text-forest">
               «{data.quote.text.replaceAll(' / ', '\n')}»
             </blockquote>
             {data.quote.source && <figcaption className="mt-2 text-sm text-bark">— {data.quote.source}</figcaption>}
           </figure>
-        )}
-        <ActivityCard data={data} />
-      </div>
+        </Card>
+      )}
     </div>
   )
 }
@@ -50,21 +51,27 @@ function CurrentBook({ data }: { data: HomeData }) {
   const book = data.currentBook
   if (!book) {
     return (
-      <Card title="Leyendo ahora">
+      <Card title="Leyendo ahora" className="lg:col-span-2">
         <EmptyState>Todavía no hay un libro en curso. Cuando el club elija uno, aparecerá aquí.</EmptyState>
       </Card>
     )
   }
   return (
-    <section aria-labelledby="leyendo-ahora" className="flex gap-5 rounded-xl bg-forest p-5 text-parchment shadow-md">
+    <section
+      aria-labelledby="leyendo-ahora"
+      className="flex gap-5 rounded-xl bg-forest p-5 text-parchment shadow-md lg:col-span-2"
+    >
       <BookCover book={book} className="w-24 shrink-0 sm:w-32" />
       <div className="flex flex-col justify-center gap-1">
-        <p id="leyendo-ahora" className="text-sm tracking-wide uppercase opacity-90">
+        <h2 id="leyendo-ahora" className="font-sans text-sm font-normal tracking-wide uppercase opacity-90">
           Leyendo ahora
-        </p>
-        <h1 className="text-3xl sm:text-4xl">{book.title}</h1>
+        </h2>
+        <h3 className="text-3xl sm:text-4xl">{book.title}</h3>
         <p className="text-lg">{formatAuthors(book.authors)}</p>
-        <Link to={`/biblioteca/${book.id}`} className="mt-2 underline underline-offset-4">
+        <Link
+          to={`/biblioteca/${book.id}`}
+          className="mt-2 underline underline-offset-4 focus-visible:outline-parchment"
+        >
           Ver ficha del libro
         </Link>
       </div>
@@ -79,7 +86,7 @@ function ThisWeek({ week, onChanged }: { week: ReadingWeek | null; onChanged: ()
 
   if (!week) {
     return (
-      <Card title="Lectura de esta semana">
+      <Card title="Lectura de esta semana" className="lg:col-span-2">
         <EmptyState>Aún no se ha fijado la lectura de esta semana.</EmptyState>
       </Card>
     )
@@ -99,7 +106,7 @@ function ThisWeek({ week, onChanged }: { week: ReadingWeek | null; onChanged: ()
   }
 
   return (
-    <Card title="Lectura de esta semana" className="border-2 border-soft-green">
+    <Card title="Lectura de esta semana" className="border-2 border-soft-green lg:col-span-2">
       <p className="font-serif text-lg text-moss">Semana {week.weekNumber}</p>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <p className="text-4xl font-semibold text-forest">{formatPercentRange(week.percentStart, week.percentEnd)}</p>
@@ -135,10 +142,17 @@ function ThisWeek({ week, onChanged }: { week: ReadingWeek | null; onChanged: ()
 
 function MemberProgressCard({ data }: { data: HomeData }) {
   const everyoneDone = data.memberProgress.length > 0 && data.memberProgress.every((p) => p.completed)
+  if (!data.currentWeek) {
+    return (
+      <Card title="Cómo va el club esta semana">
+        <EmptyState>Cuando haya una lectura fijada para esta semana, aquí verás cómo va el club.</EmptyState>
+      </Card>
+    )
+  }
   return (
     <Card title="Cómo va el club esta semana">
       {everyoneDone && <p className="mb-3 text-moss">Todo el club ha terminado la lectura de esta semana.</p>}
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
         {data.memberProgress.map(({ member, completed }) => (
           <li key={member.id} className="flex items-center gap-2">
             <Avatar member={member} />
@@ -162,10 +176,15 @@ function NextMeetingCard({ data }: { data: HomeData }) {
       {meeting ? (
         <>
           <p className="text-lg first-letter:uppercase">{formatMeetingDate(meeting.startsAt)}</p>
-          {meeting.book && (
-            <p className="text-bark">
-              «{meeting.book.title}»{meeting.weekNumber !== null && ` · semana ${meeting.weekNumber}`}
+          {meeting.book && <p className="text-bark">«{meeting.book.title}»</p>}
+          {meeting.assignment ? (
+            <p className="mt-1 text-forest">
+              Semana {meeting.assignment.weekNumber} ·{' '}
+              {formatPercentRange(meeting.assignment.percentStart, meeting.assignment.percentEnd)} ·{' '}
+              {formatPageRange(meeting.assignment.pageStart, meeting.assignment.pageEnd)}
             </p>
+          ) : (
+            <EmptyState>Todavía no hay lectura asignada para esta reunión.</EmptyState>
           )}
           <Link to={`/reuniones/${meeting.id}`} className="mt-2 inline-block text-moss underline underline-offset-4">
             Ver reunión
