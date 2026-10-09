@@ -36,6 +36,8 @@ Defined in `frontend/src/index.css` under `@theme`, so each is a Tailwind colour
 - `BookCover`: 2:3 image, or a forest cloth-bound placeholder with title and author when there is no cover.
 - `Avatar`: round image, or `sage` circle with initials.
 - Primary button: `bg-forest text-parchment`; secondary/pressed state: `border-2 border-forest text-forest`.
+- `ActionButton`: a button for one async action (sign in, sign out). It is disabled while the action runs and shows a Spanish `role="alert"` message next to it if the action fails. Variants: primary, secondary and quiet (header).
+- `AuthScreen`: the centred paper card used instead of the club for the sign-in, access-denied and session-error screens; it has its own `main` and serif `h1`, and no navigation.
 
 ## Layout
 

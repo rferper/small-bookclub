@@ -57,3 +57,9 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 - Types: `@types/react`, `@types/react-dom` and `@types/node` (type definitions needed by TypeScript for React and the Vite/Vitest config files).
 **Why:** The user approved the React + Vite + TypeScript + Tailwind + Vitest/Testing Library set on 2026-10-09, and the same day let agents pick free software when something is problematic; oxlint and the `@types/*` packages were chosen under that rule.
 **Consequence:** From now on agents may add free, open-source dependencies without asking, recording each here (see `AGENTS.md`); anything paid or needing the user's accounts or secrets still needs the user.
+
+## 2026-10-09: Session gate in the frontend (#63)
+
+**Decision:** The session is one client call, `getSession()`, returning `anonymous`, `denied` (refused sign-in, with no user) or `signedIn` with the user; `getCurrentUser()` was removed so the user has one source. A `SessionGate` root route shows the sign-in, access-denied or session-error screen at the requested URL (no `/entrar` route) until a member is signed in. Club pages get a wrapped client that, on any 401, hides the page and loads the session again.
+**Why:** Anonymous visitors should not learn which routes exist, and an expired or revoked session should land on the right screen instead of a generic error.
+**Consequence:** The gate is cosmetic; the backend still refuses club data to anonymous, denied and revoked users (#4, #5, #7). #5 and #71 may change how a refused sign-in is reported (reversible) without changing the screens. No new dependencies.
