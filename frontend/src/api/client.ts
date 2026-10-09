@@ -1,4 +1,4 @@
-import type { HomeData, Session } from './types'
+import type { BookDetail, HomeData, LibraryBook, Session } from './types'
 
 // The only way components talk to the backend. Today the app uses the mock
 // implementation; an HTTP implementation will replace it once the backend
@@ -18,6 +18,11 @@ export interface ApiClient {
   // Club data. The backend answers 401 while nobody is signed in.
   getHome(): Promise<HomeData>
   setWeekCompleted(weekId: string, completed: boolean): Promise<void>
+  // Every book in the club catalogue, unsorted.
+  listBooks(): Promise<LibraryBook[]>
+  // One book with its reading plan and meetings. Rejects with a 404
+  // ApiError for an unknown id.
+  getBook(bookId: string): Promise<BookDetail>
 }
 
 // Methods that manage the session itself; every other method returns club data.

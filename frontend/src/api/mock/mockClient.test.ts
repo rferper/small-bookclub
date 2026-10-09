@@ -65,6 +65,72 @@ describe('mock API client', () => {
   })
 })
 
+describe('mock library', () => {
+  it('lists every book with catalogue fields only', async () => {
+    const books = await createMockClient().listBooks()
+
+    expect(books.map((b) => b.status).sort()).toEqual(['archivado', 'elegido', 'leyendo', 'propuesto', 'terminado', 'terminado'])
+    expect(books.find((b) => b.id === 'b2')).toEqual({
+      id: 'b2',
+      title: 'Cumbres borrascosas',
+      authors: ['Emily Brontë'],
+      coverUrl: null,
+      status: 'terminado',
+      readingStartDate: '2024-10-01',
+      readingEndDate: '2024-11-30',
+      datesApproximate: true,
+    })
+  })
+
+  it('serves fixture covers locally', async () => {
+    const covers = (await createMockClient().listBooks()).map((b) => b.coverUrl).filter((url) => url !== null)
+    expect(covers.length).toBeGreaterThan(0)
+    for (const url of covers) expect(url).toMatch(/^\/[^/]/)
+  })
+
+  it('returns a book with its plan in week order and its meetings oldest first', async () => {
+    const book = await createMockClient().getBook('b3')
+
+    expect(book).toMatchObject({ title: 'La Regenta', publicationDate: '1884–1885', pageCount: 864 })
+    expect(book.schedule.map((w) => w.weekNumber)).toEqual([1, 2, 3, 4, 5])
+    expect(book.schedule[0].meeting).toEqual({ id: 'mt1', startsAt: '2026-09-24T19:30:00+02:00' })
+    expect(book.schedule[4]).toMatchObject({ meeting: null, dueDate: '2026-10-29' })
+    expect(book.meetings.map((m) => [m.id, m.cancelled, m.weekNumber])).toEqual([
+      ['mt0', true, null],
+      ['mt1', false, 1],
+      ['mt2', false, 2],
+      ['mt3', false, 3],
+      ['mt4', false, 4],
+    ])
+    expect(book.originVote).toEqual({ id: 'v1', label: 'Votación de Carmen (septiembre de 2026)' })
+  })
+
+  it('never sends ratings, reviews or meeting summaries', async () => {
+    const api = createMockClient()
+    const payload = JSON.stringify([await api.listBooks(), await api.getBook('b3'), await api.getBook('b1')])
+    expect(payload).not.toMatch(/rating|review|score|average|summary|highlight/i)
+  })
+
+  it('rejects an unknown book with a 404', async () => {
+    const error = await createMockClient().getBook('no-existe').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 404 })
+  })
+
+  it('has no books for a new club', async () => {
+    await expect(createMockClient({ state: createEmptyState() }).listBooks()).resolves.toEqual([])
+  })
+
+  it('can fail the library calls', async () => {
+    const api = createMockClient({ failures: { listBooks: 1, getBook: 1 } })
+
+    await expect(api.listBooks()).rejects.toMatchObject({ status: 500 })
+    await expect(api.listBooks()).resolves.toHaveLength(6)
+    await expect(api.getBook('b3')).rejects.toMatchObject({ status: 500 })
+    await expect(api.getBook('b3')).resolves.toMatchObject({ id: 'b3' })
+  })
+})
+
 describe('mock session', () => {
   it('is signed in as the fixture admin by default', async () => {
     await expect(createMockClient().getSession()).resolves.toEqual({
@@ -138,6 +204,14 @@ describe('mock session', () => {
       const error = await api.getHome().catch((e: unknown) => e)
       expect(error).toBeInstanceOf(ApiError)
       expect(error).toMatchObject({ status: 401 })
+    })
+
+    it('refuses the library calls with a 401 and no data', async () => {
+      const api = createMockClient({ session })
+      await expect(api.listBooks()).rejects.toMatchObject({ status: 401 })
+      // 401 comes before 404: an anonymous visitor cannot probe which books exist.
+      await expect(api.getBook('b3')).rejects.toMatchObject({ status: 401 })
+      await expect(api.getBook('no-existe')).rejects.toMatchObject({ status: 401 })
     })
 
     it('refuses setWeekCompleted with a 401 and changes nothing', async () => {

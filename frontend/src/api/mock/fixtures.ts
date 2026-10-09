@@ -1,7 +1,7 @@
 // Fictional club data for the mock API. The members are invented; the books
 // and quotes are public-domain works. Never put real club data here.
 
-import type { BookSummary, CurrentUser, LiteraryQuote, MemberSummary } from '../types'
+import type { BookDetail, CurrentUser, LiteraryQuote, MemberSummary } from '../types'
 
 export interface MockWeek {
   id: string
@@ -12,7 +12,13 @@ export interface MockWeek {
   pageStart: number
   pageEnd: number
   meetingId: string | null
+  dueDate: string | null
+  notes: string | null
 }
+
+// A book as the backend stores it: catalogue fields and metadata. The
+// schedule and meetings are separate lists, linked by bookId.
+export type MockBook = Omit<BookDetail, 'schedule' | 'meetings'>
 
 export interface MockMeeting {
   id: string
@@ -40,7 +46,7 @@ export interface MockState {
   session: 'signedIn' | 'anonymous' | 'denied'
   currentUserId: string
   members: (MemberSummary & { role: CurrentUser['role'] })[]
-  books: (BookSummary & { status: 'propuesto' | 'elegido' | 'leyendo' | 'terminado' })[]
+  books: MockBook[]
   weeks: MockWeek[]
   meetings: MockMeeting[]
   // weekId -> member ids who marked it read
@@ -66,17 +72,63 @@ export function createClubState(): MockState {
       { id: 'm7', displayName: 'Elena', avatarUrl: null, role: 'member' },
     ],
     books: [
-      { id: 'b1', title: 'Niebla', authors: ['Miguel de Unamuno'], coverUrl: null, status: 'terminado' },
-      { id: 'b2', title: 'Cumbres borrascosas', authors: ['Emily Brontë'], coverUrl: null, status: 'terminado' },
-      { id: 'b3', title: 'La Regenta', authors: ['Leopoldo Alas «Clarín»'], coverUrl: null, status: 'leyendo' },
+      book({
+        id: 'b1',
+        title: 'Niebla',
+        authors: ['Miguel de Unamuno'],
+        coverUrl: '/covers/niebla.svg',
+        status: 'terminado',
+        readingStartDate: '2025-03-01',
+        readingEndDate: '2025-04-12',
+        publicationDate: '1914',
+      }),
+      book({
+        id: 'b2',
+        title: 'Cumbres borrascosas',
+        authors: ['Emily Brontë'],
+        status: 'terminado',
+        readingStartDate: '2024-10-01',
+        readingEndDate: '2024-11-30',
+        datesApproximate: true,
+        originVote: { id: 'v0', label: 'Votación de otoño de 2024' },
+      }),
+      book({
+        id: 'b3',
+        title: 'La Regenta',
+        authors: ['Leopoldo Alas «Clarín»'],
+        status: 'leyendo',
+        readingStartDate: '2026-09-15',
+        description:
+          'En Vetusta, una ciudad de provincias que dormita a la sombra de su catedral, Ana Ozores lleva una vida ' +
+          'tranquila y vacía junto a su marido, el antiguo regente de la Audiencia. Entre el magistral Fermín de Pas, ' +
+          'que quiere guiar su alma, y el seductor Álvaro Mesía, que quiere conquistarla, Ana busca algo que dé ' +
+          'sentido a sus días. Una novela larga, paciente y llena de ironía sobre la vida de una ciudad entera.',
+        publicationDate: '1884–1885',
+        publisher: 'Editorial Ficticia del Norte',
+        isbn: '978-0-00-000000-2',
+        pageCount: 864,
+        originVote: { id: 'v1', label: 'Votación de Carmen (septiembre de 2026)' },
+      }),
+      book({ id: 'b4', title: 'Pepita Jiménez', authors: ['Juan Valera'], status: 'elegido' }),
+      book({ id: 'b5', title: 'Los pazos de Ulloa', authors: ['Emilia Pardo Bazán'], status: 'propuesto' }),
+      book({
+        id: 'b6',
+        title: 'Ángel Guerra',
+        authors: ['Benito Pérez Galdós'],
+        status: 'archivado',
+        readingEndDate: '2023-06-15',
+        datesApproximate: true,
+      }),
     ],
     weeks: [
-      { id: 'w1', bookId: 'b3', weekNumber: 1, percentStart: 0, percentEnd: 12, pageStart: 1, pageEnd: 98, meetingId: 'mt1' },
-      { id: 'w2', bookId: 'b3', weekNumber: 2, percentStart: 12, percentEnd: 25, pageStart: 99, pageEnd: 204, meetingId: 'mt2' },
-      { id: 'w3', bookId: 'b3', weekNumber: 3, percentStart: 25, percentEnd: 40, pageStart: 205, pageEnd: 330, meetingId: 'mt3' },
-      { id: 'w4', bookId: 'b3', weekNumber: 4, percentStart: 40, percentEnd: 52, pageStart: 331, pageEnd: 430, meetingId: 'mt4' },
+      { id: 'w1', bookId: 'b3', weekNumber: 1, percentStart: 0, percentEnd: 12, pageStart: 1, pageEnd: 98, meetingId: 'mt1', dueDate: null, notes: null },
+      { id: 'w2', bookId: 'b3', weekNumber: 2, percentStart: 12, percentEnd: 25, pageStart: 99, pageEnd: 204, meetingId: 'mt2', dueDate: null, notes: null },
+      { id: 'w3', bookId: 'b3', weekNumber: 3, percentStart: 25, percentEnd: 40, pageStart: 205, pageEnd: 330, meetingId: 'mt3', dueDate: null, notes: 'Incluye el capítulo XVI completo.' },
+      { id: 'w4', bookId: 'b3', weekNumber: 4, percentStart: 40, percentEnd: 52, pageStart: 331, pageEnd: 430, meetingId: 'mt4', dueDate: null, notes: null },
+      { id: 'w5', bookId: 'b3', weekNumber: 5, percentStart: 52, percentEnd: 60, pageStart: 431, pageEnd: 520, meetingId: null, dueDate: '2026-10-29', notes: null },
     ],
     meetings: [
+      { id: 'mt0', bookId: 'b3', startsAt: '2026-09-17T19:30:00+02:00', cancelled: true },
       { id: 'mt1', bookId: 'b3', startsAt: '2026-09-24T19:30:00+02:00', cancelled: false },
       { id: 'mt2', bookId: 'b3', startsAt: '2026-10-01T19:30:00+02:00', cancelled: false },
       { id: 'mt3', bookId: 'b3', startsAt: '2026-10-15T19:30:00+02:00', cancelled: false },
@@ -105,6 +157,23 @@ export function createClubState(): MockState {
       },
     ],
     now: '2026-10-09T12:00:00+02:00',
+  }
+}
+
+// A book with only the given fields; every optional one is empty.
+function book(fields: Pick<MockBook, 'id' | 'title' | 'authors' | 'status'> & Partial<MockBook>): MockBook {
+  return {
+    coverUrl: null,
+    readingStartDate: null,
+    readingEndDate: null,
+    datesApproximate: false,
+    description: null,
+    publicationDate: null,
+    publisher: null,
+    isbn: null,
+    pageCount: null,
+    originVote: null,
+    ...fields,
   }
 }
 

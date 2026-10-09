@@ -104,3 +104,62 @@ export interface HomeData {
   stats: ClubStats
   quote: LiteraryQuote | null
 }
+
+// Club status of a book, set by an admin (#13). «Elegido» is a book chosen
+// but not started yet.
+export type BookStatus = 'propuesto' | 'elegido' | 'leyendo' | 'terminado' | 'archivado'
+
+// A book in Biblioteca. Dates are calendar dates (YYYY-MM-DD) without a
+// timezone; either may be unknown. Ratings, reviews and their counts are
+// gated (§5.5) and never part of these shapes.
+export interface LibraryBook extends BookSummary {
+  status: BookStatus
+  readingStartDate: string | null
+  readingEndDate: string | null
+  // The dates are the club's best guess (e.g. books read before the site).
+  datesApproximate: boolean
+}
+
+// One week of the reading plan. Percent and pages are independent facts set
+// by the curator; the frontend shows them as returned (§5.2).
+export interface ScheduleWeek {
+  id: string
+  weekNumber: number
+  percentStart: number
+  percentEnd: number
+  pageStart: number
+  pageEnd: number
+  // Calendar date (YYYY-MM-DD) when there is no linked meeting to read for.
+  dueDate: string | null
+  meeting: { id: string; startsAt: string } | null
+  notes: string | null
+}
+
+// A meeting about the book. Its summary and highlights are gated and live
+// on the meeting page (#65), not here.
+export interface BookMeeting {
+  id: string
+  // ISO 8601 date-time.
+  startsAt: string
+  cancelled: boolean
+  weekNumber: number | null
+}
+
+// The vote the book came from, with a short ready-to-display Spanish label.
+export interface OriginVote {
+  id: string
+  label: string
+}
+
+export interface BookDetail extends LibraryBook {
+  // Plain text, never HTML.
+  description: string | null
+  // Free text as entered, e.g. "1884–1885".
+  publicationDate: string | null
+  publisher: string | null
+  isbn: string | null
+  pageCount: number | null
+  schedule: ScheduleWeek[]
+  meetings: BookMeeting[]
+  originVote: OriginVote | null
+}

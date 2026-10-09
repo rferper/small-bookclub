@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">
+  <!-- Made for the mock fixtures (#64): a plain misty cover, no third-party artwork. -->
+  <rect width="200" height="300" fill="#6f8288"/>
+  <rect x="0" y="0" width="14" height="300" fill="#4f5f64"/>
+  <g fill="#e9ecea" opacity="0.55">
+    <ellipse cx="70" cy="170" rx="90" ry="18"/>
+    <ellipse cx="140" cy="200" rx="80" ry="14"/>
+    <ellipse cx="90" cy="232" rx="100" ry="16"/>
+  </g>
+  <text x="107" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#f5f0e4">Niebla</text>
+  <text x="107" y="122" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#f5f0e4">Miguel de Unamuno</text>
+</svg>

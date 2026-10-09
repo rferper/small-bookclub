@@ -1,6 +1,6 @@
 import { ApiError, type ApiClient } from '../client'
-import type { BookSummary, HomeData, NextMeeting, ReadingWeek, Session } from '../types'
-import { createClubState, type MockState } from './fixtures'
+import type { BookDetail, BookSummary, HomeData, LibraryBook, NextMeeting, ReadingWeek, Session } from '../types'
+import { createClubState, type MockBook, type MockState } from './fixtures'
 
 type Method = keyof ApiClient
 
@@ -63,6 +63,18 @@ export function createMockClient({
     const book = state.books.find((b) => b.id === bookId)
     return book ? { id: book.id, title: book.title, authors: book.authors, coverUrl: book.coverUrl } : null
   }
+
+  // Catalogue fields only: no metadata, ratings or review counts.
+  const toLibraryBook = (book: MockBook): LibraryBook => ({
+    id: book.id,
+    title: book.title,
+    authors: book.authors,
+    coverUrl: book.coverUrl,
+    status: book.status,
+    readingStartDate: book.readingStartDate,
+    readingEndDate: book.readingEndDate,
+    datesApproximate: book.datesApproximate,
+  })
 
   const nextMeeting = () =>
     state.meetings
@@ -163,6 +175,55 @@ export function createMockClient({
       // Always acts on the signed-in member only, like the real API will.
       const others = (state.completions[weekId] ?? []).filter((id) => id !== state.currentUserId)
       state.completions[weekId] = completed ? [...others, state.currentUserId] : others
+    },
+
+    async listBooks(): Promise<LibraryBook[]> {
+      requireSignedIn()
+      failIfConfigured('listBooks')
+      return state.books.map(toLibraryBook)
+    },
+
+    async getBook(bookId: string): Promise<BookDetail> {
+      requireSignedIn()
+      failIfConfigured('getBook')
+      const book = state.books.find((b) => b.id === bookId)
+      if (!book) throw new ApiError(404, 'No existe ese libro.')
+      const meetings = state.meetings.filter((m) => m.bookId === book.id)
+      // Meeting summaries and highlights are gated (§5.3) and never sent here.
+      return {
+        ...toLibraryBook(book),
+        description: book.description,
+        publicationDate: book.publicationDate,
+        publisher: book.publisher,
+        isbn: book.isbn,
+        pageCount: book.pageCount,
+        schedule: state.weeks
+          .filter((w) => w.bookId === book.id)
+          .sort((a, b) => a.weekNumber - b.weekNumber)
+          .map((w) => {
+            const meeting = meetings.find((m) => m.id === w.meetingId)
+            return {
+              id: w.id,
+              weekNumber: w.weekNumber,
+              percentStart: w.percentStart,
+              percentEnd: w.percentEnd,
+              pageStart: w.pageStart,
+              pageEnd: w.pageEnd,
+              dueDate: w.dueDate,
+              meeting: meeting ? { id: meeting.id, startsAt: meeting.startsAt } : null,
+              notes: w.notes,
+            }
+          }),
+        meetings: [...meetings]
+          .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+          .map((m) => ({
+            id: m.id,
+            startsAt: m.startsAt,
+            cancelled: m.cancelled,
+            weekNumber: state.weeks.find((w) => w.meetingId === m.id)?.weekNumber ?? null,
+          })),
+        originVote: book.originVote,
+      }
     },
   }
 }

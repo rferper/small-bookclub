@@ -10,6 +10,12 @@ describe('mock options from the query string', () => {
     })
   })
 
+  it('can start with an empty club', () => {
+    const options = mockOptionsFromQuery('?mock-data=empty')
+    expect(options.state?.books).toEqual([])
+    expect(mockOptionsFromQuery('?mock-data=lleno')).toEqual({})
+  })
+
   it('keeps the defaults without parameters or with unknown values', () => {
     expect(mockOptionsFromQuery('')).toEqual({})
     expect(mockOptionsFromQuery('?mock-session=root&mock-sign-in=anonymous&mock-demo=yes')).toEqual({})
