@@ -210,11 +210,11 @@ describe('Book page', () => {
     expect(router.state.location.pathname).toBe('/biblioteca/b3')
   })
 
-  it('opens the vote placeholder from the vote link', async () => {
+  it('opens the vote page from the vote link', async () => {
     const user = userEvent.setup()
     await openBook('b3')
 
     await user.click(screen.getByRole('link', { name: /votación/ }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Votación' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Votación de Carmen' })).toBeInTheDocument()
   })
 })

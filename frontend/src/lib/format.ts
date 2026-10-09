@@ -105,3 +105,21 @@ export function formatReadingDates(start: string | null, end: string | null, app
   if (to) return `Hasta ${article}${to}${mark}`
   return UNKNOWN_READING_DATES
 }
+
+// The day of a date-time with its year and no weekday, in the club timezone,
+// e.g. "14 de septiembre de 2026". Used for vote dates.
+export function formatLongDate(iso: string, timeZone: string = CLUB_TIMEZONE): string {
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric', timeZone }).format(new Date(iso))
+}
+
+// "1 voto", "3 votos". With no votes: «Sin votos todavía» while the vote is
+// open, «Sin votos» once it is closed.
+export function formatVoteCount(count: number, open = true): string {
+  if (count === 0) return open ? 'Sin votos todavía' : 'Sin votos'
+  return count === 1 ? '1 voto' : `${count} votos`
+}
+
+// Book titles in Spanish quotes as a list, e.g. "«A», «B» y «C»".
+export function formatTitles(titles: string[]): string {
+  return formatAuthors(titles.map((title) => `«${title}»`))
+}

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   formatAuthors,
   formatCalendarDate,
+  formatLongDate,
   formatMeetingDate,
   formatMeetingDateWithYear,
   formatMeetingDay,
@@ -10,6 +11,8 @@ import {
   formatPercentRange,
   formatReadingDates,
   formatShortDay,
+  formatTitles,
+  formatVoteCount,
   initials,
 } from './format'
 
@@ -114,5 +117,25 @@ describe('meeting dates with the year', () => {
 
   it('leaves the existing meeting date without the year', () => {
     expect(formatMeetingDate('2026-09-24T19:30:00+02:00', 'Europe/Madrid')).toBe('jueves, 24 de septiembre, 19:30')
+  })
+
+  it('formats vote dates with the year in the club timezone', () => {
+    expect(formatLongDate('2026-09-14T21:00:00+02:00', 'Europe/Madrid')).toBe('14 de septiembre de 2026')
+    // 23:30 UTC on the 30th is already 1 October in Madrid, but not in New York.
+    expect(formatLongDate('2026-09-30T23:30:00Z', 'Europe/Madrid')).toBe('1 de octubre de 2026')
+    expect(formatLongDate('2026-09-30T23:30:00Z', 'America/New_York')).toBe('30 de septiembre de 2026')
+  })
+
+  it('formats vote counts with Spanish plurals', () => {
+    expect(formatVoteCount(0)).toBe('Sin votos todavía')
+    expect(formatVoteCount(0, false)).toBe('Sin votos')
+    expect(formatVoteCount(1)).toBe('1 voto')
+    expect(formatVoteCount(3, false)).toBe('3 votos')
+  })
+
+  it('lists titles in Spanish quotes', () => {
+    expect(formatTitles(['A'])).toBe('«A»')
+    expect(formatTitles(['A', 'B'])).toBe('«A» y «B»')
+    expect(formatTitles(['A', 'B', 'C'])).toBe('«A», «B» y «C»')
   })
 })
