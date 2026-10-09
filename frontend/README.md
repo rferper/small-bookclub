@@ -31,7 +31,7 @@ npm run build   # type-check and production build
 - `?mock-sign-in=member`, `admin`, `curator` or `denied`: where «Entrar con Discord» leads (default `member`).
 - `?mock-demo=1`: offer the demo sign-in spot (#75).
 - `?mock-data=empty`: a club that has just started, with no books, meetings, activity, curator or votes (for example, the empty Biblioteca, Reuniones or Votaciones). This club has only the admin, so combine it with `admin` or `anonymous` sessions, not `member` or `curator`.
-- `?mock-vote=draft`, `tie` or `none`: changes the current vote of the default club (#66). `draft`: Jordi's vote is not open yet (shortlist only, no approvals). `tie`: Jordi's vote closed on 7 October 2026 with a tie pending between «Marianela» and «Los pazos de Ulloa», so there is no current vote and it heads the history. `none`: Jordi is still the curator but there is no current vote. Ignored with `?mock-data=empty`.
+- `?mock-vote=draft`, `tie`, `none` or `open-tie`: changes the current vote of the default club (#66, #91). `draft`: Jordi's vote is not open yet (shortlist only, no approvals). `tie`: Jordi's vote closed on 7 October 2026 with a tie pending between «Marianela» and «Los pazos de Ulloa», so there is no current vote and it heads the history. `none`: Jordi is still the curator but there is no current vote. `open-tie`: Jordi's vote is still open, with «Marianela» and «Los pazos de Ulloa» tied at five votes each, so closing it gives a pending tie. Ignored with `?mock-data=empty`.
 
 For example, http://localhost:5173/?mock-session=anonymous&mock-demo=1 shows the sign-in screen with the demo spot. The mock lives in memory, so a full page reload starts again from the query parameters.
 
@@ -60,3 +60,19 @@ Jordi is the current curator. Votes are public, so every session sees the same c
 | `/votaciones/v1` | Carmen's closed vote, linked from «La Regenta»: won by «La Regenta» after a tie, with a two-line tie note, and two losing candidates. |
 | `/votaciones/v0` | Pablo's closed vote, linked from «Cumbres borrascosas»: a clear winner with no tie note, and two losing candidates. |
 | `/votaciones/no-existe` | Unknown vote. |
+
+The catalogue also has two «Propuesto» books that are in no vote, «Doña Perfecta» and «Sotileza», so the curator can add them to a shortlist (#91). Books with any other status are never offered.
+
+### Vote management (#91)
+
+The controls follow the server's flags (`canCreateVote`, `canManage`, `canRecordTieWinner`), so they depend on the session. Members (`?mock-session=member`) never see any of them. The mock's «now» (9 October 2026) is the opening and closing date of anything opened or closed in the browser.
+
+| Session and scenario | What appears |
+|---|---|
+| default admin or `?mock-session=curator`, `/votaciones/v2` | «Gestionar la votación» on the open vote: «Subir», «Bajar», «Quitar» (with a confirmation for a book with votes), «Añadir libros» and «Cerrar votación» (with a confirmation; closing gives «Marianela» as the winner). |
+| admin or curator, `?mock-vote=draft`, `/votaciones/v2` | The draft editor and «Abrir votación». |
+| admin or curator, `?mock-vote=none`, `/votaciones` | «Preparar una votación», which opens the new draft's page. |
+| admin or curator, `?mock-vote=open-tie`, `/votaciones/v2` | Closing gives a pending tie; the admin then sees the tie-break form. |
+| admin, `?mock-vote=tie`, `/votaciones/v2` | «Registrar el libro elegido»: a choice between the tied books and an optional note. |
+| curator, `?mock-vote=tie`, `/votaciones/v2` | The pending tie and a note that the admin records the club's choice; no form. |
+| admin, `?mock-data=empty`, `/votaciones` | No button; a note that a curator must be assigned first in Administración. |

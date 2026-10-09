@@ -244,7 +244,7 @@ export function VoteManagement({
                       disabled={index === 0 || pending.has(`up:${id}`)}
                       onClick={() => void move(candidate, 'up')}
                     >
-                      Subir<span className="sr-only"> «{title}»</span>
+                      Subir{' '}<span className="sr-only">«{title}»</span>
                     </button>
                     <button
                       type="button"
@@ -253,7 +253,7 @@ export function VoteManagement({
                       disabled={index === candidates.length - 1 || pending.has(`down:${id}`)}
                       onClick={() => void move(candidate, 'down')}
                     >
-                      Bajar<span className="sr-only"> «{title}»</span>
+                      Bajar{' '}<span className="sr-only">«{title}»</span>
                     </button>
                     {canRemove && (
                       <button
@@ -263,7 +263,7 @@ export function VoteManagement({
                         disabled={pending.has(removeKey)}
                         onClick={() => askToRemove(candidate)}
                       >
-                        Quitar<span className="sr-only"> «{title}»</span>
+                        Quitar{' '}<span className="sr-only">«{title}»</span>
                       </button>
                     )}
                   </div>
@@ -316,7 +316,7 @@ export function VoteManagement({
                         disabled={pending.has(key)}
                         onClick={() => void add(book)}
                       >
-                        Añadir<span className="sr-only"> «{book.title}»</span>
+                        Añadir{' '}<span className="sr-only">«{book.title}»</span>
                       </button>
                       {alert(key)}
                     </div>
