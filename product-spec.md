@@ -706,10 +706,12 @@ This project is also the author's final project for an AI-assisted development c
 ### Build order
 
 1. Specs and structure (this version).
-2. Skeleton: `backend/`, `frontend/`, a first `openapi.yaml`, `docker-compose.yml`, and CI running the tests; one passing test each (#1).
-3. Early deployment: a cloud demo URL with CI/CD that deploys when tests pass (#63), so every later feature is deployed automatically.
-4. Milestone 1 features, one issue at a time: contract, backend, frontend, unit and integration tests.
-5. Agent extension pack.
-6. Security, audit and ops hardening; final README.
+2. **Frontend first:** `frontend/` with every Milestone 1 screen, built against a central API client whose mock implementation serves fictional fixture data; frontend tests and CI.
+3. **Contract:** write `openapi.yaml` from what the screens actually need (the mock client's types and calls).
+4. **Backend:** `backend/` implementing the contract, with unit and integration tests; permissions and spoiler gating live here.
+5. **Connect:** swap the mock client for the HTTP client; `docker-compose.yml` runs both; integration and end-to-end tests.
+6. **Deployment:** a cloud demo URL with CI/CD that deploys when tests pass (#63), plus demo mode (#64).
+7. Agent extension pack.
+8. Security, audit and ops hardening; final README.
 
 **End of specification.**

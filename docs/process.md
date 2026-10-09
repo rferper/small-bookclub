@@ -5,7 +5,7 @@ How work moves from the backlog to merged code.
 ## Backlog
 
 - GitHub issues in `rferper/small-bookclub` are the only active backlog. `docs/tasks.md` was the initial draft and is retired; do not update it.
-- Issue numbers match the original task numbers and roughly the build order, with one exception: #63 (demo deployment and CD) comes right after #1. Follow the build order in `product-spec.md` §15. Otherwise pick the lowest-numbered open issue whose dependencies are done, unless the user names one.
+- Issue numbers match the original task numbers and roughly the build order, but the build order in `product-spec.md` §15 wins: the frontend is built first against a mock API client, then `openapi.yaml`, then the backend. Otherwise pick the lowest-numbered open issue whose dependencies are done, unless the user names one.
 - Many issues were written for server-rendered templates or HTMX. When grooming one, the PM rewrites it for the current stack: `openapi.yaml` change, backend endpoint, frontend screen, and their tests.
 - Work that falls outside an issue becomes a new issue, never an unplanned change.
 

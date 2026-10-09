@@ -20,9 +20,15 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 
 ## 2026-10-09: Contract-first API
 
-**Decision:** `openapi.yaml` is edited by hand first; the backend implements it and its tests validate responses against it. The frontend's API types are generated from it.
-**Why:** The course grades the OpenAPI spec as the contract for backend development, and it keeps frontend and backend in step.
-**Consequence:** Any endpoint change starts with an `openapi.yaml` change in the same issue. A CI check fails if the backend's generated schema drifts from the contract (set up in #1).
+**Decision:** The frontend is built first against a mock API client. `openapi.yaml` is then written by hand from what the screens need; the backend implements it and its tests validate responses against it. Once the contract exists, the frontend's API types are generated from it.
+**Why:** The course grades an OpenAPI spec that reflects frontend requirements and is the contract for backend development.
+**Consequence:** Until the backend exists, mock-client types are the draft contract. After `openapi.yaml` exists, any endpoint change starts with an `openapi.yaml` change in the same issue, and a CI check fails if the backend's generated schema drifts from it.
+
+## 2026-10-09: Frontend first with a mock API client
+
+**Decision:** Build all Milestone 1 screens in `frontend/` before the backend. Components call only `src/api/` (one typed client interface); a mock implementation returns fictional fixtures, and an HTTP implementation replaces it when the backend is ready. No mocking library: the mock is plain TypeScript.
+**Why:** The user wants to see and shape the UI first; it also yields the API requirements for `openapi.yaml`.
+**Consequence:** Permission and spoiler rules shown in the mock (locked states) are only a preview; the backend must enforce them. The mock must model gated responses the way the API will (data absent, not hidden).
 
 ## 2026-10-09: Public demo instance with fictional data
 
