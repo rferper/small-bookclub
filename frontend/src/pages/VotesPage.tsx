@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
-import { useApiData } from '../api/hooks'
+import { Link, useNavigate } from 'react-router'
+import { useApi, useApiData } from '../api/hooks'
 import type { MemberSummary, VoteHistoryItem, VotesOverview } from '../api/types'
+import { ActionButton } from '../components/ActionButton'
 import { Avatar } from '../components/Avatar'
 import { Card, EmptyState } from '../components/Card'
 import { LoadError, Loading } from '../components/Status'
-import { ConflictNotice, VoteView } from '../components/VoteView'
+import { VoteNotice, VoteView } from '../components/VoteView'
 import { formatLongDate } from '../lib/format'
-import { votePath } from '../lib/votes'
+import { VOTE_NO_LONGER_OPEN, votePath } from '../lib/votes'
+import { useSession } from '../session/hooks'
 
 // The curator, the current vote in full and every earlier vote, in the
 // order the server returns them.
@@ -46,7 +48,7 @@ function VotesContent({
   return (
     <>
       <Curator curator={votes.curator} />
-      <ConflictNotice shown={conflict} />
+      <VoteNotice message={conflict ? VOTE_NO_LONGER_OPEN : null} />
       <Card title="Votación actual">
         {votes.current ? (
           <div className="grid gap-4">
@@ -58,7 +60,10 @@ function VotesContent({
             <VoteView vote={votes.current} headingLevel={3} onConflict={onConflict} />
           </div>
         ) : (
-          <EmptyState>Ahora mismo no hay ninguna votación abierta.</EmptyState>
+          <div className="grid gap-4">
+            <EmptyState>Ahora mismo no hay ninguna votación abierta.</EmptyState>
+            <StartVote votes={votes} />
+          </div>
         )}
       </Card>
       <Card title="Votaciones anteriores">
@@ -74,6 +79,35 @@ function VotesContent({
       </Card>
     </>
   )
+}
+
+// «Preparar una votación», offered only when the server says the user may
+// start one (`canCreateVote`, #91). The new draft opens on its own page.
+function StartVote({ votes }: { votes: VotesOverview }) {
+  const api = useApi()
+  const navigate = useNavigate()
+  const { session } = useSession()
+  // Like the Administración link, this hint is cosmetic; the server decides.
+  const isAdmin = session?.status === 'signedIn' && session.user.role === 'admin'
+
+  if (votes.canCreateVote) {
+    return (
+      <ActionButton
+        label="Preparar una votación"
+        errorMessage="No se ha podido preparar la votación. Inténtalo de nuevo."
+        onAction={async () => {
+          const vote = await api.createVote()
+          await navigate(votePath(vote.id))
+        }}
+      />
+    )
+  }
+  if (isAdmin && !votes.curator) {
+    return (
+      <p className="max-w-prose">Para preparar una votación, primero hay que asignar la curaduría en Administración.</p>
+    )
+  }
+  return null
 }
 
 function Curator({ curator }: { curator: MemberSummary | null }) {

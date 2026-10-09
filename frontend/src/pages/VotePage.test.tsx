@@ -52,6 +52,10 @@ describe('Vote page: open vote', () => {
     ).toEqual([
       ['H1', 'Votación de Jordi'],
       ['H2', 'Libros candidatos'],
+      // The default admin manages the vote (#91).
+      ['H2', 'Gestionar la votación'],
+      ['H3', 'Lista de libros'],
+      ['H3', 'Añadir libros'],
     ])
     expect(candidates().map((li) => within(li).getAllByRole('link')[0].textContent)).toEqual([
       'Marianela',
@@ -59,7 +63,8 @@ describe('Vote page: open vote', () => {
       'La gaviota',
       BUSCON,
     ])
-    expect(tracked.clubDataCalls()).toEqual(['getVote'])
+    // The management section (#91) loads the catalogue for «Añadir libros».
+    expect(tracked.clubDataCalls()).toEqual(['getVote', 'listBooks'])
     expectNoBrokenValues(main)
   })
 
@@ -129,14 +134,14 @@ describe('Vote page: changing an approval', () => {
     expect(voters('Marianela')).toEqual(['Carmen', 'Pablo', 'Inés', 'Jordi', 'Elena', 'Lucía'])
     expect(checkbox('Marianela')).toHaveAccessibleDescription('6 votos')
     expect(announcement()).toHaveTextContent('Has votado «Marianela». Ahora tiene 6 votos.')
-    expect(tracked.clubDataCalls()).toEqual(['getVote', 'setApproval'])
+    expect(tracked.clubDataCalls()).toEqual(['getVote', 'listBooks', 'setApproval'])
 
     await user.click(checkbox('Los pazos de Ulloa'))
     await waitFor(() => expect(candidate('Los pazos de Ulloa')).toHaveTextContent('1 voto'))
     expect(checkbox('Los pazos de Ulloa')).not.toBeChecked()
     expect(voters('Los pazos de Ulloa')).toEqual(['Pablo'])
     expect(announcement()).toHaveTextContent('Has retirado tu voto de «Los pazos de Ulloa».')
-    expect(tracked.clubDataCalls()).toEqual(['getVote', 'setApproval', 'setApproval'])
+    expect(tracked.clubDataCalls()).toEqual(['getVote', 'listBooks', 'setApproval', 'setApproval'])
 
     // Never reordered by count while the vote is open.
     expect(candidates().map((li) => within(li).getAllByRole('link')[0].textContent)).toEqual([
@@ -192,7 +197,7 @@ describe('Vote page: changing an approval', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(region('Resultado')).toHaveTextContent('Hay un empate')
     expect(screen.getByRole('main')).toHaveTextContent('EstadoCerrada')
-    expect(tracked.clubDataCalls()).toEqual(['getVote', 'setApproval', 'getVote'])
+    expect(tracked.clubDataCalls()).toEqual(['getVote', 'listBooks', 'setApproval', 'getVote'])
     expect(state.votes[0].candidates[2].approverIds).toEqual([])
   })
 
@@ -340,16 +345,25 @@ describe('Vote page: draft and closed votes', () => {
     expectNoBrokenValues(main)
   })
 
-  it('looks the same for a member, the curator and the admin, with no management controls', async () => {
+  it('looks the same for a member, the curator and the admin, apart from the management section (#91)', async () => {
     for (const voteId of ['v2', 'v1']) {
       const texts: string[] = []
       for (const session of ['admin', 'member', 'curator'] as const) {
         const { main, unmount } = await openVote(voteId, { session })
+        // The curator and the admin manage the open vote (#91); members never do.
+        const management = screen.queryByRole('region', { name: 'Gestionar la votación' })
+        if (voteId === 'v2' && session !== 'member') expect(management).toBeInTheDocument()
+        else expect(management).not.toBeInTheDocument()
+        // Compare a copy of the page without that section.
+        const view = main.cloneNode(true) as HTMLElement
+        view.querySelector(`[aria-labelledby="${management?.getAttribute('aria-labelledby')}"]`)?.remove()
+        document.body.append(view)
         // Only the user's own approvals differ.
-        texts.push(main.textContent!.replaceAll('Votaste por este libro', ''))
-        expect(within(main).queryByRole('button')).not.toBeInTheDocument()
-        expect(main).not.toHaveTextContent(/Cerrar votación|Abrir votación|desempate:|Añadir/)
-        expect(within(main).queryAllByRole('checkbox')).toHaveLength(voteId === 'v2' ? 4 : 0)
+        texts.push(view.textContent!.replaceAll('Votaste por este libro', ''))
+        expect(within(view).queryByRole('button')).not.toBeInTheDocument()
+        expect(view).not.toHaveTextContent(/Cerrar votación|Abrir votación|desempate:|Añadir/)
+        expect(within(view).queryAllByRole('checkbox')).toHaveLength(voteId === 'v2' ? 4 : 0)
+        view.remove()
         unmount()
       }
       expect(texts[1]).toBe(texts[0])

@@ -1,26 +1,29 @@
-import { useId, useRef, useState, type ReactNode } from 'react'
+import { useId, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../api/client'
 import { useApi } from '../api/hooks'
 import type { MemberSummary, Vote, VoteCandidate, VoteOutcome } from '../api/types'
 import { formatAuthors, formatLongDate, formatTitles, formatVoteCount } from '../lib/format'
-import { bookPath, VOTE_NO_LONGER_OPEN, VOTE_STATUS_LABELS } from '../lib/votes'
+import { bookPath, VOTE_STATUS_LABELS } from '../lib/votes'
 import { Avatar } from './Avatar'
 import { BookCover } from './BookCover'
+import { EmptyState } from './Card'
 
 const linkClass = 'text-moss underline underline-offset-4 hover:text-forest'
 
 type HeadingLevel = 2 | 3
 
-// Shown by both pages after a change is refused because the vote is no
-// longer open (409). A calm note, not an alert: the vote simply closed in
-// the meantime. The live region is always present so screen readers
-// announce the message.
-export function ConflictNotice({ shown }: { shown: boolean }) {
+// A calm page-level note, not an alert: shown by both pages after a change
+// is refused because the vote changed in the meantime (409, or 403 for a
+// management change), and on the vote page after closing it or recording a
+// tie-break (#91). The live region is always present so screen readers
+// announce the message; it can take focus when the control that was used
+// has gone.
+export function VoteNotice({ message, ref }: { message: string | null; ref?: Ref<HTMLDivElement> }) {
   return (
     // Out of the layout while empty, so it adds no gap, but still in the page.
-    <div role="status" className={shown ? '' : 'sr-only'}>
-      {shown && <p className="max-w-prose rounded-lg border border-wood/40 bg-paper px-4 py-3">{VOTE_NO_LONGER_OPEN}</p>}
+    <div ref={ref} role="status" tabIndex={-1} className={message ? '' : 'sr-only'}>
+      {message && <p className="max-w-prose rounded-lg border border-wood/40 bg-paper px-4 py-3">{message}</p>}
     </div>
   )
 }
@@ -40,19 +43,25 @@ function Heading({ level, id, children }: { level: HeadingLevel; id: string; chi
 
 // One vote in full: its status and dates, the outcome once closed, and the
 // candidates in shortlist order. The same for every member, the curator and
-// the admin: the management controls belong to #91. The server enforces
-// every rule; while the vote is open, the user can change only their own
-// approvals.
+// the admin; the vote page adds the management controls (#91) around it. The
+// server enforces every rule; while the vote is open, the user can change
+// only their own approvals.
 export function VoteView({
   vote: loaded,
   headingLevel,
   onConflict,
+  onVoteChange,
+  afterOutcome,
 }: {
   vote: Vote
   // Level of the section headings: 2 on the vote page, 3 inside Votaciones.
   headingLevel: HeadingLevel
   // Called when a change is refused because the vote is no longer open.
   onConflict: () => void
+  // Called with the vote as saved after the user's own approval changes.
+  onVoteChange?: (vote: Vote) => void
+  // Shown in «Resultado» below the outcome (the tie-break form, #91).
+  afterOutcome?: ReactNode
 }) {
   const api = useApi()
   // The vote as last returned by the server, from the page's load or from
@@ -84,6 +93,7 @@ export function VoteView({
       if (request > applied.current) {
         applied.current = request
         setVote(updated)
+        onVoteChange?.(updated)
       }
       const count = updated.candidates.find((c) => c.book.id === bookId)?.approvals.length ?? 0
       setAnnouncement(
@@ -118,6 +128,7 @@ export function VoteView({
             Resultado
           </Heading>
           <Outcome outcome={outcome} vote={vote} />
+          {afterOutcome}
         </section>
       )}
 
@@ -172,6 +183,8 @@ export function VoteView({
               }}
             />
           </fieldset>
+        ) : vote.candidates.length === 0 ? (
+          <EmptyState>Todavía no hay libros en la lista.</EmptyState>
         ) : (
           <CandidateList vote={vote} />
         )}
