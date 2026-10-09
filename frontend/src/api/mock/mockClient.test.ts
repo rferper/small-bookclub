@@ -69,7 +69,17 @@ describe('mock library', () => {
   it('lists every book with catalogue fields only', async () => {
     const books = await createMockClient().listBooks()
 
-    expect(books.map((b) => b.status).sort()).toEqual(['archivado', 'elegido', 'leyendo', 'propuesto', 'terminado', 'terminado'])
+    expect(books.map((b) => b.status).sort()).toEqual([
+      'archivado',
+      'elegido',
+      'leyendo',
+      'propuesto',
+      'propuesto',
+      'propuesto',
+      'propuesto',
+      'terminado',
+      'terminado',
+    ])
     expect(books.find((b) => b.id === 'b2')).toEqual({
       id: 'b2',
       title: 'Cumbres borrascosas',
@@ -125,7 +135,7 @@ describe('mock library', () => {
     const api = createMockClient({ failures: { listBooks: 1, getBook: 1 } })
 
     await expect(api.listBooks()).rejects.toMatchObject({ status: 500 })
-    await expect(api.listBooks()).resolves.toHaveLength(6)
+    await expect(api.listBooks()).resolves.toHaveLength(9)
     await expect(api.getBook('b3')).rejects.toMatchObject({ status: 500 })
     await expect(api.getBook('b3')).resolves.toMatchObject({ id: 'b3' })
   })

@@ -13,14 +13,19 @@ import type {
   NextMeeting,
   ReadingWeek,
   Session,
+  Vote,
+  VoteHistoryItem,
+  VoteOutcome,
+  VotesOverview,
 } from '../types'
-import { createClubState, type MockBook, type MockMeeting, type MockState } from './fixtures'
+import { createClubState, type MockBook, type MockMeeting, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
 
 type Method = keyof ApiClient
 
-// Who is using the mock: nobody, a fixture member or admin, or a refused account.
-export type MockSession = 'anonymous' | 'member' | 'admin' | 'denied'
+// Who is using the mock: nobody, a fixture member or admin, the current
+// curator (a member with the `member` role), or a refused account.
+export type MockSession = 'anonymous' | 'member' | 'admin' | 'curator' | 'denied'
 
 export interface MockOptions {
   state?: MockState
@@ -62,7 +67,8 @@ export function createMockClient({
       state.session = to
       return
     }
-    const user = state.members.find((m) => m.role === to)
+    // Curator is an assignment, not a role (§3).
+    const user = to === 'curator' ? state.members.find((m) => m.id === state.curatorId) : state.members.find((m) => m.role === to)
     if (!user) throw new Error(`The mock state has no ${to} to sign in as.`)
     state.session = 'signedIn'
     state.currentUserId = user.id
@@ -144,6 +150,52 @@ export function createMockClient({
         .filter((h) => h.published)
         .map((h) => ({ id: h.id, text: h.text, kind: h.kind, speakers: toMemberSummaries(h.speakerIds) })),
     }
+  }
+
+  const toVoteOutcome = (vote: MockVote): VoteOutcome | null => {
+    if (vote.status !== 'closed' || !vote.outcome) return null
+    if ('tiedBookIds' in vote.outcome) return { status: 'tiePending', tiedBookIds: [...vote.outcome.tiedBookIds] }
+    return { status: 'winner', winner: toBookSummary(vote.outcome.winnerBookId)!, tieNote: vote.outcome.tieNote }
+  }
+
+  const toMember = (id: string): MemberSummary => toMemberSummaries([id])[0]
+
+  // The same for every signed-in member: votes are public (§5.4). Only
+  // approvedByMe depends on who asks.
+  const toVote = (vote: MockVote): Vote => ({
+    id: vote.id,
+    status: vote.status,
+    curator: toMember(vote.curatorId),
+    openedAt: vote.openedAt,
+    closedAt: vote.closedAt,
+    candidates: vote.candidates.map(({ bookId, approverIds }) => {
+      const book = state.books.find((b) => b.id === bookId)!
+      return {
+        book: {
+          ...toBookSummary(bookId)!,
+          publicationDate: book.publicationDate,
+          pageCount: book.pageCount,
+        },
+        approvals: toMemberSummaries(approverIds),
+        approvedByMe: approverIds.includes(state.currentUserId),
+      }
+    }),
+    outcome: toVoteOutcome(vote),
+  })
+
+  const toVoteHistoryItem = (vote: MockVote): VoteHistoryItem => ({
+    id: vote.id,
+    curator: toMember(vote.curatorId),
+    openedAt: vote.openedAt!,
+    closedAt: vote.closedAt!,
+    outcome: toVoteOutcome(vote)!,
+    candidateCount: vote.candidates.length,
+  })
+
+  const findVote = (voteId: string) => {
+    const vote = state.votes.find((v) => v.id === voteId)
+    if (!vote) throw new ApiError(404, 'No existe esa votación.')
+    return vote
   }
 
   const nextMeeting = () =>
@@ -313,6 +365,39 @@ export function createMockClient({
         attendance: meeting.attendance && toMemberSummaries(meeting.attendance),
         record: toMeetingRecord(meeting),
       }
+    },
+
+    async getVotes(): Promise<VotesOverview> {
+      requireSignedIn()
+      failIfConfigured('getVotes')
+      const current = state.votes.find((v) => v.status !== 'closed') ?? null
+      return {
+        curator: state.curatorId ? toMember(state.curatorId) : null,
+        current: current && toVote(current),
+        history: state.votes
+          .filter((v) => v.status === 'closed')
+          .sort((a, b) => Date.parse(b.closedAt!) - Date.parse(a.closedAt!))
+          .map(toVoteHistoryItem),
+      }
+    },
+
+    async getVote(voteId: string): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('getVote')
+      return toVote(findVote(voteId))
+    },
+
+    async setApproval(voteId: string, bookId: string, approved: boolean): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('setApproval')
+      const vote = findVote(voteId)
+      const candidate = vote.candidates.find((c) => c.bookId === bookId)
+      if (!candidate) throw new ApiError(404, 'Ese libro no está en esta votación.')
+      if (vote.status !== 'open') throw new ApiError(409, 'Esta votación no está abierta.')
+      // Always acts on the signed-in member only, and at most once per candidate.
+      const others = candidate.approverIds.filter((id) => id !== state.currentUserId)
+      candidate.approverIds = approved ? [...others, state.currentUserId] : others
+      return toVote(vote)
     },
   }
 }

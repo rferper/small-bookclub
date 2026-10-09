@@ -211,3 +211,63 @@ export interface MeetingDetail extends MeetingListItem {
   attendance: MemberSummary[] | null
   record: MeetingRecord
 }
+
+// Votes (§5.4). Approval voting: a member approves any number of candidates,
+// one vote each. Votes are public, so every member gets the same data; only
+// `approvedByMe` depends on who is signed in.
+export type VoteStatus = 'draft' | 'open' | 'closed'
+
+// A candidate book with the brief metadata shown on the ballot.
+export interface VoteCandidateBook extends BookSummary {
+  // Free text as entered, e.g. "1884–1885".
+  publicationDate: string | null
+  pageCount: number | null
+}
+
+export interface VoteCandidate {
+  book: VoteCandidateBook
+  // Everyone who approved this candidate. Empty while the vote is a draft.
+  approvals: MemberSummary[]
+  approvedByMe: boolean
+}
+
+// How a closed vote ended, decided by the server; the frontend never
+// computes a winner. A tie is resolved by hand (no automatic tie-break), so
+// a closed vote may still be waiting for the club's decision.
+export type VoteOutcome =
+  // `tieNote` is plain text, or null when there was no tie.
+  | { status: 'winner'; winner: BookSummary; tieNote: string | null }
+  // The book ids of the tied candidates; there is no winner yet.
+  | { status: 'tiePending'; tiedBookIds: string[] }
+
+export interface Vote {
+  id: string
+  status: VoteStatus
+  curator: MemberSummary
+  // ISO 8601 date-times: null while a draft, and until it is closed.
+  openedAt: string | null
+  closedAt: string | null
+  // In shortlist order, in every status.
+  candidates: VoteCandidate[]
+  // null unless the vote is closed.
+  outcome: VoteOutcome | null
+}
+
+// A closed vote in the history list.
+export interface VoteHistoryItem {
+  id: string
+  curator: MemberSummary
+  openedAt: string
+  closedAt: string
+  outcome: VoteOutcome
+  candidateCount: number
+}
+
+export interface VotesOverview {
+  // The member currently assigned as curator, or null if none is.
+  curator: MemberSummary | null
+  // The draft or open vote, if any. There is at most one.
+  current: Vote | null
+  // Every closed vote, most recently closed first.
+  history: VoteHistoryItem[]
+}

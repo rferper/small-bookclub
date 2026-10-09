@@ -57,6 +57,25 @@ export interface MockActivity {
   text: string
 }
 
+export interface MockVoteCandidate {
+  bookId: string
+  // Member ids who approved this candidate, at most once each.
+  approverIds: string[]
+}
+
+export interface MockVote {
+  id: string
+  status: 'draft' | 'open' | 'closed'
+  curatorId: string
+  openedAt: string | null
+  closedAt: string | null
+  // In shortlist order.
+  candidates: MockVoteCandidate[]
+  // Recorded by the server when the vote closes (a tie-break is entered by
+  // hand, #91); null while draft or open.
+  outcome: { winnerBookId: string; tieNote: string | null } | { tiedBookIds: string[] } | null
+}
+
 export interface MockState {
   // Whether someone is signed in. When 'signedIn', currentUserId says who.
   // Tests may change it after rendering to simulate an expired session.
@@ -69,6 +88,9 @@ export interface MockState {
   // weekId -> member ids who marked it read
   completions: Record<string, string[]>
   activity: MockActivity[]
+  // The member assigned as curator (an assignment, not a role, §3), if any.
+  curatorId: string | null
+  votes: MockVote[]
   reviewCount: number
   quotes: LiteraryQuote[]
   // Fixed "now" so the mock picks the same current week every time.
@@ -126,7 +148,7 @@ export function createClubState(): MockState {
         pageCount: 864,
         originVote: { id: 'v1', label: 'Votación de Carmen (septiembre de 2026)' },
       }),
-      book({ id: 'b4', title: 'Pepita Jiménez', authors: ['Juan Valera'], status: 'elegido' }),
+      book({ id: 'b4', title: 'Pepita Jiménez', authors: ['Juan Valera'], status: 'elegido', publicationDate: '1874', pageCount: 240 }),
       book({ id: 'b5', title: 'Los pazos de Ulloa', authors: ['Emilia Pardo Bazán'], status: 'propuesto' }),
       book({
         id: 'b6',
@@ -135,6 +157,25 @@ export function createClubState(): MockState {
         status: 'archivado',
         readingEndDate: '2023-06-15',
         datesApproximate: true,
+      }),
+      // Candidates of Jordi's open vote (v2).
+      book({
+        id: 'b7',
+        title: 'Marianela',
+        authors: ['Benito Pérez Galdós'],
+        coverUrl: '/covers/marianela.svg',
+        status: 'propuesto',
+        publicationDate: '1878',
+        pageCount: 256,
+      }),
+      book({ id: 'b8', title: 'La gaviota', authors: ['Fernán Caballero'], status: 'propuesto', publicationDate: '1849', pageCount: 412 }),
+      book({
+        id: 'b9',
+        title: 'La vida del Buscón llamado don Pablos, ejemplo de vagamundos y espejo de tacaños',
+        authors: ['Francisco de Quevedo'],
+        status: 'propuesto',
+        publicationDate: '1626',
+        pageCount: 198,
       }),
     ],
     weeks: [
@@ -275,6 +316,60 @@ export function createClubState(): MockState {
       { id: 'a2', type: 'book_selected', occurredAt: '2026-09-15T18:00:00+02:00', text: '«La Regenta» es el nuevo libro del club.' },
       { id: 'a3', type: 'vote_closed', occurredAt: '2026-09-14T21:00:00+02:00', text: 'Se ha cerrado la votación de Carmen.' },
       { id: 'a4', type: 'review_available', occurredAt: '2026-09-10T12:00:00+02:00', text: 'Hay una nueva valoración de «Cumbres borrascosas».' },
+      { id: 'a5', type: 'vote_opened', occurredAt: '2026-09-30T20:00:00+02:00', text: 'Se ha abierto la votación de Jordi.' },
+    ],
+    curatorId: 'm6',
+    votes: [
+      // The current vote, in shortlist order. Neither the admin (m1) nor the
+      // default member (m2) has approved «Marianela», so either can add a sixth vote.
+      {
+        id: 'v2',
+        status: 'open',
+        curatorId: 'm6',
+        openedAt: '2026-09-30T20:00:00+02:00',
+        closedAt: null,
+        candidates: [
+          { bookId: 'b7', approverIds: ['m3', 'm4', 'm5', 'm6', 'm7'] },
+          { bookId: 'b5', approverIds: ['m1', 'm4'] },
+          { bookId: 'b8', approverIds: [] },
+          { bookId: 'b9', approverIds: ['m2'] },
+        ],
+        outcome: null,
+      },
+      // Carmen's vote: «La Regenta» and «Pepita Jiménez» tied, and the club
+      // chose by hand («Pepita Jiménez» is set aside for later).
+      {
+        id: 'v1',
+        status: 'closed',
+        curatorId: 'm3',
+        openedAt: '2026-09-01T20:00:00+02:00',
+        closedAt: '2026-09-14T21:00:00+02:00',
+        candidates: [
+          { bookId: 'b4', approverIds: ['m2', 'm4', 'm6', 'm7'] },
+          { bookId: 'b3', approverIds: ['m1', 'm3', 'm5', 'm6'] },
+          { bookId: 'b5', approverIds: ['m3'] },
+        ],
+        outcome: {
+          winnerBookId: 'b3',
+          tieNote:
+            'Empate a cuatro votos entre «La Regenta» y «Pepita Jiménez».\n' +
+            'Lo decidimos entre todos a mano alzada. «Pepita Jiménez» queda elegida para después.',
+        },
+      },
+      // The club's first vote, before the first gathering: a clear winner.
+      {
+        id: 'v0',
+        status: 'closed',
+        curatorId: 'm4',
+        openedAt: '2024-09-12T20:00:00+02:00',
+        closedAt: '2024-09-26T21:00:00+02:00',
+        candidates: [
+          { bookId: 'b1', approverIds: ['m1', 'm4'] },
+          { bookId: 'b2', approverIds: ['m1', 'm3', 'm5', 'm6', 'm7'] },
+          { bookId: 'b8', approverIds: ['m2'] },
+        ],
+        outcome: { winnerBookId: 'b2', tieNote: null },
+      },
     ],
     reviewCount: 12,
     quotes: [
@@ -325,7 +420,45 @@ export function createEmptyState(): MockState {
     meetings: [],
     completions: {},
     activity: [],
+    curatorId: null,
+    votes: [],
     reviewCount: 0,
     quotes: [],
   }
+}
+
+// Dev-only variants of the current vote (?mock-vote=, see devOptions.ts).
+export type VoteScenario = 'draft' | 'tie' | 'none'
+
+// Changes Jordi's vote (v2) in the default fixtures:
+// - draft: not opened yet, with its shortlist and no approvals;
+// - tie: closed with a tie pending between «Marianela» and «Los pazos de
+//   Ulloa», so there is no current vote and it heads the history;
+// - none: removed; Jordi is still the curator.
+export function applyVoteScenario(state: MockState, scenario: VoteScenario): MockState {
+  const vote = state.votes.find((v) => v.id === 'v2')
+  if (!vote) return state
+  const opened = state.activity.find((a) => a.id === 'a5')!
+  if (scenario === 'draft') {
+    vote.status = 'draft'
+    vote.openedAt = null
+    for (const candidate of vote.candidates) candidate.approverIds = []
+    opened.type = 'nomination_added'
+    opened.text = 'Jordi está preparando una nueva votación.'
+  } else if (scenario === 'tie') {
+    vote.status = 'closed'
+    vote.closedAt = '2026-10-07T21:00:00+02:00'
+    vote.candidates.find((c) => c.bookId === 'b5')!.approverIds = ['m1', 'm2', 'm3', 'm4', 'm5']
+    vote.outcome = { tiedBookIds: ['b7', 'b5'] }
+    state.activity.push({
+      id: 'a6',
+      type: 'vote_closed',
+      occurredAt: '2026-10-07T21:00:00+02:00',
+      text: 'Se ha cerrado la votación de Jordi con un empate.',
+    })
+  } else {
+    state.votes = state.votes.filter((v) => v !== vote)
+    state.activity = state.activity.filter((a) => a !== opened)
+  }
+  return state
 }

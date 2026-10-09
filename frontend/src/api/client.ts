@@ -1,4 +1,4 @@
-import type { BookDetail, HomeData, LibraryBook, MeetingDetail, MeetingList, Session } from './types'
+import type { BookDetail, HomeData, LibraryBook, MeetingDetail, MeetingList, Session, Vote, VotesOverview } from './types'
 
 // The only way components talk to the backend. Today the app uses the mock
 // implementation; an HTTP implementation will replace it once the backend
@@ -28,6 +28,15 @@ export interface ApiClient {
   // One meeting with its attendance and, if the signed-in user may see it,
   // its summary and highlights. Rejects with a 404 ApiError for an unknown id.
   getMeeting(meetingId: string): Promise<MeetingDetail>
+  // The current curator, the draft or open vote (if any) and every closed vote.
+  getVotes(): Promise<VotesOverview>
+  // One vote of any status. Rejects with a 404 ApiError for an unknown id.
+  getVote(voteId: string): Promise<Vote>
+  // Approves one candidate for the signed-in user, or withdraws that
+  // approval, and returns the updated vote. Rejects with a 409 ApiError
+  // unless the vote is open, and a 404 for an unknown vote or a book that is
+  // not one of its candidates.
+  setApproval(voteId: string, bookId: string, approved: boolean): Promise<Vote>
 }
 
 // Methods that manage the session itself; every other method returns club data.
