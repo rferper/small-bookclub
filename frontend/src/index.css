@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+
+/* Cottage palette from docs/design-system.md. Each token becomes a Tailwind
+   colour (bg-parchment, text-forest, border-wood...) and a CSS variable. */
+@theme {
+  --color-parchment: #f5f0e4;
+  --color-paper: #fbf8f1;
+  --color-sage: #b7c9a8;
+  --color-soft-green: #728d69;
+  --color-moss: #4f6548;
+  --color-forest: #344f3c;
+  --color-wood: #8b7355;
+  --color-bark: #6e5a42;
+
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-parchment);
+    color: var(--color-forest);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  /* Visible keyboard focus on every interactive element. */
+  :focus-visible {
+    outline: 3px solid var(--color-forest);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

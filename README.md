@@ -31,9 +31,28 @@ Only approved members can sign in (Discord login plus an admin-managed allowlist
 | Containers | Docker, `docker-compose.yml` | Runs the full system with one command. |
 | CI/CD | GitHub Actions (`.github/workflows/`) | Runs tests on every push; deploys the demo when they pass. |
 
-## Running it *(to do: #1)*
+## Running it
 
-## Testing *(to do: #1)*
+The frontend currently runs on its own with fictional mock data (the backend comes next):
+
+```sh
+cd frontend
+npm ci
+npm run dev   # http://localhost:5173
+```
+
+Backend and Docker Compose instructions: *(to do)*
+
+## Testing
+
+```sh
+cd frontend
+npm test        # unit and component tests
+npm run lint
+npm run build   # type-check and build
+```
+
+CI (`.github/workflows/frontend.yml`) runs these on every push to `main` and every pull request. Backend tests: *(to do)*
 
 ## Deployment and demo *(to do: Phase 3)*
 

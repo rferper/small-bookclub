@@ -16,7 +16,7 @@ The backlog lives in GitHub issues (`rferper/small-bookclub`); work on one issue
 
 ## Commands
 
-The skeleton is created by issue #1; until then these commands do not work yet.
+The frontend exists; backend commands work once `backend/` is created.
 
 - Backend (run inside `backend/`; uv manages all backend dependencies):
   - Install dependencies: `uv sync`
@@ -28,7 +28,8 @@ The skeleton is created by issue #1; until then these commands do not work yet.
   - Run the API: `uv run python manage.py runserver`
 - Frontend (run inside `frontend/`):
   - Install dependencies: `npm ci`
-  - Tests: `npm test`; lint: `npm run lint`; type-check and build: `npm run build`
+  - Tests: `npm test`; lint (oxlint): `npm run lint`; type-check and build: `npm run build`
+  - Until the backend exists, the app runs on the mock API client in `frontend/src/api/mock/` (fictional data).
   - Run the app: `npm run dev`
 - Full system: `docker compose up --build`
 - GitHub issues: `gh issue view <n>`, `gh issue comment <n> --body-file <file>`
