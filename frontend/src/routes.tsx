@@ -3,6 +3,8 @@ import { Layout } from './components/Layout'
 import { BookPage } from './pages/BookPage'
 import { HomePage } from './pages/HomePage'
 import { LibraryPage } from './pages/LibraryPage'
+import { MeetingPage } from './pages/MeetingPage'
+import { MeetingsPage } from './pages/MeetingsPage'
 import { NotFoundPage, PlaceholderPage } from './pages/PlaceholderPage'
 import { SessionGate } from './session/SessionGate'
 
@@ -18,8 +20,8 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomePage /> },
           { path: 'biblioteca', element: <LibraryPage /> },
           { path: 'biblioteca/:bookId', element: <BookPage /> },
-          { path: 'reuniones', element: <PlaceholderPage title="Reuniones" /> },
-          { path: 'reuniones/:meetingId', element: <PlaceholderPage title="Reunión" /> },
+          { path: 'reuniones', element: <MeetingsPage /> },
+          { path: 'reuniones/:meetingId', element: <MeetingPage /> },
           { path: 'votaciones', element: <PlaceholderPage title="Votaciones" /> },
           { path: 'votaciones/:voteId', element: <PlaceholderPage title="Votación" /> },
           { path: 'estadisticas', element: <PlaceholderPage title="Estadísticas" /> },
