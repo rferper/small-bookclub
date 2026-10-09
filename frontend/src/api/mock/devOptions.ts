@@ -2,7 +2,7 @@ import { applyVoteScenario, createClubState, createEmptyState, type VoteScenario
 import type { MockOptions, MockSession } from './mockClient'
 
 const SESSIONS: readonly MockSession[] = ['anonymous', 'member', 'admin', 'curator', 'denied']
-const VOTE_SCENARIOS: readonly VoteScenario[] = ['draft', 'tie', 'none']
+const VOTE_SCENARIOS: readonly VoteScenario[] = ['draft', 'tie', 'none', 'open-tie']
 
 const isSession = (value: string | null): value is MockSession => SESSIONS.includes(value as MockSession)
 
@@ -12,7 +12,7 @@ const isSession = (value: string | null): value is MockSession => SESSIONS.inclu
 // ?mock-sign-in=member|admin|curator|denied            where «Entrar con Discord» leads
 // ?mock-demo=1                                         offer the demo sign-in (#75)
 // ?mock-data=empty                                     a new club with no books (#64)
-// ?mock-vote=draft|tie|none                            change the current vote (#66);
+// ?mock-vote=draft|tie|none|open-tie                   change the current vote (#66, #91);
 //                                                      ignored with ?mock-data=empty
 // Unknown values are ignored and the default applies.
 export function mockOptionsFromQuery(search: string): MockOptions {

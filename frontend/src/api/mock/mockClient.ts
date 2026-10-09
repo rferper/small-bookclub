@@ -160,6 +160,12 @@ export function createMockClient({
 
   const toMember = (id: string): MemberSummary => toMemberSummaries([id])[0]
 
+  // Permissions, decided here like the backend will (§3): the curator is an
+  // assignment, not a role, and the admin can override.
+  const isAdmin = () => state.members.find((m) => m.id === state.currentUserId)?.role === 'admin'
+  const mayManageVotes = () => isAdmin() || (state.curatorId !== null && state.currentUserId === state.curatorId)
+  const currentVote = () => state.votes.find((v) => v.status !== 'closed') ?? null
+
   // The same for every signed-in member: votes are public (§5.4). Only
   // approvedByMe depends on who asks.
   const toVote = (vote: MockVote): Vote => ({
@@ -181,6 +187,9 @@ export function createMockClient({
       }
     }),
     outcome: toVoteOutcome(vote),
+    canManage: mayManageVotes() && vote.status !== 'closed',
+    canRecordTieWinner: isAdmin() && vote.status === 'closed' && vote.outcome !== null && 'tiedBookIds' in vote.outcome,
+    curatedByMe: vote.curatorId === state.currentUserId,
   })
 
   const toVoteHistoryItem = (vote: MockVote): VoteHistoryItem => ({
@@ -196,6 +205,30 @@ export function createMockClient({
     const vote = state.votes.find((v) => v.id === voteId)
     if (!vote) throw new ApiError(404, 'No existe esa votación.')
     return vote
+  }
+
+  // A management call, checked in the backend's order after the 401 and the
+  // simulated failure: 403, then 404, then 409.
+  const managedVote = (voteId: string) => {
+    if (!mayManageVotes()) throw new ApiError(403, 'Solo la curaduría o la administración pueden gestionar la votación.')
+    return findVote(voteId)
+  }
+  const findBook = (bookId: string) => {
+    const book = state.books.find((b) => b.id === bookId)
+    if (!book) throw new ApiError(404, 'No existe ese libro.')
+    return book
+  }
+  const requireNotClosed = (vote: MockVote) => {
+    if (vote.status === 'closed') throw new ApiError(409, 'Esta votación ya está cerrada.')
+  }
+
+  // The outcome at closing, decided by the server: the candidate with
+  // strictly the most approvals wins; otherwise every candidate sharing the
+  // top count is tied (even at zero), in shortlist order.
+  const outcomeAtClosing = (vote: MockVote): NonNullable<MockVote['outcome']> => {
+    const top = Math.max(0, ...vote.candidates.map((c) => c.approverIds.length))
+    const tied = vote.candidates.filter((c) => c.approverIds.length === top).map((c) => c.bookId)
+    return tied.length === 1 ? { winnerBookId: tied[0], tieNote: null } : { tiedBookIds: tied }
   }
 
   const nextMeeting = () =>
@@ -370,7 +403,7 @@ export function createMockClient({
     async getVotes(): Promise<VotesOverview> {
       requireSignedIn()
       failIfConfigured('getVotes')
-      const current = state.votes.find((v) => v.status !== 'closed') ?? null
+      const current = currentVote()
       return {
         curator: state.curatorId ? toMember(state.curatorId) : null,
         current: current && toVote(current),
@@ -378,6 +411,7 @@ export function createMockClient({
           .filter((v) => v.status === 'closed')
           .sort((a, b) => Date.parse(b.closedAt!) - Date.parse(a.closedAt!))
           .map(toVoteHistoryItem),
+        canCreateVote: mayManageVotes() && state.curatorId !== null && current === null,
       }
     },
 
@@ -397,6 +431,111 @@ export function createMockClient({
       // Always acts on the signed-in member only, and at most once per candidate.
       const others = candidate.approverIds.filter((id) => id !== state.currentUserId)
       candidate.approverIds = approved ? [...others, state.currentUserId] : others
+      return toVote(vote)
+    },
+
+    async createVote(): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('createVote')
+      if (!mayManageVotes()) throw new ApiError(403, 'Solo la curaduría o la administración pueden preparar una votación.')
+      if (state.curatorId === null) throw new ApiError(409, 'Primero hay que asignar la curaduría.')
+      if (currentVote()) throw new ApiError(409, 'Ya hay una votación en preparación o abierta.')
+      let n = state.votes.length
+      while (state.votes.some((v) => v.id === `v${n}`)) n++
+      // The vote belongs to the current curator, even when the admin creates it.
+      const vote: MockVote = {
+        id: `v${n}`,
+        status: 'draft',
+        curatorId: state.curatorId,
+        openedAt: null,
+        closedAt: null,
+        candidates: [],
+        outcome: null,
+      }
+      state.votes.push(vote)
+      return toVote(vote)
+    },
+
+    async addCandidate(voteId: string, bookId: string): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('addCandidate')
+      const vote = managedVote(voteId)
+      const book = findBook(bookId)
+      requireNotClosed(vote)
+      if (vote.candidates.some((c) => c.bookId === bookId)) throw new ApiError(409, 'Ese libro ya está en la lista.')
+      if (book.status !== 'propuesto') throw new ApiError(409, 'Solo se pueden añadir libros propuestos.')
+      vote.candidates.push({ bookId, approverIds: [] })
+      return toVote(vote)
+    },
+
+    async removeCandidate(voteId: string, bookId: string): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('removeCandidate')
+      const vote = managedVote(voteId)
+      if (!vote.candidates.some((c) => c.bookId === bookId)) throw new ApiError(404, 'Ese libro no está en esta votación.')
+      requireNotClosed(vote)
+      if (vote.status === 'open' && vote.candidates.length <= 2) {
+        throw new ApiError(409, 'Una votación abierta necesita al menos dos libros.')
+      }
+      // Its approvals go with it.
+      vote.candidates = vote.candidates.filter((c) => c.bookId !== bookId)
+      return toVote(vote)
+    },
+
+    async reorderCandidates(voteId: string, bookIds: string[]): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('reorderCandidates')
+      const vote = managedVote(voteId)
+      for (const bookId of bookIds) findBook(bookId)
+      requireNotClosed(vote)
+      const current = vote.candidates.map((c) => c.bookId)
+      const same =
+        bookIds.length === current.length &&
+        new Set(bookIds).size === bookIds.length &&
+        bookIds.every((id) => current.includes(id))
+      if (!same) throw new ApiError(409, 'La lista ha cambiado mientras tanto.')
+      vote.candidates = bookIds.map((id) => vote.candidates.find((c) => c.bookId === id)!)
+      return toVote(vote)
+    },
+
+    async openVote(voteId: string): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('openVote')
+      const vote = managedVote(voteId)
+      if (vote.status !== 'draft') throw new ApiError(409, 'Esta votación no está en preparación.')
+      if (vote.candidates.length < 2) throw new ApiError(409, 'Hacen falta al menos dos libros para abrir la votación.')
+      vote.status = 'open'
+      vote.openedAt = state.now
+      return toVote(vote)
+    },
+
+    async closeVote(voteId: string): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('closeVote')
+      const vote = managedVote(voteId)
+      if (vote.status !== 'open') throw new ApiError(409, 'Esta votación no está abierta.')
+      // Never changes a book's status, its origin vote or the curator (§5.4).
+      vote.status = 'closed'
+      vote.closedAt = state.now
+      vote.outcome = outcomeAtClosing(vote)
+      return toVote(vote)
+    },
+
+    async recordTieWinner(voteId: string, bookId: string, note: string): Promise<Vote> {
+      requireSignedIn()
+      failIfConfigured('recordTieWinner')
+      // The admin only, not even the curator (#91).
+      if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede registrar el libro elegido.')
+      const vote = findVote(voteId)
+      findBook(bookId)
+      const outcome = vote.outcome
+      if (vote.status !== 'closed' || !outcome || !('tiedBookIds' in outcome)) {
+        throw new ApiError(409, 'Esta votación no tiene un empate pendiente.')
+      }
+      if (!outcome.tiedBookIds.includes(bookId)) throw new ApiError(409, 'Ese libro no está entre los empatados.')
+      const tieNote = note.trim()
+      if (tieNote.length > 1000) throw new ApiError(400, 'La nota puede tener como mucho 1000 caracteres.')
+      vote.outcome = { winnerBookId: bookId, tieNote: tieNote || null }
       return toVote(vote)
     },
   }

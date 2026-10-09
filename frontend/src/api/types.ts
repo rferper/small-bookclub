@@ -251,6 +251,16 @@ export interface Vote {
   candidates: VoteCandidate[]
   // null unless the vote is closed.
   outcome: VoteOutcome | null
+  // What the signed-in user may do with this vote, decided by the server
+  // (#91). The frontend shows controls from these flags only; the backend
+  // enforces every rule.
+  // Edit the shortlist, open and close: the current curator or the admin,
+  // while the vote is a draft or open.
+  canManage: boolean
+  // Record the book the club chose: the admin only, while a tie is pending.
+  canRecordTieWinner: boolean
+  // Whether the signed-in user is this vote's curator.
+  curatedByMe: boolean
 }
 
 // A closed vote in the history list.
@@ -270,4 +280,7 @@ export interface VotesOverview {
   current: Vote | null
   // Every closed vote, most recently closed first.
   history: VoteHistoryItem[]
+  // Whether the signed-in user may start a draft vote: the current curator
+  // or the admin, when a curator is assigned and no vote is draft or open.
+  canCreateVote: boolean
 }

@@ -40,4 +40,13 @@ describe('mock options from the query string', () => {
     const empty = mockOptionsFromQuery('?mock-data=empty&mock-vote=draft').state
     expect(empty).toMatchObject({ votes: [], curatorId: null, books: [] })
   })
+
+  it('can keep Jordi’s vote open with a tie at the top (#91)', () => {
+    const options = mockOptionsFromQuery('?mock-vote=open-tie&mock-session=curator')
+    const vote = options.state?.votes.find((v) => v.id === 'v2')
+    expect(vote?.status).toBe('open')
+    expect(vote?.candidates.map((c) => c.approverIds.length)).toEqual([5, 5, 0, 1])
+    expect(options.session).toBe('curator')
+    expect(mockOptionsFromQuery('?mock-data=empty&mock-vote=open-tie').state?.votes).toEqual([])
+  })
 })

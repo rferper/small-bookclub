@@ -108,7 +108,14 @@ describe('mock votes', () => {
   })
 
   it('gives every member the same vote data; only approvedByMe depends on who is signed in', async () => {
-    const strip = (vote: Vote) => ({ ...vote, candidates: vote.candidates.map((c) => ({ ...c, approvedByMe: null })) })
+    // The permission flags and curatedByMe also depend on who asks (#91).
+    const strip = (vote: Vote) => ({
+      ...vote,
+      candidates: vote.candidates.map((c) => ({ ...c, approvedByMe: null })),
+      canManage: null,
+      canRecordTieWinner: null,
+      curatedByMe: null,
+    })
     const asAdmin = await createMockClient({ session: 'admin' }).getVote('v2')
     const asMember = await createMockClient({ session: 'member' }).getVote('v2')
     const asCurator = await createMockClient({ session: 'curator' }).getVote('v2')
@@ -259,6 +266,7 @@ describe('mock votes', () => {
       curator: null,
       current: null,
       history: [],
+      canCreateVote: false,
     })
   })
 

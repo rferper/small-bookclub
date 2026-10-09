@@ -37,6 +37,27 @@ export interface ApiClient {
   // unless the vote is open, and a 404 for an unknown vote or a book that is
   // not one of its candidates.
   setApproval(voteId: string, bookId: string, approved: boolean): Promise<Vote>
+
+  // Vote management (#91). Each call returns the updated vote. Only the
+  // current curator or the admin may call them (403 otherwise; the tie-break
+  // is the admin's alone), and the server checks every rule: 404 for an
+  // unknown vote or book, 409 when the vote's state does not allow the
+  // change. The `can*` flags on the vote data say which ones to offer.
+  // Starts a draft vote with an empty shortlist for the current curator.
+  createVote(): Promise<Vote>
+  // Appends a «Propuesto» book to the shortlist, with no approvals.
+  addCandidate(voteId: string, bookId: string): Promise<Vote>
+  // Removes a candidate and all of its approvals.
+  removeCandidate(voteId: string, bookId: string): Promise<Vote>
+  // Sets the shortlist order; `bookIds` must be exactly the current candidates.
+  reorderCandidates(voteId: string, bookIds: string[]): Promise<Vote>
+  // Opens a draft that has at least two candidates.
+  openVote(voteId: string): Promise<Vote>
+  // Closes an open vote; the server decides the winner or a pending tie.
+  closeVote(voteId: string): Promise<Vote>
+  // Records the book the club chose after a tie, with an optional plain-text
+  // note (at most 1000 characters; 400 if longer).
+  recordTieWinner(voteId: string, bookId: string, note: string): Promise<Vote>
 }
 
 // Methods that manage the session itself; every other method returns club data.

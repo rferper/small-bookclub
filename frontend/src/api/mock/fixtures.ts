@@ -177,6 +177,9 @@ export function createClubState(): MockState {
         publicationDate: '1626',
         pageCount: 198,
       }),
+      // Proposed books that are not in any vote yet, so the curator can add them (#91).
+      book({ id: 'b10', title: 'Doña Perfecta', authors: ['Benito Pérez Galdós'], status: 'propuesto', publicationDate: '1876', pageCount: 288 }),
+      book({ id: 'b11', title: 'Sotileza', authors: ['José María de Pereda'], status: 'propuesto', publicationDate: '1885' }),
     ],
     weeks: [
       { id: 'w1', bookId: 'b3', weekNumber: 1, percentStart: 0, percentEnd: 12, pageStart: 1, pageEnd: 98, meetingId: 'mt1', dueDate: null, notes: null },
@@ -428,13 +431,15 @@ export function createEmptyState(): MockState {
 }
 
 // Dev-only variants of the current vote (?mock-vote=, see devOptions.ts).
-export type VoteScenario = 'draft' | 'tie' | 'none'
+export type VoteScenario = 'draft' | 'tie' | 'none' | 'open-tie'
 
 // Changes Jordi's vote (v2) in the default fixtures:
 // - draft: not opened yet, with its shortlist and no approvals;
 // - tie: closed with a tie pending between «Marianela» and «Los pazos de
 //   Ulloa», so there is no current vote and it heads the history;
-// - none: removed; Jordi is still the curator.
+// - none: removed; Jordi is still the curator;
+// - open-tie: still open, with «Marianela» and «Los pazos de Ulloa» tied at
+//   five votes each, so closing it gives a pending tie (#91).
 export function applyVoteScenario(state: MockState, scenario: VoteScenario): MockState {
   const vote = state.votes.find((v) => v.id === 'v2')
   if (!vote) return state
@@ -445,6 +450,8 @@ export function applyVoteScenario(state: MockState, scenario: VoteScenario): Moc
     for (const candidate of vote.candidates) candidate.approverIds = []
     opened.type = 'nomination_added'
     opened.text = 'Jordi está preparando una nueva votación.'
+  } else if (scenario === 'open-tie') {
+    vote.candidates.find((c) => c.bookId === 'b5')!.approverIds = ['m1', 'm2', 'm3', 'm4', 'm5']
   } else if (scenario === 'tie') {
     vote.status = 'closed'
     vote.closedAt = '2026-10-07T21:00:00+02:00'

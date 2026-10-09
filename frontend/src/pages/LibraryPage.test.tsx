@@ -10,7 +10,8 @@ import { renderApp } from '../test/renderApp'
 // Fixture books: b3 La Regenta (2026), b1 Niebla (2025), b2 Cumbres borrascosas
 // (2024, approximate), b6 Ángel Guerra (2023, end date only), and b4 Pepita
 // Jiménez, b5 Los pazos de Ulloa, b7 Marianela, b8 La gaviota and b9 La vida
-// del Buscón (candidates of the open vote, #66) with no dates.
+// del Buscón (candidates of the open vote, #66), b10 Doña Perfecta and b11
+// Sotileza (proposed books not in any vote, #91) with no dates.
 
 const bookIds = (container: HTMLElement) =>
   within(container)
@@ -53,7 +54,7 @@ describe('Biblioteca', () => {
   it('shows each shelf book with its cover or placeholder, title, authors and status', async () => {
     await openLibrary()
 
-    expect(within(shelf()).getAllByRole('listitem')).toHaveLength(9)
+    expect(within(shelf()).getAllByRole('listitem')).toHaveLength(11)
     const niebla = screen.getByRole('link', { name: /Niebla/ })
     expect(within(niebla).getByRole('img', { name: 'Portada de «Niebla»' })).toHaveAttribute('src', '/covers/niebla.svg')
     expect(niebla).toHaveTextContent('Miguel de Unamuno')
@@ -95,7 +96,7 @@ describe('Biblioteca', () => {
       ['2025', ['b1']],
       ['2024', ['b2']],
       ['2023', ['b6']],
-      ['Fecha desconocida', ['b8', 'b9', 'b5', 'b7', 'b4']],
+      ['Fecha desconocida', ['b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11']],
     ])
     expect(screen.getByRole('link', { name: /La Regenta/ })).toHaveTextContent('Desde el 15 de septiembre de 2026')
     expect(screen.getByRole('link', { name: /Niebla/ })).toHaveTextContent('1 de marzo de 2025 – 12 de abril de 2025')
@@ -121,7 +122,7 @@ describe('Biblioteca', () => {
     await openLibrary()
 
     expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toHaveValue('fecha')
-    expect(bookIds(shelf())).toEqual(['b3', 'b1', 'b2', 'b6', 'b8', 'b9', 'b5', 'b7', 'b4'])
+    expect(bookIds(shelf())).toEqual(['b3', 'b1', 'b2', 'b6', 'b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11'])
   })
 
   it('sorts the shelf by title with Spanish collation', async () => {
@@ -130,7 +131,7 @@ describe('Biblioteca', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), 'Título')
 
     // «Ángel Guerra» sorts with the A's, not after «Pepita Jiménez».
-    expect(bookIds(shelf())).toEqual(['b6', 'b2', 'b8', 'b3', 'b9', 'b5', 'b7', 'b1', 'b4'])
+    expect(bookIds(shelf())).toEqual(['b6', 'b2', 'b10', 'b8', 'b3', 'b9', 'b5', 'b7', 'b1', 'b4', 'b11'])
     expect(router.state.location.search).toBe('?orden=titulo')
   })
 
@@ -159,7 +160,7 @@ describe('Biblioteca', () => {
     expect(router.state.location.search).toBe('?estado=terminado&vista=cronologia')
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), 'Propuesto')
-    expect(timeline()).toEqual([['Fecha desconocida', ['b8', 'b9', 'b5', 'b7']]])
+    expect(timeline()).toEqual([['Fecha desconocida', ['b10', 'b8', 'b9', 'b5', 'b7', 'b11']]])
   })
 
   it('says when no book has the chosen status, and shows all books again with «Todos»', async () => {
@@ -210,7 +211,7 @@ describe('Biblioteca', () => {
     expect(screen.getByRole('button', { name: 'Estantería' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('combobox', { name: 'Estado' })).toHaveValue('todos')
     expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toHaveValue('fecha')
-    expect(bookIds(shelf())).toEqual(['b3', 'b1', 'b2', 'b6', 'b8', 'b9', 'b5', 'b7', 'b4'])
+    expect(bookIds(shelf())).toEqual(['b3', 'b1', 'b2', 'b6', 'b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11'])
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
