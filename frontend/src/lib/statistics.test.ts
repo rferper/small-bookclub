@@ -73,7 +73,7 @@ describe('ratingStatistics: book figures', () => {
     )
     const [entry] = result.books
     expect(entry.overallMean).toBeCloseTo(11.8 / 3, 9)
-    expect(entry.dispersion).toBeCloseTo(Math.sqrt(1.00666666666666667 / 3), 9)
+    expect(entry.dispersion).toBeCloseTo(Math.sqrt((3.02 / 3) / 3), 9)
     expect(entry.dispersion).toBeCloseTo(0.579271573232759, 9)
   })
 
