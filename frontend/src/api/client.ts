@@ -1,4 +1,5 @@
 import type {
+  AdminMembers,
   BookDetail,
   BookRatings,
   HomeData,
@@ -9,6 +10,7 @@ import type {
   MemberProfile,
   MyProfile,
   MyReviewEntry,
+  NewMember,
   ProfileUpdate,
   RatingRubric,
   ReviewInput,
@@ -123,6 +125,31 @@ export interface ApiClient {
   // The user's own reviews, newest activity first (the latest of submitted
   // and edited), then by title. Not gated; no club data.
   listMyReviews(): Promise<MyReviewEntry[]>
+
+  // Administración (#70): the member allowlist and the curator assignment.
+  // Only the admin may call them: 403 for anyone else, the current curator
+  // included. The server checks, in this order after the 401: 403, then 404
+  // for an unknown member (or a revoked one as curator), then 409 when the
+  // list does not allow the change, then 400 for invalid input. A refused
+  // call changes nothing. Each change returns the new getAdminMembers result.
+  // No call changes anyone's role (#6).
+  // Every allowlist entry, active and revoked, with the current curator.
+  getAdminMembers(): Promise<AdminMembers>
+  // Adds (and so approves) an active member with the `member` role and an
+  // empty profile. 409 for a Discord id already on the list, active or
+  // revoked; 400 for an id that is not 17–20 digits or an invalid name
+  // (the #94 rules).
+  addMember(input: NewMember): Promise<AdminMembers>
+  // Revokes a member's access. 409 for the signed-in admin or a member who
+  // is already revoked. Revoking the current curator clears the curator; the
+  // member's past contributions stay under their name.
+  revokeMember(memberId: string): Promise<AdminMembers>
+  // Gives a revoked member access back, with their profile as it was.
+  // 409 for a member who is already active.
+  restoreMember(memberId: string): Promise<AdminMembers>
+  // Assigns the curator, or clears the assignment with null. 404 for a
+  // revoked member. Existing votes keep their recorded curator.
+  setCurator(memberId: string | null): Promise<AdminMembers>
 }
 
 // Methods that manage the session itself; every other method returns club data.

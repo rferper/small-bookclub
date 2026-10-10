@@ -97,6 +97,17 @@ export interface MockProfile {
 
 export type MockMember = MemberSummary & { role: CurrentUser['role'] }
 
+// A member's allowlist entry (#8, #70), keyed by member id. Only
+// Administración reads it; no member-facing call does. The Discord ids are
+// fictional, and are written with leading zeros so that none of them can be
+// a real Discord account (real ids are far larger numbers).
+export interface MockAccount {
+  discordId: string
+  addedAt: string
+  // Set exactly for the members in `revokedMembers`.
+  revokedAt: string | null
+}
+
 export interface MockState {
   // Whether someone is signed in. When 'signedIn', currentUserId says who.
   // Tests may change it after rendering to simulate an expired session.
@@ -108,6 +119,8 @@ export interface MockState {
   // from every call; only Miembros looks them up, to give the same 404 as an
   // unknown id (#69).
   revokedMembers: MockMember[]
+  // memberId -> allowlist entry, for every active and revoked member (#70).
+  accounts: Record<string, MockAccount>
   // memberId -> profile (#69). A member without an entry has an empty profile.
   profiles: Record<string, MockProfile>
   books: MockBook[]
@@ -146,6 +159,16 @@ export function createClubState(): MockState {
       { id: 'm7', displayName: 'Elena', avatarUrl: null, role: 'member' },
     ],
     revokedMembers: [{ id: 'm8', displayName: 'Tomás', avatarUrl: null, role: 'member' }],
+    accounts: {
+      m1: { discordId: '000000000000000101', addedAt: '2025-09-01T18:00:00+02:00', revokedAt: null },
+      m2: { discordId: '000000000000000102', addedAt: '2025-09-02T19:30:00+02:00', revokedAt: null },
+      m3: { discordId: '000000000000000103', addedAt: '2025-09-02T19:35:00+02:00', revokedAt: null },
+      m4: { discordId: '000000000000000104', addedAt: '2025-09-03T20:00:00+02:00', revokedAt: null },
+      m5: { discordId: '000000000000000105', addedAt: '2025-09-10T18:15:00+02:00', revokedAt: null },
+      m6: { discordId: '000000000000000106', addedAt: '2025-10-01T21:00:00+02:00', revokedAt: null },
+      m7: { discordId: '000000000000000107', addedAt: '2026-09-15T17:45:00+02:00', revokedAt: null },
+      m8: { discordId: '000000000000000108', addedAt: '2025-09-03T20:05:00+02:00', revokedAt: '2026-06-15T19:00:00+02:00' },
+    },
     // One case per profile display (frontend/README.md «Fixture members»).
     profiles: {
       // Short bio, a quote and two favourites (the default admin's own profile).
@@ -652,6 +675,7 @@ export function createEmptyState(): MockState {
     ...club,
     members: club.members.slice(0, 1),
     revokedMembers: [],
+    accounts: { m1: club.accounts.m1 },
     profiles: {},
     books: [],
     weeks: [],

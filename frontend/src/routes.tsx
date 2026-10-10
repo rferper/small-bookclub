@@ -1,5 +1,8 @@
 import type { RouteObject } from 'react-router'
+import { AdminGuard } from './admin/AdminGuard'
 import { Layout } from './components/Layout'
+import { AdminHubPage } from './pages/AdminHubPage'
+import { AdminMembersPage } from './pages/AdminMembersPage'
 import { BookPage } from './pages/BookPage'
 import { HomePage } from './pages/HomePage'
 import { LibraryPage } from './pages/LibraryPage'
@@ -8,7 +11,7 @@ import { MeetingsPage } from './pages/MeetingsPage'
 import { MemberProfilePage } from './pages/MemberProfilePage'
 import { MembersPage } from './pages/MembersPage'
 import { MyProfilePage } from './pages/MyProfilePage'
-import { NotFoundPage, PlaceholderPage } from './pages/PlaceholderPage'
+import { NotFoundPage } from './pages/PlaceholderPage'
 import { RatePage } from './pages/RatePage'
 import { StatisticsPage } from './pages/StatisticsPage'
 import { VotePage } from './pages/VotePage'
@@ -36,7 +39,17 @@ export const routes: RouteObject[] = [
           { path: 'miembros', element: <MembersPage /> },
           { path: 'miembros/:memberId', element: <MemberProfilePage /> },
           { path: 'mi-perfil', element: <MyProfilePage /> },
-          { path: 'administracion', element: <PlaceholderPage title="Administración" /> },
+          // Every admin route sits behind one guard (#70); later admin pages
+          // (#95–#101) are added as its children.
+          {
+            path: 'administracion',
+            element: <AdminGuard />,
+            children: [
+              { index: true, element: <AdminHubPage /> },
+              { path: 'miembros', element: <AdminMembersPage /> },
+              { path: '*', element: <NotFoundPage /> },
+            ],
+          },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

@@ -1,5 +1,7 @@
 import { ApiError, type ApiClient } from '../client'
 import type {
+  AdminMember,
+  AdminMembers,
   BookDetail,
   BookRatings,
   BookSummary,
@@ -16,6 +18,7 @@ import type {
   MemberSummary,
   MyProfile,
   MyReviewEntry,
+  NewMember,
   NextMeeting,
   ProfileUpdate,
   RatingRubric,
@@ -40,8 +43,9 @@ import {
   QUOTE_MAX_LENGTH,
   readAsDataUrl,
 } from '../../lib/profile'
+import { discordIdProblem } from '../../lib/admin'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
-import { createClubState, type MockBook, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
+import { createClubState, type MockBook, type MockMember, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
 import { ratingGate } from './ratingGate'
 import { countedReviews } from './statisticsGate'
@@ -135,9 +139,15 @@ export function createMockClient({
       : null
   }
 
+  // Past contributions keep their author's name after a revocation (#70):
+  // approvals, reviews, attendance, highlight speakers and statistics rows.
+  // Lists of current members (Miembros, Inicio, «Comparar con») pass only
+  // active ids.
+  const findAnyMember = (id: string) => state.members.find((m) => m.id === id) ?? state.revokedMembers.find((m) => m.id === id)
+
   const toMemberSummaries = (ids: string[]): MemberSummary[] =>
     ids.flatMap((id) => {
-      const member = state.members.find((m) => m.id === id)
+      const member = findAnyMember(id)
       return member ? [{ id: member.id, displayName: member.displayName, avatarUrl: member.avatarUrl }] : []
     })
 
@@ -429,6 +439,42 @@ export function createMockClient({
 
   const latestActivity = (review: MockReview) =>
     Math.max(Date.parse(review.submittedAt), review.editedAt ? Date.parse(review.editedAt) : -Infinity)
+
+  // Administración (#70). Built field by field: only these responses carry
+  // a Discord id, role or access status, and never a rating, review, profile
+  // text or favourite.
+  const accountOf = (memberId: string) => {
+    const account = state.accounts[memberId]
+    if (!account) throw new Error(`The mock state has no allowlist entry for ${memberId}.`)
+    return account
+  }
+  const toAdminMember = (member: MockMember, status: AdminMember['status']): AdminMember => {
+    const account = accountOf(member.id)
+    return {
+      member: toMember(member.id),
+      discordId: account.discordId,
+      role: member.role,
+      status,
+      addedAt: account.addedAt,
+      revokedAt: status === 'revoked' ? account.revokedAt : null,
+      isMe: member.id === state.currentUserId,
+      isCurator: member.id === state.curatorId,
+    }
+  }
+  const byName = (a: MockMember, b: MockMember) => spanishOrder.compare(a.displayName, b.displayName)
+  const toAdminMembers = (): AdminMembers => ({
+    members: [
+      ...[...state.members].sort(byName).map((m) => toAdminMember(m, 'active')),
+      ...[...state.revokedMembers].sort(byName).map((m) => toAdminMember(m, 'revoked')),
+    ],
+    curator: state.curatorId ? toMember(state.curatorId) : null,
+  })
+  // After the 401 and the simulated failure, like the backend (#11): the
+  // admin role only, never the curator assignment.
+  const requireAdmin = () => {
+    if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede gestionar los miembros.')
+  }
+  const unknownMember = () => new ApiError(404, 'No existe ese miembro.')
 
   return {
     async getSession(): Promise<Session> {
@@ -907,6 +953,81 @@ export function createMockClient({
           submittedAt: review.submittedAt,
           editedAt: review.editedAt,
         }))
+    },
+    async getAdminMembers(): Promise<AdminMembers> {
+      requireSignedIn()
+      failIfConfigured('getAdminMembers')
+      requireAdmin()
+      return toAdminMembers()
+    },
+
+    async addMember(input: NewMember): Promise<AdminMembers> {
+      requireSignedIn()
+      failIfConfigured('addMember')
+      requireAdmin()
+      const raw = (input ?? {}) as Partial<Record<keyof NewMember, unknown>>
+      const discordId = typeof raw.discordId === 'string' ? raw.discordId.trim() : null
+      // Unique across active and revoked entries (#8).
+      if (discordId && Object.values(state.accounts).some((a) => a.discordId === discordId)) {
+        throw new ApiError(409, 'Ese ID de Discord ya está en la lista.')
+      }
+      if (discordId === null || discordIdProblem(discordId)) {
+        throw invalid('El ID de Discord debe tener entre 17 y 20 cifras.')
+      }
+      if (typeof raw.displayName !== 'string' || displayNameProblem(raw.displayName)) {
+        throw invalid('El nombre visible debe tener entre 1 y 40 caracteres, en una sola línea.')
+      }
+      let n = state.members.length + state.revokedMembers.length + 1
+      while (findAnyMember(`m${n}`)) n++
+      const id = `m${n}`
+      // Adding is approving: active at once, never an admin (#6), with no
+      // avatar and an empty profile. Nothing is fetched from Discord (§3).
+      state.members.push({ id, displayName: raw.displayName.trim(), avatarUrl: null, role: 'member' })
+      state.accounts[id] = { discordId, addedAt: state.now, revokedAt: null }
+      state.profiles[id] = { bio: null, favouriteQuote: null, favouriteBookIds: [] }
+      return toAdminMembers()
+    },
+
+    async revokeMember(memberId: string): Promise<AdminMembers> {
+      requireSignedIn()
+      failIfConfigured('revokeMember')
+      requireAdmin()
+      const member = findAnyMember(memberId)
+      if (!member) throw unknownMember()
+      if (member.id === state.currentUserId) throw new ApiError(409, 'No puedes retirar el acceso a tu propia cuenta.')
+      if (!state.members.includes(member)) throw new ApiError(409, 'Este miembro ya no tiene acceso.')
+      // Their history stays (§5.4, §9): only the allowlist entry and the
+      // curator assignment change. A draft or open vote keeps its curator.
+      state.members = state.members.filter((m) => m !== member)
+      state.revokedMembers.push(member)
+      state.accounts[member.id] = { ...accountOf(member.id), revokedAt: state.now }
+      if (state.curatorId === member.id) state.curatorId = null
+      return toAdminMembers()
+    },
+
+    async restoreMember(memberId: string): Promise<AdminMembers> {
+      requireSignedIn()
+      failIfConfigured('restoreMember')
+      requireAdmin()
+      const member = findAnyMember(memberId)
+      if (!member) throw unknownMember()
+      if (!state.revokedMembers.includes(member)) throw new ApiError(409, 'Este miembro ya tiene acceso.')
+      // Back with their profile as it was; the curator is not restored.
+      state.revokedMembers = state.revokedMembers.filter((m) => m !== member)
+      state.members.push(member)
+      state.accounts[member.id] = { ...accountOf(member.id), revokedAt: null }
+      return toAdminMembers()
+    },
+
+    async setCurator(memberId: string | null): Promise<AdminMembers> {
+      requireSignedIn()
+      failIfConfigured('setCurator')
+      requireAdmin()
+      // Active members only, the admin included; a revoked id is unknown here.
+      if (memberId !== null && !state.members.some((m) => m.id === memberId)) throw unknownMember()
+      // An assignment, never a role (§3). Existing votes keep their curator.
+      state.curatorId = memberId
+      return toAdminMembers()
     },
   }
 }

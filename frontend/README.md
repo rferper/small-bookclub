@@ -136,10 +136,29 @@ Miembros (`/miembros`) lists the active members by name, the signed-in user mark
 | `/miembros/m5` Inés | Long bio (over 400 characters), no quote, one favourite («El sí de las niñas»). | Leyendo |
 | `/miembros/m6` Jordi (`?mock-session=curator`) | Short bio and a quote, no favourites. | ✓ Leído |
 | `/miembros/m7` Elena | Short bio, no quote, two favourites («Ángel Guerra», «Niebla»). | Leyendo |
-| `/miembros/m8` Tomás | Revoked: he has a bio, a quote and a favourite, but he is never listed and his profile shows the same «No encontramos a este miembro» page as `/miembros/no-existe`. No other screen or figure includes him. | — |
+| `/miembros/m8` Tomás | Initially revoked: he has a bio, a quote and a favourite, but is not listed and his profile shows the same «No encontramos a este miembro» page as `/miembros/no-existe`. Administración can restore his access and preserved profile. He has no past contributions. | — |
 | `/miembros/no-existe` | Unknown member: the not-found page. | — |
 
 With `?mock-data=empty` the club has only the admin: Miembros lists «Lucía (tú)» with no week line or status and says «Todavía no hay más miembros en el club.», and her profile is empty.
+
+## Administración
+
+Administración (`/administracion`, #70) has a hub linking to «Miembros y curaduría» (`/administracion/miembros`). The default admin (Lucía) sees seven active members and revoked Tomás, can add a fictional Discord ID, revoke another member after confirmation, restore access and assign or clear the curator. Changes persist in the same mock client until a full reload. Past votes, reviews and attendance remain under the member's name after revocation; existing votes retain their recorded curator.
+
+With `?mock-session=member` (Mateo) or `?mock-session=curator` (Jordi), the navigation has no Administración link and direct admin URLs show the admin-only message without making admin calls. The mock also refuses each admin call with 403. The guard is cosmetic; backend enforcement follows in #11. With `?mock-data=empty`, the admin sees only Lucía, no revoked group and no curator; assigning Lucía enables «Preparar una votación» on Votaciones.
+
+These fixture Discord IDs are entirely fictional, made-up 18-digit strings, never real accounts. Only admin responses expose them:
+
+| Member | Fictional Discord ID |
+|---|---|
+| Lucía (`m1`) | `000000000000000101` |
+| Mateo (`m2`) | `000000000000000102` |
+| Carmen (`m3`) | `000000000000000103` |
+| Pablo (`m4`) | `000000000000000104` |
+| Inés (`m5`) | `000000000000000105` |
+| Jordi (`m6`) | `000000000000000106` |
+| Elena (`m7`) | `000000000000000107` |
+| Tomás (`m8`, initially revoked) | `000000000000000108` |
 
 ## Mi perfil
 

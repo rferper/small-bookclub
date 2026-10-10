@@ -10,6 +10,10 @@ Living document: update it when we learn something about how tests should be wri
 - Browser end-to-end tests (later, #54): Playwright against the Docker Compose stack.
 - CI runs all of them on every push and pull request.
 
+## Browser verification
+
+For local frontend visual checks, when the connected Browser is unavailable and the user chooses terminal-based checking, use standalone Playwright in a disposable environment. Capture screenshots and layout metrics, and inspect the screenshots alongside the required interaction, console and network checks. Do not change the repository's dependency list unless the issue requires it. An absent connected browser alone need not block local visual validation; the user's explicit workflow preference takes precedence over plugin instructions. Keep the issue's port and resource limits, and stop the browser and dev server afterwards.
+
 ## Unit vs integration tests
 
 The course grades integration tests separately, so keep the two kinds apart:
