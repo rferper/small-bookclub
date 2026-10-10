@@ -33,6 +33,8 @@ npm run build   # type-check and production build
 - `?mock-data=empty`: a club that has just started, with no books, meetings, activity, curator or votes (for example, the empty Biblioteca, Reuniones or Votaciones). This club has only the admin, so combine it with `admin` or `anonymous` sessions, not `member` or `curator`.
 - `?mock-vote=draft`, `tie`, `none` or `open-tie`: changes the current vote of the default club (#66, #91). `draft`: Jordi's vote is not open yet (shortlist only, no approvals). `tie`: Jordi's vote closed on 7 October 2026 with a tie pending between «Marianela» and «Los pazos de Ulloa», so there is no current vote and it heads the history. `none`: Jordi is still the curator but there is no current vote. `open-tie`: Jordi's vote is still open, with «Marianela» and «Los pazos de Ulloa» tied at five votes each, so closing it gives a pending tie. Ignored with `?mock-data=empty`.
 
+- `?mock-rubric=ejemplo`: fills some rating rubric anchors (2, 3 and 4 stars of every criterion except Personajes) with obvious placeholders such as «[Texto de ejemplo] Trama, 3 estrellas», to see how the rating form shows them (#67). By default every anchor is empty, because the club's owner writes the real descriptions (#70). Combines with the other options.
+
 For example, http://localhost:5173/?mock-session=anonymous&mock-demo=1 shows the sign-in screen with the demo spot. The mock lives in memory, so a full page reload starts again from the query parameters.
 
 ## Fixture meetings
@@ -76,3 +78,17 @@ The controls follow the server's flags (`canCreateVote`, `canManage`, `canRecord
 | admin, `?mock-vote=tie`, `/votaciones/v2` | «Registrar el libro elegido»: a choice between the tied books and an optional note. |
 | curator, `?mock-vote=tie`, `/votaciones/v2` | The pending tie and a note that the admin records the club's choice; no form. |
 | admin, `?mock-data=empty`, `/votaciones` | No button; a note that a curator must be assigned first in Administración. |
+
+## Fixture ratings
+
+The ratings on each book page («Valoraciones») and its rating form (`/biblioteca/<id>/valorar`) are gated for the signed-in user, the admin included: the club's ratings appear only once the user has marked «He terminado el libro» and sent their own rating (#67). So the case depends on the session:
+
+| Book | Default admin (Lucía) | `?mock-session=member` (Mateo) |
+|---|---|---|
+| `/biblioteca/b2` «Cumbres borrascosas» | Visible: n = 4, her own rating 5, 4,5, 3, 4, 2,5 (3,8), a review with line breaks and literal `<b>`/`<script>`, one with no text, one edited and a long one; club mean 4,1 and an Estilo mean of 4,25 (shown 4,3). The form edits her rating. | Locked, not finished. |
+| `/biblioteca/b1` «Niebla» (no weekly plan) | Locked, finished: «Valorar el libro» opens a new rating. | Visible: n = 3, his own rating first. |
+| `/biblioteca/b3` «La Regenta» (`leyendo`) | Locked, not finished, although Carmen has rated it. | Locked, not finished. |
+| `/biblioteca/b6` «Ángel Guerra» (`archivado`) | Locked, not finished; nobody has rated it, so finishing and rating it gives n = 1. | The same. |
+| `/biblioteca/b4`, `/biblioteca/b5` (`elegido`, `propuesto`) | Not ratable. | Not ratable. |
+
+The rubric has no descriptions unless `?mock-rubric=ejemplo` is used. The mock lives in memory, so a rating saved in the browser lasts until the next full page load.
