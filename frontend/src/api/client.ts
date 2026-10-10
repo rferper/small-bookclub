@@ -1,4 +1,5 @@
 import type {
+  AdminMeeting, AdminMeetingCalendar, MeetingInput,
   AdminMembers,
   AdminBook,
   BookInput,
@@ -28,6 +29,12 @@ import type {
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
+  listAdminMeetings(): Promise<AdminMeetingCalendar>
+  getAdminMeeting(meetingId: string): Promise<AdminMeeting>
+  createMeeting(input: MeetingInput): Promise<AdminMeeting>
+  updateMeeting(meetingId: string, input: MeetingInput): Promise<AdminMeeting>
+  setMeetingCancelled(meetingId: string, cancelled: boolean): Promise<AdminMeeting>
+  setMeetingAttendance(meetingId: string, memberIds: string[]): Promise<AdminMeeting>
   // Admin-only catalogue (#95): 401 before permission/data checks; 403 for
   // members including curators. Metadata only, never ratings or meeting records.
   listAdminBooks(): Promise<AdminBook[]>
