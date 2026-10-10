@@ -94,13 +94,13 @@ export function CuratorForm({
 
   return (
     <div className="grid min-w-0 gap-4">
-      <p className="break-words text-forest">
+      <p className="text-forest">
         {members.curator
           ? `Ahora la curaduría es de ${members.curator.displayName}.`
           : 'Ahora no hay nadie en la curaduría.'}
       </p>
       {vote && (
-        <p className="max-w-prose break-words text-bark">
+        <p className="max-w-prose text-bark">
           {vote.status === 'draft' ? 'Hay una votación en preparación' : 'Hay una votación abierta'}: en el historial
           seguirá constando con la curaduría de {vote.curator.displayName}, y quien tenga la curaduría podrá
           gestionarla desde ahora.
@@ -146,7 +146,7 @@ export function CuratorForm({
           >
             {saving ? 'Guardando…' : 'Guardar curaduría'}
           </button>
-          <p role="status" className={status ? 'max-w-prose font-semibold break-words text-moss' : 'sr-only'}>
+          <p role="status" className={status ? 'max-w-prose font-semibold text-moss' : 'sr-only'}>
             {status}
           </p>
         </div>

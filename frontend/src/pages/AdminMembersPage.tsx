@@ -28,10 +28,12 @@ export function AdminMembersPage() {
     return <AdminOnlyMessage focusOnMount />
   }
 
+  // `anywhere` also shrinks grid items' intrinsic minimum width, so valid
+  // unspaced names cannot expand member rows or form/status tracks.
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-6 wrap-anywhere">
       <div>
-        <h1 className="text-3xl break-words text-forest sm:text-4xl">Miembros y curaduría</h1>
+        <h1 className="text-3xl text-forest sm:text-4xl">Miembros y curaduría</h1>
         <p className="mt-2">
           <Link to="/administracion" className={linkClass}>
             Volver a Administración
@@ -272,7 +274,7 @@ function MemberItem({ entry, children }: { entry: AdminMember; children: ReactNo
           <Avatar member={entry.member} />
         </span>
         <div className="grid min-w-0 gap-1">
-          <p className="font-semibold break-words text-forest">
+          <p className="font-semibold text-forest">
             {entry.member.displayName}
             {entry.isMe && ' (tú)'}
             {labels.map((label) => (

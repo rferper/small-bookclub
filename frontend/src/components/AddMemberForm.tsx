@@ -187,7 +187,7 @@ export function AddMemberForm({
         >
           {saving ? 'Añadiendo…' : 'Añadir miembro'}
         </button>
-        <p role="status" className={status ? 'max-w-prose font-semibold break-words text-moss' : 'sr-only'}>
+        <p role="status" className={status ? 'max-w-prose font-semibold text-moss' : 'sr-only'}>
           {status}
         </p>
       </div>
@@ -232,7 +232,7 @@ function TextField({
         'aria-describedby': error ? `${hintId} ${errorId}` : hintId,
       })}
       {error && (
-        <p id={errorId} className="max-w-prose font-semibold break-words text-bark">
+        <p id={errorId} className="max-w-prose font-semibold text-bark">
           {error}
         </p>
       )}
