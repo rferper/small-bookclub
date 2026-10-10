@@ -166,6 +166,14 @@ These fixture Discord IDs are entirely fictional, made-up 18-digit strings, neve
 | Elena (`m7`) | `000000000000000107` |
 | Tomás (`m8`, initially revoked) | `000000000000000108` |
 
+## Admin catalogue (#95)
+
+The Administración hub also links to Libros (`/administracion/libros`), with create (`/administracion/libros/nuevo`) and edit (`/administracion/libros/<id>/editar`) forms. AdminGuard protects all three; every catalogue/search mock call separately checks the admin role. The client documentation and draft shapes live in `src/api/client.ts` and `types.ts`: `listAdminBooks`, `getAdminBook`, `createBook`, `updateBook`, `searchBookMetadata`, `AdminBook`, `BookInput`, and `BookMetadataResult`. They contain metadata only, never reviews or meeting records.
+
+Try searching `jardín` or `Alba` for the fictional «El jardín de las cartas» (two authors and an in-memory sample cover), or `faro` for an incomplete result. Any unmatched query returns the manual fallback. Selection fills blanks only; manual corrections, uploaded/removed covers, status and reading dates survive. Nothing is saved until «Guardar libro», which saves metadata and cover together and opens the book page. A historical book needs only a title and status. All five statuses are manual; only one `leyendo` book is allowed (initially «La Regenta»), and multiple `elegido` books are allowed. The active book must be changed first to activate another.
+
+Planned dates are separate from the existing actual dates used in Biblioteca; each date pair is independently checked. Approximate dates keep their stored full calendar values and display as month/year. Blank optional metadata is null and authors are one trimmed nonblank entry per line. Cover files reuse the profile image rules: nonempty JPEG/PNG/WebP, at most 2,097,152 bytes inclusive. Changes persist only within this mock-client lifetime; subsequent Biblioteca, book, Inicio and vote nomination reads see them without reloading. Metadata edits preserve reviews, approvals, outcomes, weekly completions, schedules, meetings and the read-only origin vote. There is no deletion, reading-plan edit, real metadata request or backend yet (#13–#16/#71).
+
 ## Mi perfil
 
 Mi perfil (`/mi-perfil`, #94) edits the signed-in user's own profile and lists their own ratings. The calls take no member id, so each session edits only itself. «Libros favoritos» offers every `terminado` or `archivado` book by title: «Ángel Guerra», «Cumbres borrascosas», «El ingenioso hidalgo don Quijote de la Mancha», «El sí de las niñas», «Fortunata y Jacinta» and «Niebla».

@@ -201,4 +201,28 @@ describe('atomic cover and field saves', () => {
     expect(await screen.findByRole('heading', { name: 'Catálogo corregido' })).toBeInTheDocument()
     expect(state.books.find((b) => b.id === 'b3')?.originVote?.id).toBe('v1')
   })
+  it('offers a new proposed book in vote choices and removes it after a subsequent status edit', async () => {
+    const user = userEvent.setup(), { state } = await form()
+    value('Título', 'Nueva propuesta')
+    await user.click(save())
+    await screen.findByRole('heading', { name: 'Nueva propuesta', level: 1 })
+    const id = state.books.find((b) => b.title === 'Nueva propuesta')!.id
+    const goToVote = async () => {
+      await user.click(within(screen.getByRole('navigation')).getByRole('link', { name: 'Votaciones' }))
+      await user.click(await screen.findByRole('link', { name: 'Votación de Jordi' }))
+      return await screen.findByRole('region', { name: 'Añadir libros' })
+    }
+    expect(await within(await goToVote()).findByRole('button', { name: 'Añadir «Nueva propuesta»' })).toBeInTheDocument()
+    await user.click(within(screen.getByRole('navigation')).getByRole('link', { name: 'Administración' }))
+    await user.click(await screen.findByRole('link', { name: 'Libros' }))
+    await user.click(await screen.findByRole('link', { name: 'Editar «Nueva propuesta»' }))
+    await screen.findByRole('textbox', { name: 'Título' })
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), 'elegido')
+    await user.click(save())
+    await screen.findByRole('heading', { name: 'Nueva propuesta', level: 1 })
+    const choices = await goToVote()
+    await within(choices).findByRole('button', { name: 'Añadir «Doña Perfecta»' })
+    expect(within(choices).queryByRole('button', { name: 'Añadir «Nueva propuesta»' })).not.toBeInTheDocument()
+    expect(state.books.find((b) => b.id === id)?.status).toBe('elegido')
+  })
 })

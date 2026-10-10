@@ -79,6 +79,7 @@ export function BookForm({ book }: { book?: AdminBook }) {
   const chooseFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
     if (!file) return
+    setErrors((old) => ({ ...old, cover: undefined }))
     const choice = ++fileChoice.current
     const problem = avatarProblem(file)
     if (problem) {
@@ -96,6 +97,7 @@ export function BookForm({ book }: { book?: AdminBook }) {
   const resetCover = (action: 'keep' | 'remove') => {
     ++fileChoice.current; filePending.current = false; setReadingFile(false); setCoverError('')
     setCover({ action }); setPreview(action === 'keep' ? book?.coverUrl ?? null : null)
+    setErrors((old) => ({ ...old, cover: undefined }))
   }
   const submit = async (event: FormEvent) => {
     event.preventDefault()
