@@ -18,6 +18,7 @@ describe('Administración hub', () => {
     const main = screen.getByRole('main')
     const links = within(within(main).getByRole('list')).getAllByRole('link')
     expect(links.map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
+      ['Reuniones', '/administracion/reuniones'],
       ['Libros', '/administracion/libros'],
       ['Miembros y curaduría', '/administracion/miembros'],
     ])

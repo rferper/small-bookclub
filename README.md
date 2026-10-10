@@ -43,6 +43,15 @@ npm run dev   # http://localhost:5173
 
 Backend and Docker Compose instructions: *(to do)*
 
+The mock admin can manage meeting dates, optional catalogue book/existing week links,
+cancellations and attendance at `/administracion/reuniones`. Meeting form times use
+`VITE_CLUB_TIMEZONE` (default `Europe/Madrid`); nonexistent or ambiguous DST times
+must be changed before saving. Attendance is editable only after the mock clock's
+meeting start and while not cancelled. Revoked attendees remain read-only history.
+Saved changes appear on the next navigation to member screens; mock state lasts
+only for the client lifetime. Summary/highlight editors and reading-plan editing
+are separate issues.
+
 ## Testing
 
 ```sh

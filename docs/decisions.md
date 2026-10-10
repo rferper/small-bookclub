@@ -216,3 +216,33 @@ Search explicitly submits a nonblank query against fixed fictional title/author 
 **Why:** §5.1 and §8 require manual corrections, historical entries and one active book, while §3/§9 keep catalogue operations admin-only and §11 item 5 requires a manual fallback. Atomic edits protect covers and preserve voting/reading history without exposing spoilers.
 
 **Consequence:** No new dependency, HTTP endpoint or OpenAPI change. Backend enforcement and real lookup remain #13–#16, contract generation #71, and deletion/reading-plan/meeting editors stay in their own issues. The user explicitly authorized sequential issues, so AGENTS.md now says one issue at a time rather than one per session.
+
+## 2026-10-10: Admin meeting calendar and attendance (#96)
+
+**Decision:** Six admin-only mock operations expose explicit operational calendar
+projections, catalogue/week choices and attendance eligibility without substantive
+records, ratings or visibility controls. Authorization precedes lookup and input
+validation. Date, book and week edits validate completely before a synchronous
+commit. `MockWeek.meetingId` remains the single canonical association; an occupied
+week returns 409 instead of silently moving. All catalogue statuses are selectable.
+No reading range, due date, note, completion or book lifecycle changes with a meeting.
+
+**Reversible assumptions:** With no duration model, attendance becomes editable
+strictly after `startsAt` under `state.now`, for non-cancelled meetings only. Saving
+attendance replaces active selections, retains recorded revoked ids and distinguishes
+unrecorded `null` from recorded empty `[]`; there is no erase-to-null control. Access
+restoration makes a member selectable again. Cancellation toggles status only and
+restoration exposes preserved records under the unchanged central weekly gate.
+Member reads suppress attendance for future/cancelled meetings and substantive
+records for cancelled meetings, with no destructive changes to stored history.
+
+**Time handling:** Native `Intl.DateTimeFormat` supplies configured-zone wall times
+and offset candidates independently of browser timezone. Zero or two matching
+instants yield specific Spanish gap/fold guidance instead of choosing an offset.
+Sorting and Inicio compare parsed instants, including differing offsets across DST.
+An unchanged local time preserves the stored instant (including seconds).
+
+**Consequence:** No new dependency, HTTP endpoint or OpenAPI change. Draft mock
+types remain the frontend contract; backend/real contract work stays in #71, #20,
+#21 and #27. Reading-plan and summary editors remain #97/#98. State is refreshed
+after successful admin mutations and on the next member page load, without polling.

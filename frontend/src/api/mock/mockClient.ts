@@ -1,5 +1,6 @@
 import { ApiError, type ApiClient } from '../client'
 import type {
+  AdminMeeting, AdminMeetingCalendar, MeetingInput,
   AdminMember,
   AdminMembers,
   AdminBook,
@@ -47,6 +48,7 @@ import {
   readAsDataUrl,
 } from '../../lib/profile'
 import { discordIdProblem } from '../../lib/admin'
+import { meetingInstant } from '../../lib/meetingTime'
 import { bookErrors, CATALOGUE_LIMITS, DATE_FIELDS } from '../../lib/catalogue'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
 import { createClubState, METADATA_RESULTS, type MockBook, type MockMember, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
@@ -170,6 +172,7 @@ export function createMockClient({
   // without the summary and highlights, so they cannot leak; drafts are
   // left out for everyone, the admin included.
   const toMeetingRecord = (meeting: MockMeeting): MeetingRecord => {
+    if (meeting.cancelled) return { status: 'lockedNoWeek' }
     const week = state.weeks.find((w) => w.meetingId === meeting.id) ?? null
     const gate = meetingGate({
       week,
@@ -346,8 +349,8 @@ export function createMockClient({
 
   const nextMeeting = () =>
     state.meetings
-      .filter((m) => !m.cancelled && m.startsAt >= state.now)
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null
+      .filter((m) => !m.cancelled && isUpcoming(m))
+      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null
 
   // The club's current reading week: the week of the book being read that
   // leads to the next meeting. Inicio and Miembros both use it, so their
@@ -529,7 +532,69 @@ export function createMockClient({
     return toAdminBook(saved)
   }
 
+  const meetingAccess = (method: Method) => {
+    requireSignedIn()
+    if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede gestionar las reuniones.')
+    failIfConfigured(method)
+  }
+  const findMeeting = (id: string) => {
+    const meeting = state.meetings.find((m) => m.id === id)
+    if (!meeting) throw new ApiError(404, 'No existe esa reunión.')
+    return meeting
+  }
+  const toAdminMeeting = (meeting: MockMeeting): AdminMeeting => ({
+    id: meeting.id, startsAt: meeting.startsAt, bookId: meeting.bookId,
+    weekId: state.weeks.find((w) => w.meetingId === meeting.id)?.id ?? null,
+    cancelled: meeting.cancelled, upcoming: isUpcoming(meeting),
+    attendance: meeting.attendance === null ? null : toMemberSummaries(meeting.attendance),
+    attendanceEligible: !meeting.cancelled && !isUpcoming(meeting),
+  })
+  const saveMeeting = (input: MeetingInput, id?: string): AdminMeeting => {
+    const existing = id === undefined ? null : findMeeting(id)
+    if (!input || typeof input.startsAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(input.startsAt) || !Number.isFinite(Date.parse(input.startsAt))) throw new ApiError(400, 'Introduce una fecha y una hora válidas con zona horaria.')
+    try { meetingInstant(input.startsAt.slice(0, 10), input.startsAt.slice(11, 16), 'UTC') }
+    catch { throw new ApiError(400, 'Introduce una fecha y una hora válidas con zona horaria.') }
+    if (input.bookId !== null && !state.books.some((b) => b.id === input.bookId)) throw new ApiError(404, 'No existe ese libro.')
+    const week = input.weekId === null ? null : state.weeks.find((w) => w.id === input.weekId)
+    if (input.weekId !== null && !week) throw new ApiError(404, 'No existe esa semana.')
+    if (week && week.bookId !== input.bookId) throw new ApiError(400, 'La semana debe pertenecer al libro seleccionado.')
+    if (week?.meetingId && week.meetingId !== id) throw new ApiError(409, 'Esta semana ya está vinculada a otra reunión. Desvincúlala allí primero.')
+    let newId = id ?? 'meeting-1'
+    for (let n = 2; !id && state.meetings.some((m) => m.id === newId); n++) newId = `meeting-${n}`
+    const saved: MockMeeting = existing ?? { id: newId, bookId: null, startsAt: '', cancelled: false, attendance: null, markedSafe: false, summary: null, highlights: [] }
+    // Validate everything before touching either side of the canonical link.
+    saved.startsAt = input.startsAt; saved.bookId = input.bookId
+    for (const linked of state.weeks) if (linked.meetingId === saved.id) linked.meetingId = null
+    if (week) week.meetingId = saved.id
+    if (!existing) state.meetings.push(saved)
+    return toAdminMeeting(saved)
+  }
+
   return {
+    async listAdminMeetings(): Promise<AdminMeetingCalendar> {
+      meetingAccess('listAdminMeetings')
+      const ordered = [...state.meetings].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+      return { upcoming: ordered.filter(isUpcoming).map(toAdminMeeting), past: ordered.filter((m) => !isUpcoming(m)).reverse().map(toAdminMeeting),
+        books: [...state.books].sort((a, b) => a.title.localeCompare(b.title, 'es')).map((b) => ({ id: b.id, title: b.title })),
+        weeks: state.weeks.map((w) => ({ id: w.id, bookId: w.bookId, weekNumber: w.weekNumber, meetingId: w.meetingId })),
+        activeMembers: toMemberSummaries(state.members.map((m) => m.id)) }
+    },
+    async getAdminMeeting(id) { meetingAccess('getAdminMeeting'); return toAdminMeeting(findMeeting(id)) },
+    async createMeeting(input) { meetingAccess('createMeeting'); return saveMeeting(input) },
+    async updateMeeting(id, input) { meetingAccess('updateMeeting'); return saveMeeting(input, id) },
+    async setMeetingCancelled(id, cancelled) {
+      meetingAccess('setMeetingCancelled'); const meeting = findMeeting(id)
+      if (typeof cancelled !== 'boolean') throw new ApiError(400, 'Indica un estado válido de cancelación.')
+      meeting.cancelled = cancelled; return toAdminMeeting(meeting)
+    },
+    async setMeetingAttendance(id, memberIds) {
+      meetingAccess('setMeetingAttendance'); const meeting = findMeeting(id)
+      if (meeting.cancelled || isUpcoming(meeting)) throw new ApiError(409, 'Solo puedes registrar asistencia después del inicio de una reunión no cancelada.')
+      if (!Array.isArray(memberIds) || new Set(memberIds).size !== memberIds.length || memberIds.some((memberId) => !findAnyMember(memberId) || (!state.members.some((m) => m.id === memberId) && !meeting.attendance?.includes(memberId)))) throw new ApiError(400, 'Selecciona miembros válidos sin duplicados; no puedes añadir miembros sin acceso.')
+      const historical = (meeting.attendance ?? []).filter((memberId) => state.revokedMembers.some((m) => m.id === memberId))
+      meeting.attendance = [...new Set([...memberIds, ...historical])]
+      return toAdminMeeting(meeting)
+    },
     async listAdminBooks(): Promise<AdminBook[]> {
       catalogueAccess('listAdminBooks')
       return [...state.books].sort((a, b) => a.title.localeCompare(b.title, 'es')).map(toAdminBook)
@@ -711,7 +776,7 @@ export function createMockClient({
       return {
         ...toMeetingListItem(meeting),
         upcoming: isUpcoming(meeting),
-        attendance: meeting.attendance && toMemberSummaries(meeting.attendance),
+        attendance: !meeting.cancelled && !isUpcoming(meeting) && meeting.attendance !== null ? toMemberSummaries(meeting.attendance) : null,
         record: toMeetingRecord(meeting),
       }
     },

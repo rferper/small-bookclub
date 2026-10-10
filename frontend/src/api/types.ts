@@ -216,6 +216,23 @@ export interface MeetingDetail extends MeetingListItem {
   record: MeetingRecord
 }
 
+// Operational admin calendar only: never substantive meeting records.
+export interface MeetingInput { startsAt: string; bookId: string | null; weekId: string | null }
+export interface AdminMeeting extends MeetingInput {
+  id: string
+  cancelled: boolean
+  upcoming: boolean
+  attendance: MemberSummary[] | null
+  attendanceEligible: boolean
+}
+export interface AdminMeetingCalendar {
+  upcoming: AdminMeeting[]
+  past: AdminMeeting[]
+  books: { id: string; title: string }[]
+  weeks: { id: string; bookId: string; weekNumber: number; meetingId: string | null }[]
+  activeMembers: MemberSummary[]
+}
+
 // Votes (§5.4). Approval voting: a member approves any number of candidates,
 // one vote each. Votes are public, so every member gets the same data; only
 // `approvedByMe` depends on who is signed in.

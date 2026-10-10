@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { AdminHubPage } from './pages/AdminHubPage'
 import { AdminBooksPage, AdminBookCreatePage, AdminBookEditPage } from './pages/AdminBooksPage'
 import { AdminMembersPage } from './pages/AdminMembersPage'
+import { AdminMeetingsPage, AdminMeetingEditPage } from './pages/AdminMeetingsPage'
 import { BookPage } from './pages/BookPage'
 import { HomePage } from './pages/HomePage'
 import { LibraryPage } from './pages/LibraryPage'
@@ -48,6 +49,9 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <AdminHubPage /> },
               { path: 'miembros', element: <AdminMembersPage /> },
+              { path: 'reuniones', element: <AdminMeetingsPage /> },
+              { path: 'reuniones/nueva', element: <AdminMeetingEditPage /> },
+              { path: 'reuniones/:meetingId/editar', element: <AdminMeetingEditPage /> },
               { path: 'libros', element: <AdminBooksPage /> },
               { path: 'libros/nuevo', element: <AdminBookCreatePage /> },
               { path: 'libros/:bookId/editar', element: <AdminBookEditPage /> },
