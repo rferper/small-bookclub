@@ -497,3 +497,49 @@ export interface MemberProfile {
   // This week's reading status, or null when there is no current week.
   currentWeek: MemberWeekStatus | null
 }
+
+// Mi perfil (#94). Every call acts for the signed-in user only and takes no
+// member id: the server takes the member from the session (§9).
+
+// The signed-in user's own profile, as the edit form needs it.
+export interface MyProfile {
+  member: MemberSummary
+  // Plain text, never HTML; null when there is none.
+  bio: string | null
+  favouriteQuote: string | null
+  // In the member's order, at most 5.
+  favouriteBooks: BookSummary[]
+  // Every book that may be a favourite (status «terminado» or «archivado»),
+  // by title with Spanish collation. The server decides it, so the rule
+  // lives in one place.
+  favouriteOptions: BookSummary[]
+}
+
+// What happens to the avatar on save: nothing, removed, or replaced by a new
+// image (JPEG, PNG or WebP, at most 2 MB).
+export type AvatarChange = { action: 'keep' } | { action: 'remove' } | { action: 'replace'; file: File }
+
+// The whole profile, saved at once. There is no member id: an id smuggled in
+// is refused (403), and the backend ignores it and uses the session.
+export interface ProfileUpdate {
+  // One line, 1–40 characters after trimming. Not unique.
+  displayName: string
+  // Plain text, trimmed by the server; a blank value is saved as null.
+  // At most 500 and 300 characters after trimming.
+  bio: string | null
+  favouriteQuote: string | null
+  // At most 5 distinct ids of books in `favouriteOptions`, in order.
+  favouriteBookIds: string[]
+  avatar: AvatarChange
+}
+
+// One of the signed-in user's own reviews, with the same meanings as
+// `MyReview`. Never gated (§5.5) and never carries club data.
+export interface MyReviewEntry {
+  book: BookSummary
+  scores: CriterionScores
+  overall: number
+  text: string | null
+  submittedAt: string
+  editedAt: string | null
+}

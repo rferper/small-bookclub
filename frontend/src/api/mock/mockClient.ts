@@ -14,7 +14,10 @@ import type {
   MemberDirectory,
   MemberProfile,
   MemberSummary,
+  MyProfile,
+  MyReviewEntry,
   NextMeeting,
+  ProfileUpdate,
   RatingRubric,
   ReadingWeek,
   ReviewInput,
@@ -28,6 +31,15 @@ import type {
 } from '../types'
 import { CRITERIA, clubAggregates, isValidScore, REVIEW_TEXT_MAX_LENGTH, reviewOverall } from '../../lib/ratings'
 import { MIN_SHARED_BOOKS, tasteCompatibility } from '../../lib/compatibility'
+import {
+  avatarProblem,
+  BIO_MAX_LENGTH,
+  displayNameProblem,
+  FAVOURITE_BOOKS_MAX,
+  isTooLong,
+  QUOTE_MAX_LENGTH,
+  readAsDataUrl,
+} from '../../lib/profile'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
 import { createClubState, type MockBook, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
@@ -341,6 +353,82 @@ export function createMockClient({
     if (!member) throw new ApiError(404, 'No existe ese miembro.')
     return member
   }
+
+  // Books that may be a profile favourite: read by the club (#69, #94).
+  const mayBeFavourite = (book: MockBook) => book.status === 'terminado' || book.status === 'archivado'
+
+  const favouriteBooksOf = (memberId: string): BookSummary[] =>
+    (state.profiles[memberId]?.favouriteBookIds ?? []).flatMap((id) => {
+      const book = toBookSummary(id)
+      return book ? [book] : []
+    })
+
+  const toMyProfile = (): MyProfile => {
+    const profile = state.profiles[state.currentUserId]
+    return {
+      member: toMember(state.currentUserId),
+      bio: profile?.bio ?? null,
+      favouriteQuote: profile?.favouriteQuote ?? null,
+      favouriteBooks: favouriteBooksOf(state.currentUserId),
+      favouriteOptions: state.books
+        .filter(mayBeFavourite)
+        .sort((a, b) => spanishOrder.compare(a.title, b.title))
+        .map((b) => toBookSummary(b.id)!),
+    }
+  }
+
+  // Like the backend (#9): the input has no member id, so a key naming
+  // another member can only come from bypassing the types. The session
+  // decides who is edited, for the admin too.
+  const requireOwnInput = (input: unknown) => {
+    const raw = (input ?? {}) as Record<string, unknown>
+    for (const key of ['id', 'memberId', 'userId']) {
+      if (key in raw && raw[key] !== state.currentUserId) {
+        throw new ApiError(403, 'Solo puedes editar tu propio perfil.')
+      }
+    }
+  }
+
+  const invalid = (message: string) => new ApiError(400, message)
+  const optionalText = (value: unknown, max: number, label: string): string | null => {
+    if (value !== null && value !== undefined && typeof value !== 'string') throw invalid(`${label} no es válido.`)
+    if (isTooLong(value ?? null, max)) throw invalid(`${label} puede tener como máximo ${max} caracteres.`)
+    return (value ?? '').trim() || null
+  }
+
+  // Checks the whole input before anything changes, so a refused call leaves
+  // the state as it was, the avatar included. Returns what to save.
+  const validProfileUpdate = async (input: ProfileUpdate) => {
+    const raw = (input ?? {}) as Partial<Record<keyof ProfileUpdate, unknown>>
+    if (typeof raw.displayName !== 'string' || displayNameProblem(raw.displayName)) {
+      throw invalid('El nombre visible debe tener entre 1 y 40 caracteres, en una sola línea.')
+    }
+    const bio = optionalText(raw.bio, BIO_MAX_LENGTH, 'Sobre mí')
+    const favouriteQuote = optionalText(raw.favouriteQuote, QUOTE_MAX_LENGTH, 'La cita favorita')
+    const ids = raw.favouriteBookIds
+    if (!Array.isArray(ids) || ids.length > FAVOURITE_BOOKS_MAX) throw invalid('Puedes elegir hasta 5 libros favoritos.')
+    if (new Set(ids).size !== ids.length) throw invalid('Un libro favorito está repetido.')
+    for (const id of ids) {
+      const book = state.books.find((b) => b.id === id)
+      if (!book || !mayBeFavourite(book)) throw invalid('Solo puedes elegir libros que el club haya leído.')
+    }
+    const avatar = raw.avatar as Partial<{ action: string; file: unknown }> | undefined
+    let avatarUrl: string | null | undefined
+    if (avatar?.action === 'keep') avatarUrl = undefined
+    else if (avatar?.action === 'remove') avatarUrl = null
+    else if (avatar?.action === 'replace' && avatar.file instanceof Blob && !avatarProblem(avatar.file)) {
+      // Kept in memory as a data URL; nothing is uploaded.
+      avatarUrl = await readAsDataUrl(avatar.file).catch(() => {
+        throw invalid('No se ha podido leer la foto.')
+      })
+    } else {
+      throw invalid('La foto debe ser JPEG, PNG o WebP, de hasta 2 MB.')
+    }
+    return { displayName: raw.displayName.trim(), bio, favouriteQuote, favouriteBookIds: [...(ids as string[])], avatarUrl }
+  }
+
+  const latestActivity = (review: MockReview) =>
+    Math.max(Date.parse(review.submittedAt), review.editedAt ? Date.parse(review.editedAt) : -Infinity)
 
   return {
     async getSession(): Promise<Session> {
@@ -774,6 +862,51 @@ export function createMockClient({
           ? { weekNumber: week.weekNumber, completed: (state.completions[week.id] ?? []).includes(member.id) }
           : null,
       }
+    },
+    async getMyProfile(): Promise<MyProfile> {
+      requireSignedIn()
+      failIfConfigured('getMyProfile')
+      return toMyProfile()
+    },
+
+    async updateMyProfile(input: ProfileUpdate): Promise<MyProfile> {
+      requireSignedIn()
+      failIfConfigured('updateMyProfile')
+      requireOwnInput(input)
+      const valid = await validProfileUpdate(input)
+      // One member record: every call that returns the member shows the new
+      // name and avatar. Nothing else changes: not the role, nor anyone else.
+      const me = state.members.find((m) => m.id === state.currentUserId)!
+      me.displayName = valid.displayName
+      if (valid.avatarUrl !== undefined) me.avatarUrl = valid.avatarUrl
+      state.profiles[me.id] = {
+        bio: valid.bio,
+        favouriteQuote: valid.favouriteQuote,
+        favouriteBookIds: valid.favouriteBookIds,
+      }
+      return toMyProfile()
+    },
+
+    async listMyReviews(): Promise<MyReviewEntry[]> {
+      requireSignedIn()
+      failIfConfigured('listMyReviews')
+      // The user's own reviews only, built field by field: no other member,
+      // count, mean or club data can reach the response. Not gated (§5.5).
+      return state.reviews
+        .filter((r) => r.userId === state.currentUserId)
+        .map((r) => ({ review: r, book: toBookSummary(r.bookId)! }))
+        .sort(
+          (a, b) =>
+            latestActivity(b.review) - latestActivity(a.review) || spanishOrder.compare(a.book.title, b.book.title),
+        )
+        .map(({ review, book }) => ({
+          book,
+          scores: { ...review.scores },
+          overall: reviewOverall(review.scores),
+          text: review.text,
+          submittedAt: review.submittedAt,
+          editedAt: review.editedAt,
+        }))
     },
   }
 }

@@ -7,6 +7,9 @@ import type {
   MeetingList,
   MemberDirectory,
   MemberProfile,
+  MyProfile,
+  MyReviewEntry,
+  ProfileUpdate,
   RatingRubric,
   ReviewInput,
   Session,
@@ -108,6 +111,18 @@ export interface ApiClient {
   // One active member's profile. Rejects with the same 404 ApiError for an
   // unknown id and for a revoked member's id.
   getMemberProfile(memberId: string): Promise<MemberProfile>
+
+  // Mi perfil (#94). None of these takes a member id: they act for the
+  // signed-in user only, the admin included.
+  // The user's own profile, with every book that may be a favourite.
+  getMyProfile(): Promise<MyProfile>
+  // Saves the whole profile in one atomic call and returns the new
+  // getMyProfile result. 400 when any value is invalid (then nothing changes,
+  // the avatar included); 403 for an input that names another member.
+  updateMyProfile(input: ProfileUpdate): Promise<MyProfile>
+  // The user's own reviews, newest activity first (the latest of submitted
+  // and edited), then by title. Not gated; no club data.
+  listMyReviews(): Promise<MyReviewEntry[]>
 }
 
 // Methods that manage the session itself; every other method returns club data.
