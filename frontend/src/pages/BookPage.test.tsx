@@ -159,12 +159,18 @@ describe('Book page', () => {
     const outsideRatings = async (session: 'admin' | 'member') => {
       const { main, unmount } = await openBook('b3', { session })
       await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
+      // Locked b3 has no buttons anywhere on the page, the section included.
+      expect(within(main).queryByRole('button')).not.toBeInTheDocument()
+      expect(main).toHaveTextContent('He terminado el libro')
       const copy = main.cloneNode(true) as HTMLElement
-      for (const section of copy.querySelectorAll('section')) {
-        if (section.querySelector('h2')?.textContent === 'Valoraciones') section.remove()
-      }
-      expect(within(copy).queryByRole('button')).not.toBeInTheDocument()
+      const ratingSections = [...copy.querySelectorAll('section')].filter(
+        (section) => section.querySelector('h2')?.textContent === 'Valoraciones',
+      )
+      expect(ratingSections).toHaveLength(1)
+      ratingSections[0].remove()
+      // The finished toggle lives only inside «Valoraciones».
       expect(copy).not.toHaveTextContent('He terminado el libro')
+      expect(copy).not.toHaveTextContent('Valoraciones')
       const text = copy.textContent
       unmount()
       return text
@@ -197,7 +203,8 @@ describe('Book page', () => {
     await user.click(await screen.findByRole('button', { name: 'Reintentar' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'La Regenta' })).toBeInTheDocument()
     // Adapted in #67: the ratings load once the book is shown.
-    expect(tracked.clubDataCalls().filter((method) => method === 'getBook')).toEqual(['getBook', 'getBook'])
+    await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
+    expect(tracked.clubDataCalls()).toEqual(['getBook', 'getBook', 'getBookRatings'])
   })
 
   it('returns to the sign-in screen when getBook gets a 401', async () => {
