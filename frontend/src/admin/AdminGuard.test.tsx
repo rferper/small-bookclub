@@ -18,6 +18,7 @@ describe('Administración hub', () => {
     const main = screen.getByRole('main')
     const links = within(within(main).getByRole('list')).getAllByRole('link')
     expect(links.map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
+      ['Libros', '/administracion/libros'],
       ['Miembros y curaduría', '/administracion/miembros'],
     ])
     expect(main).toHaveTextContent('Añade miembros con su ID de Discord')

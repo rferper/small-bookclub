@@ -70,6 +70,8 @@ function BookView({ book }: { book: BookDetail }) {
     ['Editorial', book.publisher],
     ['ISBN', book.isbn],
     ['Páginas', book.pageCount === null ? null : String(book.pageCount)],
+    ['Inicio previsto', formatCalendarDate(book.plannedStartDate, book.datesApproximate)],
+    ['Fin previsto', formatCalendarDate(book.plannedEndDate, book.datesApproximate)],
   ].filter((entry): entry is [string, string] => entry[1] !== null && entry[1] !== '')
 
   return (

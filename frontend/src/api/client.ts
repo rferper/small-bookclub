@@ -1,5 +1,8 @@
 import type {
   AdminMembers,
+  AdminBook,
+  BookInput,
+  BookMetadataResult,
   BookDetail,
   BookRatings,
   HomeData,
@@ -25,6 +28,17 @@ import type {
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
+  // Admin-only catalogue (#95): 401 before permission/data checks; 403 for
+  // members including curators. Metadata only, never ratings or meeting records.
+  listAdminBooks(): Promise<AdminBook[]>
+  getAdminBook(bookId: string): Promise<AdminBook>
+  // Whole metadata and cover transaction: 400 invalid input, 404 unknown id,
+  // 409 second leyendo book (message names the active book); no partial changes.
+  createBook(input: BookInput): Promise<AdminBook>
+  updateBook(bookId: string, input: BookInput): Promise<AdminBook>
+  // Fixed fictional title/author matches; 400 blank/overlong query, no network.
+  // Selecting metadata is local; a metadata cover refers to a returned result id.
+  searchBookMetadata(query: string): Promise<BookMetadataResult[]>
   // Session. These never fail with 401: a visitor who is not signed in gets
   // an anonymous or denied session instead.
   getSession(): Promise<Session>
