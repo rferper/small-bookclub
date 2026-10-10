@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 // The admin sections that exist. Each later Administración issue adds its
 // own entry here (#95–#101); there are no placeholders for the others.
 const SECTIONS = [
+  { to: '/administracion/lecturas', title: 'Planes de lectura', description: 'Añade, corrige y ordena las semanas acordadas para cada libro.' },
   { to: '/administracion/reuniones', title: 'Reuniones', description: 'Organiza las fechas, las semanas de lectura y la asistencia a las reuniones.' },
   {
     to: '/administracion/libros',

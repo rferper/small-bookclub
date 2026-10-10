@@ -219,11 +219,22 @@ export interface MeetingDetail extends MeetingListItem {
 // Operational admin calendar only: never substantive meeting records.
 export interface MeetingInput { startsAt: string; bookId: string | null; weekId: string | null }
 export interface AdminMeeting extends MeetingInput {
+  removedWeekNumber?: number
   id: string
   cancelled: boolean
   upcoming: boolean
   attendance: MemberSummary[] | null
   attendanceEligible: boolean
+}
+export interface ReadingWeekInput {
+  percentStart: number; percentEnd: number; pageStart: number; pageEnd: number
+  dueDate: string | null; notes: string | null; meetingId: string | null
+}
+export interface AdminReadingWeek extends ReadingWeekInput { id: string; weekNumber: number; completionCount: number }
+export interface AdminReadingPlan {
+  book: { id: string; title: string; pageCount: number | null }
+  weeks: AdminReadingWeek[]
+  meetings: { id: string; startsAt: string; cancelled: boolean }[]
 }
 export interface AdminMeetingCalendar {
   upcoming: AdminMeeting[]

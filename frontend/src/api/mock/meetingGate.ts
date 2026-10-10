@@ -9,7 +9,7 @@ export type MeetingGate =
 
 export interface MeetingGateInput {
   // The reading week linked to the meeting, if any.
-  week: { id: string; weekNumber: number } | null
+  week: { id: string; weekNumber: number; deletedAt?: string } | null
   // Whether the admin marked a meeting without a linked week as safe.
   markedSafe: boolean
   // weekId -> ids of the members who marked it read.
@@ -21,6 +21,7 @@ export interface MeetingGateInput {
 // member-facing pages nobody bypasses the gate (docs/decisions.md, #65).
 export function meetingGate({ week, markedSafe, completions, userId }: MeetingGateInput): MeetingGate {
   if (week) {
+    if (week.deletedAt) return { visible: false, reason: 'noWeek' }
     return (completions[week.id] ?? []).includes(userId)
       ? { visible: true }
       : { visible: false, reason: 'weekNotRead', weekNumber: week.weekNumber }

@@ -246,3 +246,40 @@ An unchanged local time preserves the stored instant (including seconds).
 types remain the frontend contract; backend/real contract work stays in #71, #20,
 #21 and #27. Reading-plan and summary editors remain #97/#98. State is refreshed
 after successful admin mutations and on the next member page load, without polling.
+
+## 2026-10-10: Manual reading plans and retained weekly history (#97)
+
+**Decision:** Five admin-only mock operations read, append, edit, reorder and
+soft-remove weeks. Catalogue choices reuse `listAdminBooks`. Explicit projections
+contain operational facts and distinct stored completion counts only. Authorization
+precedes lookup; structural validation, link conflicts and warnings are assessed
+before any synchronous commit. Stable ids keep completions attached through edits
+and contiguous active 1..N ordering. Dates never reorder anything.
+
+**Reversible assumptions:** Percentages are finite and nonnegative (decimals and
+values above 100 remain possible); pages are positive safe integers. Optional
+calendar due dates use UTC round-trip validation; optional plain notes trim to
+null when blank and allow up to 1000 trimmed characters. Percent and page facts
+are independent, never converted. Due dates remain stored under meeting links.
+Warnings cover reversed endpoints, endpoints beyond 100/known page count,
+backwards starts and overlapping normalized adjacent intervals (percentage
+boundaries may touch; page endpoints are inclusive). Known positive page count
+also warns when either page-derived endpoint differs from its percentage by
+strictly more than 10 percentage points; exactly 10 is accepted. Gaps and date
+ordering add no warning. The form resets acknowledgement after every input
+change; every write recomputes warnings and requires explicit acknowledgement.
+
+**Removal:** Confirmation names the book/week and distinct completion count,
+including revoked history. The week retains its original facts, id, canonical
+`meetingId` and completions, with `deletedAt`, `deletedBy` and `purgeDueAt`
+(exactly 30 days after the mock clock). Repeated removal is 404. Member active
+projections and admin choices omit removed weeks; the central gate forces a
+retained linked record to `lockedNoWeek`, even when completed or marked safe.
+Calendar date-only edits preserve the read-only removed association; deliberate
+unlink/relink releases its reservation. Stored meeting records are untouched.
+Recovery/purge UI and conflict handling remain #100; no restore action is added.
+
+**Consequence:** No dependency, backend, endpoint or OpenAPI change. Client types
+remain the draft contract for #71; backend enforcement remains #21/#22/#29.
+Successful writes return the canonical updated plan; member pages read it on
+their next navigation, using the existing next-meeting current-week rule.
