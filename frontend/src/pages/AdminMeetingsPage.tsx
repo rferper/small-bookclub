@@ -107,7 +107,7 @@ function MeetingEditor({ calendar, meeting, reload }: { calendar: AdminMeetingCa
         else { setError(''); setDialog(true) }
       }}>{meeting.cancelled ? 'Restaurar reunión' : 'Cancelar reunión'}</button></Card>
       <Card title="Asistencia">
-        <p className="mb-3 text-bark">{meeting.attendance === null ? 'Asistencia sin registrar' : `${meeting.attendance.length} asistentes registrados`}</p>
+        <p className="mb-3 text-bark">{meeting.attendance === null ? 'Asistencia sin registrar' : meeting.attendance.length === 1 ? '1 asistente registrado' : `${meeting.attendance.length} asistentes registrados`}</p>
         {historical.length > 0 && <div className="mb-3"><h3 className="font-semibold">Historial de miembros sin acceso (solo lectura)</h3><ul>{historical.map((m) => <li key={m.id}>{m.displayName}</li>)}</ul></div>}
         {meeting.attendanceEligible ? <form onSubmit={(event) => { event.preventDefault(); void run(async () => { await api.setMeetingAttendance(meeting.id, selected); reload() }) }} className="grid gap-3">
           <fieldset disabled={busy} className="grid gap-2"><legend className="mb-2">Miembros con acceso</legend>{calendar.activeMembers.map((m) => <label key={m.id} className="flex items-center gap-2 break-words"><input type="checkbox" checked={selected.includes(m.id)} onChange={(e) => setSelected(e.target.checked ? [...selected, m.id] : selected.filter((id) => id !== m.id))} />{m.displayName}</label>)}</fieldset>

@@ -1,14 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { meetingInstant, meetingLocalValues } from './meetingTime'
 
 describe('club local meeting times', () => {
   it.each([['2026-01-15', '2026-01-15T18:30:00.000Z'], ['2026-07-15', '2026-07-15T17:30:00.000Z']])('round trips %s in Madrid independently of the process timezone', (date, expected) => {
-    const previous = process.env.TZ
-    process.env.TZ = 'America/Los_Angeles'
+    vi.stubEnv('TZ', 'America/Los_Angeles')
     try {
       expect(meetingInstant(date, '19:30', 'Europe/Madrid')).toBe(expected)
       expect(meetingLocalValues(expected, 'Europe/Madrid')).toEqual({ date, time: '19:30' })
-    } finally { process.env.TZ = previous }
+    } finally { vi.unstubAllEnvs() }
   })
   it('refuses DST gaps and folds with specific guidance', () => {
     expect(() => meetingInstant('2026-03-29', '02:30', 'Europe/Madrid')).toThrow('no existe')

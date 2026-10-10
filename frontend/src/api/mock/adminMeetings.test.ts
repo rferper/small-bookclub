@@ -15,7 +15,7 @@ describe('admin calendar authority and atomic writes', () => {
   it('creates clean defaults and exposes operational choices only', async () => {
     const state = createClubState(), api = createMockClient({ state })
     const saved = await api.createMeeting(input)
-    expect(state.meetings.find((m) => m.id === saved.id)).toEqual({ id: saved.id, ...input, weekId: undefined, cancelled: false, attendance: null, summary: null, highlights: [], markedSafe: false })
+    expect(state.meetings.find((m) => m.id === saved.id)).toEqual({ id: saved.id, startsAt: input.startsAt, bookId: null, cancelled: false, attendance: null, summary: null, highlights: [], markedSafe: false })
     const json = JSON.stringify(await api.listAdminMeetings())
     expect(json).not.toMatch(/summary|highlights|markedSafe|rating|discordId|revokedAt/)
     expect((await api.listAdminMeetings()).books).toHaveLength(state.books.length)
@@ -47,6 +47,7 @@ describe('admin calendar authority and atomic writes', () => {
       expect(state).toEqual(before)
     }
     await expect(api.updateMeeting('missing', input)).rejects.toMatchObject({ status: 404 })
+    await expect(api.updateMeeting('mt1', { ...input, startsAt: '2026-02-30T19:30:00Z' })).rejects.toMatchObject({ status: 400 })
     expect(state).toEqual(before)
   })
   it('honours configured failures without mutation for all six calls', async () => {
