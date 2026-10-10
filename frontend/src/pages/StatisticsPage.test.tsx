@@ -73,6 +73,13 @@ const NOT_ENOUGH_BOOKS =
 const NOT_ENOUGH_MEMBERS =
   'Aún no hay suficientes valoraciones: hace falta que al menos dos miembros tengan 3 valoraciones o más.'
 
+// The text of `main` without one section.
+const textOutside = (main: HTMLElement, section: HTMLElement) => {
+  const copy = main.cloneNode(true) as HTMLElement
+  copy.querySelector(`[aria-labelledby="${section.getAttribute('aria-labelledby')}"]`)!.remove()
+  return copy.textContent
+}
+
 // Nothing that could show a broken or invented number.
 function expectNoBrokenValues(main: HTMLElement) {
   expect(main.textContent).not.toMatch(/NaN|null|undefined|0\/5|Infinity/)
@@ -90,6 +97,7 @@ describe('Estadísticas: the default admin (README «Fixture statistics»)', () 
       ['H2', 'Media del club por libro'],
       ['H2', 'Media por criterio'],
       ['H2', 'Media de cada miembro'],
+      ['H2', 'Gustos en común'],
     ])
     expect(within(main).getByText(NOTE)).toBeInTheDocument()
     expect(figures()).toEqual([
@@ -99,7 +107,7 @@ describe('Estadísticas: the default admin (README «Fixture statistics»)', () 
       ['Valoraciones', '13'],
       ['Media de todas las valoraciones', '4,0 · 13 valoraciones'],
     ])
-    expect(tracked.clubDataCalls()).toEqual(['getStatistics'])
+    expect(tracked.clubDataCalls()).toEqual(['getStatistics', 'getTasteCompatibility'])
     expectNoBrokenValues(main)
   })
 
@@ -313,7 +321,10 @@ describe('Estadísticas: the default member (README «Fixture statistics»)', ()
     expect(within(region('Media por criterio')).getByRole('table')).toHaveAccessibleName(
       'Media de cada criterio (5 valoraciones)',
     )
-    expect(main.textContent).not.toMatch(/La Regenta|Cumbres|Fortunata|El sí de las niñas|Carmen|Inés/)
+    expect(main.textContent).not.toMatch(/La Regenta|Cumbres|Fortunata|El sí de las niñas/)
+    // «Gustos en común» (#93) lists every other member by name, Carmen and
+    // Inés included (0 books in common); the #68 sections still never name them.
+    expect(textOutside(main, region('Gustos en común'))).not.toMatch(/Carmen|Inés/)
     expectNoBrokenValues(main)
   })
 })
@@ -369,7 +380,7 @@ describe('Estadísticas: loading, errors and the session', () => {
 
     expect(await screen.findByRole('region', { name: 'Destacados' })).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(tracked.clubDataCalls()).toEqual(['getStatistics', 'getStatistics'])
+    expect(tracked.clubDataCalls()).toEqual(['getStatistics', 'getStatistics', 'getTasteCompatibility'])
   })
 
   it('returns to the sign-in screen when getStatistics gets a 401', async () => {
@@ -401,11 +412,13 @@ describe('Estadísticas: loading, errors and the session', () => {
 })
 
 describe('Estadísticas: keyboard', () => {
-  it('reaches every link in reading order with Tab', async () => {
+  it('reaches every link and the «Comparar con» select in reading order with Tab', async () => {
     const user = userEvent.setup()
     const { main } = await openStatistics()
-    const links = within(main).getAllByRole('link')
-    expect(links.map((a) => a.textContent)).toEqual([
+    // In document order; «Gustos en común» (#93) adds its select and the
+    // links of the books shared with Carmen after the #68 links.
+    const focusable = [...main.querySelectorAll<HTMLElement>('a, select')]
+    expect(focusable.map((el) => (el.tagName === 'SELECT' ? 'select' : el.textContent))).toEqual([
       'Fortunata y Jacinta',
       'El sí de las niñas',
       'El sí de las niñas',
@@ -413,12 +426,17 @@ describe('Estadísticas: keyboard', () => {
       'Cumbres borrascosas',
       'El ingenioso hidalgo don Quijote de la Mancha',
       'El sí de las niñas',
+      'select',
+      'Cumbres borrascosas',
+      'El sí de las niñas',
+      'Fortunata y Jacinta',
     ])
+    expect(within(main).getAllByRole('link')).toHaveLength(10)
 
     screen.getByRole('button', { name: 'Cerrar sesión' }).focus()
-    for (const link of links) {
+    for (const element of focusable) {
       await user.tab()
-      expect(link).toHaveFocus()
+      expect(element).toHaveFocus()
     }
   })
 })
