@@ -83,7 +83,7 @@ export function FavouriteBooksField({
   return (
     <fieldset ref={listRef} aria-describedby={hintId} className="grid min-w-0 gap-3">
       <legend className="font-semibold text-forest">Libros favoritos</legend>
-      <p id={hintId} className="-mt-2 text-sm text-bark">
+      <p id={hintId} className="text-sm text-bark">
         Hasta 5 libros que el club haya leído, en el orden que prefieras.
       </p>
       <p role="status" className={status ? 'text-moss' : 'sr-only'}>
