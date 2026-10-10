@@ -1,4 +1,4 @@
-import { applyVoteScenario, createClubState, createEmptyState, type VoteScenario } from './fixtures'
+import { applyRubricExample, applyVoteScenario, createClubState, createEmptyState, type VoteScenario } from './fixtures'
 import type { MockOptions, MockSession } from './mockClient'
 
 const SESSIONS: readonly MockSession[] = ['anonymous', 'member', 'admin', 'curator', 'denied']
@@ -14,6 +14,7 @@ const isSession = (value: string | null): value is MockSession => SESSIONS.inclu
 // ?mock-data=empty                                     a new club with no books (#64)
 // ?mock-vote=draft|tie|none|open-tie                   change the current vote (#66, #91);
 //                                                      ignored with ?mock-data=empty
+// ?mock-rubric=ejemplo                                 placeholder rubric descriptions (#67)
 // Unknown values are ignored and the default applies.
 export function mockOptionsFromQuery(search: string): MockOptions {
   const params = new URLSearchParams(search)
@@ -26,5 +27,6 @@ export function mockOptionsFromQuery(search: string): MockOptions {
   const vote = params.get('mock-vote') as VoteScenario | null
   if (params.get('mock-data') === 'empty') options.state = createEmptyState()
   else if (vote && VOTE_SCENARIOS.includes(vote)) options.state = applyVoteScenario(createClubState(), vote)
+  if (params.get('mock-rubric') === 'ejemplo') options.state = applyRubricExample(options.state ?? createClubState())
   return options
 }

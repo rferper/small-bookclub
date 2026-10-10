@@ -1,7 +1,7 @@
 // Fictional club data for the mock API. The members are invented; the books
 // and quotes are public-domain works. Never put real club data here.
 
-import type { BookDetail, CurrentUser, LiteraryQuote, MemberSummary } from '../types'
+import type { BookDetail, CriterionScores, CurrentUser, LiteraryQuote, MemberSummary, RatingRubric } from '../types'
 
 export interface MockWeek {
   id: string
@@ -76,6 +76,17 @@ export interface MockVote {
   outcome: { winnerBookId: string; tieNote: string | null } | { tiedBookIds: string[] } | null
 }
 
+// A member's review of a book, at most one per member and book.
+export interface MockReview {
+  bookId: string
+  userId: string
+  scores: CriterionScores
+  // Plain text, trimmed; null when there is none.
+  text: string | null
+  submittedAt: string
+  editedAt: string | null
+}
+
 export interface MockState {
   // Whether someone is signed in. When 'signedIn', currentUserId says who.
   // Tests may change it after rendering to simulate an expired session.
@@ -91,7 +102,14 @@ export interface MockState {
   // The member assigned as curator (an assignment, not a role, §3), if any.
   curatorId: string | null
   votes: MockVote[]
+  // Inicio's club-wide review count; it stays as it is (#44 computes it).
   reviewCount: number
+  // bookId -> ids of the members who marked «He terminado el libro». This is
+  // separate from the weekly completions (§5.2, decision 43).
+  finished: Record<string, string[]>
+  reviews: MockReview[]
+  // Written by the admin (#70); every anchor is null until then.
+  rubric: RatingRubric
   quotes: LiteraryQuote[]
   // Fixed "now" so the mock picks the same current week every time.
   now: string
@@ -375,6 +393,57 @@ export function createClubState(): MockState {
       },
     ],
     reviewCount: 12,
+    finished: {
+      // Elena (m7) has finished it but not rated it; the default member
+      // (Mateo, m2) has not finished it, so it is locked for him.
+      b2: ['m1', 'm3', 'm5', 'm6', 'm7'],
+      // The default admin (m1) has finished it but not rated it.
+      b1: ['m1', 'm2', 'm4', 'm7'],
+      // Carmen read ahead and has finished the book the club is reading.
+      b3: ['m3'],
+    },
+    reviews: [
+      // «Cumbres borrascosas»: visible for the default admin, n = 4.
+      review('b2', 'm1', [5, 4.5, 3, 4, 2.5], {
+        text: 'Me atrapó desde el principio, aunque el final se me hizo largo.',
+        submittedAt: '2024-12-02T21:10:00+01:00',
+      }),
+      review('b2', 'm3', [4, 5, 4.5, 3.5, 5], {
+        text:
+          'Heathcliff me pareció <b>insoportable</b> y fascinante a la vez.\n' +
+          'El páramo es el mejor personaje del libro.\n' +
+          '<script>alert("hola")</script> no es más que texto aquí.',
+        submittedAt: '2024-12-01T18:00:00+01:00',
+        editedAt: '2025-01-15T10:30:00+01:00',
+      }),
+      review('b2', 'm5', [3, 3.5, 5, 4, 4.5], { submittedAt: '2024-12-03T09:00:00+01:00' }),
+      review('b2', 'm6', [4, 4, 4, 4.5, 3.5], {
+        text:
+          'Lo leí con calma, un capítulo cada noche, y creo que es la mejor manera de hacerlo. La estructura de ' +
+          'narradores dentro de narradores me despistó al principio: Lockwood cuenta lo que le cuenta Nelly, que a ' +
+          'su vez cuenta lo que le contaron otros, y a veces no sabía muy bien a quién creer. Con el tiempo entendí ' +
+          'que esa desconfianza es parte del juego.\n\n' +
+          'Lo que más me ha quedado es la segunda generación: Cathy, Hareton y Linton repiten y a la vez deshacen ' +
+          'los errores de sus padres. Me habría gustado comentarlo más en la reunión.',
+        submittedAt: '2026-09-10T11:30:00+02:00',
+      }),
+      // «Niebla»: visible for the default member, n = 3.
+      review('b1', 'm2', [4, 4.5, 3.5, 3, 4], {
+        text: 'Augusto Pérez discutiendo con Unamuno es de lo mejor que hemos leído.',
+        submittedAt: '2025-04-11T22:00:00+02:00',
+      }),
+      review('b1', 'm4', [5, 5, 4.5, 4, 5], { submittedAt: '2025-04-12T10:00:00+02:00' }),
+      review('b1', 'm7', [3.5, 4, 3, 2.5, 3.5], {
+        text: 'Me gustó la idea más que la novela.',
+        submittedAt: '2025-04-13T17:45:00+02:00',
+      }),
+      // «La Regenta»: locked for the default admin, who has not finished it.
+      review('b3', 'm3', [4.5, 5, 4, 3.5, 5], {
+        text: 'Ya la había leído hace años y la he disfrutado aún más.',
+        submittedAt: '2026-10-05T20:00:00+02:00',
+      }),
+    ],
+    rubric: emptyRubric(),
     quotes: [
       {
         text: 'El que lee mucho y anda mucho, ve mucho y sabe mucho.',
@@ -412,6 +481,40 @@ function meeting(fields: Pick<MockMeeting, 'id' | 'bookId' | 'startsAt'> & Parti
   return { cancelled: false, attendance: null, markedSafe: false, summary: null, highlights: [], ...fields }
 }
 
+// A review with the scores in criterion order (disfrute, estilo,
+// personajes, trama, huella), no text and never edited unless given.
+function review(
+  bookId: string,
+  userId: string,
+  [disfrute, estilo, personajes, trama, huella]: [number, number, number, number, number],
+  fields: Pick<MockReview, 'submittedAt'> & Partial<MockReview>,
+): MockReview {
+  return { bookId, userId, scores: { disfrute, estilo, personajes, trama, huella }, text: null, editedAt: null, ...fields }
+}
+
+// No anchor has a description: the owner writes them (§5.5, #70). Never
+// put plausible rubric text here.
+export function emptyRubric(): RatingRubric {
+  const anchors = () => ({ 1: null, 2: null, 3: null, 4: null, 5: null })
+  return { disfrute: anchors(), estilo: anchors(), personajes: anchors(), trama: anchors(), huella: anchors() }
+}
+
+const RUBRIC_EXAMPLE_LABELS = { disfrute: 'Disfrute', estilo: 'Estilo', trama: 'Trama', huella: 'Huella' } as const
+
+// Dev-only (?mock-rubric=ejemplo, see devOptions.ts): fills the 2, 3 and 4
+// star anchors of every criterion except Personajes with text that is
+// obviously a placeholder, never a real meaning. So 3 shows one anchor, 3,5
+// shows two, 1,5 and 4,5 show one and 5 or Personajes show none.
+export function applyRubricExample(state: MockState): MockState {
+  for (const [criterion, label] of Object.entries(RUBRIC_EXAMPLE_LABELS)) {
+    for (const stars of [2, 3, 4] as const) {
+      state.rubric[criterion as keyof typeof RUBRIC_EXAMPLE_LABELS][stars] =
+        `[Texto de ejemplo] ${label}, ${stars} estrellas`
+    }
+  }
+  return state
+}
+
 // A club that has just started: no books, meetings, reviews or quotes yet.
 export function createEmptyState(): MockState {
   const club = createClubState()
@@ -426,6 +529,9 @@ export function createEmptyState(): MockState {
     curatorId: null,
     votes: [],
     reviewCount: 0,
+    finished: {},
+    reviews: [],
+    rubric: emptyRubric(),
     quotes: [],
   }
 }

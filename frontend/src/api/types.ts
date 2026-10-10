@@ -284,3 +284,69 @@ export interface VotesOverview {
   // or the admin, when a curator is assigned and no vote is draft or open.
   canCreateVote: boolean
 }
+
+// Ratings and reviews (§5.5). The five mandatory criteria, always in this order.
+export type Criterion = 'disfrute' | 'estilo' | 'personajes' | 'trama' | 'huella'
+
+// One score per criterion: 1 to 5 in steps of 0.5.
+export type CriterionScores = Record<Criterion, number>
+
+// The signed-in user's own review. They always get it, whatever the gate says.
+export interface MyReview {
+  scores: CriterionScores
+  // Unweighted mean of the five scores, not rounded.
+  overall: number
+  // Plain text, never HTML; null when there is none.
+  text: string | null
+  // ISO 8601 date-times; editedAt is null until the first edit.
+  submittedAt: string
+  editedAt: string | null
+}
+
+// A member's review, only sent once the gate is passed.
+export interface ClubReview {
+  member: MemberSummary
+  scores: CriterionScores
+  overall: number
+  // Plain text, never HTML; null when there is none.
+  text: string | null
+  isMine: boolean
+}
+
+// What the signed-in user may see of the club's ratings, decided by the
+// server (§5.5). The locked shape carries nothing else at all: no count,
+// mean, name, score or text, not even empty ones.
+export type ClubRatings =
+  | { status: 'locked' }
+  | {
+      status: 'visible'
+      // `n`: the number of submitted reviews.
+      reviewCount: number
+      // Mean of every review's overall, each member weighted equally.
+      overallMean: number
+      criterionMeans: CriterionScores
+      // The user's own review first, then the others by display name.
+      // Never ordered by score.
+      reviews: ClubReview[]
+    }
+
+export interface BookRatings {
+  book: BookSummary
+  // Whether the book is an official club read that can be rated.
+  ratable: boolean
+  // The user's «He terminado el libro» flag, separate from weekly reading.
+  finishedByMe: boolean
+  myReview: MyReview | null
+  club: ClubRatings
+}
+
+// The admin-written meaning of each whole-star anchor (§5.5), or null where
+// there is none. Not gated: the same for everyone.
+export type RubricAnchors = Record<1 | 2 | 3 | 4 | 5, string | null>
+export type RatingRubric = Record<Criterion, RubricAnchors>
+
+export interface ReviewInput {
+  scores: CriterionScores
+  // Plain text; trimmed by the server, and a blank text is saved as null.
+  text: string | null
+}

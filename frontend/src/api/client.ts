@@ -1,4 +1,16 @@
-import type { BookDetail, HomeData, LibraryBook, MeetingDetail, MeetingList, Session, Vote, VotesOverview } from './types'
+import type {
+  BookDetail,
+  BookRatings,
+  HomeData,
+  LibraryBook,
+  MeetingDetail,
+  MeetingList,
+  RatingRubric,
+  ReviewInput,
+  Session,
+  Vote,
+  VotesOverview,
+} from './types'
 
 // The only way components talk to the backend. Today the app uses the mock
 // implementation; an HTTP implementation will replace it once the backend
@@ -58,6 +70,22 @@ export interface ApiClient {
   // Records the book the club chose after a tie, with an optional plain-text
   // note (at most 1000 characters; 400 if longer).
   recordTieWinner(voteId: string, bookId: string, note: string): Promise<Vote>
+
+  // Ratings and reviews (#67). Every call acts for the signed-in user only.
+  // The club's ratings come only once the user has finished the book and
+  // submitted their own review; until then `club` is locked and carries
+  // nothing else. Rejects with a 404 ApiError for an unknown book.
+  getBookRatings(bookId: string): Promise<BookRatings>
+  // The meaning of each whole-star anchor per criterion; not gated.
+  getRatingRubric(): Promise<RatingRubric>
+  // Sets or clears «He terminado el libro» and returns the updated ratings.
+  // 409 when finishing a book that cannot be rated, or clearing it once the
+  // user has a review.
+  setBookFinished(bookId: string, finished: boolean): Promise<BookRatings>
+  // Creates or replaces the user's review and returns the updated ratings.
+  // 409 when the book cannot be rated or the user has not finished it; 400
+  // for a missing or invalid score, or a text over 5000 characters.
+  saveMyReview(bookId: string, review: ReviewInput): Promise<BookRatings>
 }
 
 // Methods that manage the session itself; every other method returns club data.

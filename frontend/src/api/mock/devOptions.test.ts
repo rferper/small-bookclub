@@ -41,6 +41,21 @@ describe('mock options from the query string', () => {
     expect(empty).toMatchObject({ votes: [], curatorId: null, books: [] })
   })
 
+  it('can fill the rubric with placeholders (#67)', () => {
+    const rubric = mockOptionsFromQuery('?mock-rubric=ejemplo').state?.rubric
+    expect(rubric?.trama[3]).toBe('[Texto de ejemplo] Trama, 3 estrellas')
+    expect(rubric?.personajes[3]).toBeNull()
+    // It combines with the other options.
+    const combined = mockOptionsFromQuery('?mock-rubric=ejemplo&mock-vote=draft&mock-session=member')
+    expect(combined.state?.rubric.estilo[2]).toBe('[Texto de ejemplo] Estilo, 2 estrellas')
+    expect(combined.state?.votes.find((v) => v.id === 'v2')?.status).toBe('draft')
+    expect(combined.session).toBe('member')
+    expect(mockOptionsFromQuery('?mock-data=empty&mock-rubric=ejemplo').state).toMatchObject({ books: [] })
+    // Without it, or with an unknown value, every anchor stays empty.
+    expect(mockOptionsFromQuery('?mock-rubric=real')).toEqual({})
+    expect(mockOptionsFromQuery('?mock-vote=draft').state?.rubric.trama[3]).toBeNull()
+  })
+
   it('can keep Jordi’s vote open with a tie at the top (#91)', () => {
     const options = mockOptionsFromQuery('?mock-vote=open-tie&mock-session=curator')
     const vote = options.state?.votes.find((v) => v.id === 'v2')

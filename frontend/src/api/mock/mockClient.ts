@@ -1,7 +1,9 @@
 import { ApiError, type ApiClient } from '../client'
 import type {
   BookDetail,
+  BookRatings,
   BookSummary,
+  ClubRatings,
   HomeData,
   LibraryBook,
   MeetingAssignment,
@@ -11,15 +13,19 @@ import type {
   MeetingRecord,
   MemberSummary,
   NextMeeting,
+  RatingRubric,
   ReadingWeek,
+  ReviewInput,
   Session,
   Vote,
   VoteHistoryItem,
   VoteOutcome,
   VotesOverview,
 } from '../types'
-import { createClubState, type MockBook, type MockMeeting, type MockState, type MockVote } from './fixtures'
+import { CRITERIA, clubAggregates, isValidScore, REVIEW_TEXT_MAX_LENGTH, reviewOverall } from '../../lib/ratings'
+import { createClubState, type MockBook, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
+import { ratingGate } from './ratingGate'
 
 type Method = keyof ApiClient
 
@@ -229,6 +235,80 @@ export function createMockClient({
     const top = Math.max(0, ...vote.candidates.map((c) => c.approverIds.length))
     const tied = vote.candidates.filter((c) => c.approverIds.length === top).map((c) => c.bookId)
     return tied.length === 1 ? { winnerBookId: tied[0], tieNote: null } : { tiedBookIds: tied }
+  }
+
+  // Official club reads: «propuesto» and «elegido» books have not been read
+  // by the club yet (#67).
+  const isRatable = (book: MockBook) => book.status === 'leyendo' || book.status === 'terminado' || book.status === 'archivado'
+  const finishedBy = (bookId: string) => state.finished[bookId] ?? []
+  const reviewsOf = (bookId: string) => state.reviews.filter((r) => r.bookId === bookId)
+  const myReviewOf = (bookId: string) =>
+    state.reviews.find((r) => r.bookId === bookId && r.userId === state.currentUserId) ?? null
+
+  const spanishOrder = new Intl.Collator('es', { sensitivity: 'base' })
+
+  // Decided at call time for the signed-in user. A locked result is built
+  // with no other key, so no count, mean, name, score or text can leak; the
+  // admin gets the same answer as a member (§3).
+  const toClubRatings = (bookId: string): ClubRatings => {
+    const reviews = reviewsOf(bookId)
+    const gate = ratingGate({
+      userId: state.currentUserId,
+      finishedBy: finishedBy(bookId),
+      reviewerIds: reviews.map((r) => r.userId),
+    })
+    if (!gate.visible) return { status: 'locked' }
+    const aggregates = clubAggregates(reviews.map((r) => r.scores))!
+    const named = reviews.map((r) => ({ review: r, member: toMember(r.userId) }))
+    // The user's own review first, then the others by name; never by score.
+    named.sort((a, b) => {
+      const mine = Number(b.review.userId === state.currentUserId) - Number(a.review.userId === state.currentUserId)
+      return mine || spanishOrder.compare(a.member.displayName, b.member.displayName)
+    })
+    return {
+      status: 'visible',
+      reviewCount: aggregates.reviewCount,
+      overallMean: aggregates.overallMean,
+      criterionMeans: aggregates.criterionMeans,
+      reviews: named.map(({ review, member }) => ({
+        member,
+        scores: { ...review.scores },
+        overall: reviewOverall(review.scores),
+        text: review.text,
+        isMine: review.userId === state.currentUserId,
+      })),
+    }
+  }
+
+  const toBookRatings = (book: MockBook): BookRatings => {
+    const mine = myReviewOf(book.id)
+    return {
+      book: toBookSummary(book.id)!,
+      ratable: isRatable(book),
+      finishedByMe: finishedBy(book.id).includes(state.currentUserId),
+      myReview: mine && {
+        scores: { ...mine.scores },
+        overall: reviewOverall(mine.scores),
+        text: mine.text,
+        submittedAt: mine.submittedAt,
+        editedAt: mine.editedAt,
+      },
+      club: toClubRatings(book.id),
+    }
+  }
+
+  // Like the backend (#36): five scores from 1 to 5 in steps of 0.5, and a
+  // trimmed text of at most 5000 characters. Returns the text to save.
+  const validReviewText = ({ scores, text }: ReviewInput): string | null => {
+    const given = (scores ?? {}) as Partial<Record<string, unknown>>
+    if (!CRITERIA.every((criterion) => isValidScore(given[criterion]))) {
+      throw new ApiError(400, 'Cada criterio necesita una puntuación de 1 a 5, en pasos de media estrella.')
+    }
+    const trimmed = (text ?? '').trim()
+    if (trimmed.length > REVIEW_TEXT_MAX_LENGTH) {
+      throw new ApiError(400, `La reseña puede tener como mucho ${REVIEW_TEXT_MAX_LENGTH} caracteres.`)
+    }
+    return trimmed || null
   }
 
   const nextMeeting = () =>
@@ -537,6 +617,52 @@ export function createMockClient({
       if (tieNote.length > 1000) throw new ApiError(400, 'La nota puede tener como mucho 1000 caracteres.')
       vote.outcome = { winnerBookId: bookId, tieNote: tieNote || null }
       return toVote(vote)
+    },
+
+    async getBookRatings(bookId: string): Promise<BookRatings> {
+      requireSignedIn()
+      failIfConfigured('getBookRatings')
+      return toBookRatings(findBook(bookId))
+    },
+
+    async getRatingRubric(): Promise<RatingRubric> {
+      requireSignedIn()
+      failIfConfigured('getRatingRubric')
+      return Object.fromEntries(CRITERIA.map((c) => [c, { ...state.rubric[c] }])) as RatingRubric
+    },
+
+    async setBookFinished(bookId: string, finished: boolean): Promise<BookRatings> {
+      requireSignedIn()
+      failIfConfigured('setBookFinished')
+      const book = findBook(bookId)
+      if (finished && !isRatable(book)) throw new ApiError(409, 'El club todavía no ha leído este libro.')
+      // A rated book stays finished.
+      if (!finished && myReviewOf(bookId)) throw new ApiError(409, 'Ya has valorado este libro.')
+      // Always acts on the signed-in member only. It never touches the weekly
+      // completions (§5.2, decision 43).
+      const others = finishedBy(bookId).filter((id) => id !== state.currentUserId)
+      state.finished[bookId] = finished ? [...others, state.currentUserId] : others
+      return toBookRatings(book)
+    },
+
+    async saveMyReview(bookId: string, input: ReviewInput): Promise<BookRatings> {
+      requireSignedIn()
+      failIfConfigured('saveMyReview')
+      const book = findBook(bookId)
+      if (!isRatable(book)) throw new ApiError(409, 'El club todavía no ha leído este libro.')
+      if (!finishedBy(bookId).includes(state.currentUserId)) throw new ApiError(409, 'Primero marca el libro como terminado.')
+      const text = validReviewText(input)
+      const scores = Object.fromEntries(CRITERIA.map((c) => [c, input.scores[c]])) as MockReview['scores']
+      // One review per member and book: an edit keeps submittedAt.
+      const existing = myReviewOf(bookId)
+      if (existing) {
+        existing.scores = scores
+        existing.text = text
+        existing.editedAt = state.now
+      } else {
+        state.reviews.push({ bookId, userId: state.currentUserId, scores, text, submittedAt: state.now, editedAt: null })
+      }
+      return toBookRatings(book)
     },
   }
 }
