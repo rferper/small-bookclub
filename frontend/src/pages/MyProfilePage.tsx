@@ -97,7 +97,7 @@ function MyReviewItem({ review }: { review: MyReviewEntry }) {
       </p>
       <p>
         <Link to={ratingFormPath(book.id)} className={linkClass}>
-          Editar mi valoración<span className="sr-only"> de «{book.title}»</span>
+          Editar mi valoración{' '}<span className="sr-only">de «{book.title}»</span>
         </Link>
       </p>
     </li>
