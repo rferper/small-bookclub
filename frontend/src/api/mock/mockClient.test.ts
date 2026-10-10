@@ -71,6 +71,9 @@ describe('mock library', () => {
 
     expect(books.map((b) => b.status).sort()).toEqual([
       'archivado',
+      'archivado',
+      'archivado',
+      'archivado',
       'elegido',
       'leyendo',
       'propuesto',
@@ -137,7 +140,7 @@ describe('mock library', () => {
     const api = createMockClient({ failures: { listBooks: 1, getBook: 1 } })
 
     await expect(api.listBooks()).rejects.toMatchObject({ status: 500 })
-    await expect(api.listBooks()).resolves.toHaveLength(11)
+    await expect(api.listBooks()).resolves.toHaveLength(14)
     await expect(api.getBook('b3')).rejects.toMatchObject({ status: 500 })
     await expect(api.getBook('b3')).resolves.toMatchObject({ id: 'b3' })
   })

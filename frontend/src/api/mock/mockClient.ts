@@ -17,15 +17,18 @@ import type {
   ReadingWeek,
   ReviewInput,
   Session,
+  Statistics,
   Vote,
   VoteHistoryItem,
   VoteOutcome,
   VotesOverview,
 } from '../types'
 import { CRITERIA, clubAggregates, isValidScore, REVIEW_TEXT_MAX_LENGTH, reviewOverall } from '../../lib/ratings'
+import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
 import { createClubState, type MockBook, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
 import { ratingGate } from './ratingGate'
+import { countedReviews } from './statisticsGate'
 
 type Method = keyof ApiClient
 
@@ -663,6 +666,30 @@ export function createMockClient({
         state.reviews.push({ bookId, userId: state.currentUserId, scores, text, submittedAt: state.now, editedAt: null })
       }
       return toBookRatings(book)
+    },
+
+    async getStatistics(): Promise<Statistics> {
+      requireSignedIn()
+      failIfConfigured('getStatistics')
+      // Decided on every call for the signed-in user: the reviews of books
+      // they have not unlocked are dropped before any figure is computed, so
+      // nothing of those books (not even a count) can reach the response.
+      const counted = countedReviews({ userId: state.currentUserId, reviews: state.reviews, finished: state.finished })
+      const bookIds = new Set(counted.map((r) => r.bookId))
+      const memberIds = new Set(counted.map((r) => r.userId))
+      return {
+        booksRead: state.books.filter((b) => b.status === 'terminado' || b.status === 'archivado').length,
+        // Like the server: by its own clock (state.now).
+        meetingsHeld: state.meetings.filter((m) => !m.cancelled && Date.parse(m.startsAt) < Date.parse(state.now)).length,
+        thresholds: { ...STATISTICS_THRESHOLDS },
+        ratings: ratingStatistics({
+          reviews: counted.map((r) => ({ bookId: r.bookId, memberId: r.userId, scores: { ...r.scores } })),
+          books: state.books.filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
+          members: toMemberSummaries([...memberIds]),
+          viewerId: state.currentUserId,
+          thresholds: STATISTICS_THRESHOLDS,
+        }),
+      }
     },
   }
 }

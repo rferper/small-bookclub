@@ -8,6 +8,7 @@ import type {
   RatingRubric,
   ReviewInput,
   Session,
+  Statistics,
   Vote,
   VotesOverview,
 } from './types'
@@ -86,6 +87,11 @@ export interface ApiClient {
   // 409 when the book cannot be rated or the user has not finished it; 400
   // for a missing or invalid score, or a text over 5000 characters.
   saveMyReview(bookId: string, review: ReviewInput): Promise<BookRatings>
+
+  // Statistics (#68) for the signed-in user. The rating figures count only
+  // the books this user has finished and rated; the others are absent, and
+  // nothing says how many there are.
+  getStatistics(): Promise<Statistics>
 }
 
 // Methods that manage the session itself; every other method returns club data.

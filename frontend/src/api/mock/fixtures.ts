@@ -198,6 +198,36 @@ export function createClubState(): MockState {
       // Proposed books that are not in any vote yet, so the curator can add them (#91).
       book({ id: 'b10', title: 'Doña Perfecta', authors: ['Benito Pérez Galdós'], status: 'propuesto', publicationDate: '1876', pageCount: 288 }),
       book({ id: 'b11', title: 'Sotileza', authors: ['José María de Pereda'], status: 'propuesto', publicationDate: '1885' }),
+      // Earlier club reads with no weekly plan, so Estadísticas has enough
+      // ratings for every highlight (#68). Archived, so Inicio's count of
+      // «terminado» books is unchanged.
+      book({
+        id: 'b12',
+        title: 'Fortunata y Jacinta',
+        authors: ['Benito Pérez Galdós'],
+        status: 'archivado',
+        readingStartDate: '2025-05-03',
+        readingEndDate: '2025-07-19',
+        publicationDate: '1887',
+      }),
+      book({
+        id: 'b13',
+        title: 'El sí de las niñas',
+        authors: ['Leandro Fernández de Moratín'],
+        status: 'archivado',
+        readingStartDate: '2025-09-06',
+        readingEndDate: '2025-10-11',
+        publicationDate: '1806',
+      }),
+      book({
+        id: 'b14',
+        title: 'El ingenioso hidalgo don Quijote de la Mancha',
+        authors: ['Miguel de Cervantes'],
+        status: 'archivado',
+        readingStartDate: '2025-11-08',
+        readingEndDate: '2026-06-27',
+        publicationDate: '1605',
+      }),
     ],
     weeks: [
       { id: 'w1', bookId: 'b3', weekNumber: 1, percentStart: 0, percentEnd: 12, pageStart: 1, pageEnd: 98, meetingId: 'mt1', dueDate: null, notes: null },
@@ -401,6 +431,12 @@ export function createClubState(): MockState {
       b1: ['m1', 'm2', 'm4', 'm7'],
       // Carmen read ahead and has finished the book the club is reading.
       b3: ['m3'],
+      // Earlier reads (#68). Jordi (m6) has finished «Fortunata y Jacinta»
+      // but not rated it.
+      b12: ['m1', 'm3', 'm4', 'm6', 'm7'],
+      b13: ['m1', 'm3', 'm5'],
+      // Read by the default admin and the default member only.
+      b14: ['m1', 'm2'],
     },
     reviews: [
       // «Cumbres borrascosas»: visible for the default admin, n = 4.
@@ -441,6 +477,27 @@ export function createClubState(): MockState {
       review('b3', 'm3', [4.5, 5, 4, 3.5, 5], {
         text: 'Ya la había leído hace años y la he disfrutado aún más.',
         submittedAt: '2026-10-05T20:00:00+02:00',
+      }),
+      // «Fortunata y Jacinta»: n = 4 (#68).
+      review('b12', 'm1', [5, 5, 4.5, 4.5, 5], { submittedAt: '2025-07-20T19:00:00+02:00' }),
+      review('b12', 'm3', [4.5, 5, 5, 4, 4.5], {
+        text: 'Larga, pero cada página tiene vida.',
+        submittedAt: '2025-07-21T21:15:00+02:00',
+      }),
+      review('b12', 'm4', [4, 4.5, 4, 4, 4], { submittedAt: '2025-07-22T09:30:00+02:00' }),
+      review('b12', 'm7', [5, 4.5, 5, 4, 4.5], { submittedAt: '2025-07-23T18:00:00+02:00' }),
+      // «El sí de las niñas»: n = 3, with very different opinions (#68).
+      review('b13', 'm1', [2, 2.5, 2, 3, 2], {
+        text: 'No conseguí entrar en la obra.',
+        submittedAt: '2025-10-12T20:00:00+02:00',
+      }),
+      review('b13', 'm3', [4.5, 4, 4, 4.5, 4.5], { submittedAt: '2025-10-13T10:00:00+02:00' }),
+      review('b13', 'm5', [3, 3, 2.5, 3.5, 3], { submittedAt: '2025-10-14T22:30:00+02:00' }),
+      // «El ingenioso hidalgo don Quijote de la Mancha»: n = 2 (#68).
+      review('b14', 'm1', [4.5, 4, 4, 3.5, 5], { submittedAt: '2026-06-28T12:00:00+02:00' }),
+      review('b14', 'm2', [4, 3.5, 4.5, 3, 4], {
+        text: 'Mejor de lo que esperaba.',
+        submittedAt: '2026-06-29T17:00:00+02:00',
       }),
     ],
     rubric: emptyRubric(),
