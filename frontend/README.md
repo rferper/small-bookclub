@@ -125,7 +125,7 @@ Every case in «Fixture ratings», «Fixture votes» and «Fixture meetings» is
 
 ## Fixture members
 
-Miembros (`/miembros`) lists the active members by name, the signed-in user marked «(tú)», with this week's status from the same state as Inicio's «Cómo va el club esta semana» (#69). The current week is 3: in the default session only Carmen and Jordi have read it, so they show «✓ Leído» and everyone else «Leyendo»; marking week 3 on Inicio turns the signed-in user's status into «✓ Leído». Profiles (`/miembros/<id>`) never show ratings or reviews; another member's profile links to Estadísticas, and your own to «Editar mi perfil» (`/mi-perfil`, still a placeholder until #94). Every `avatarUrl` is `null`, so avatars are initials; tests set one to see an image avatar.
+Miembros (`/miembros`) lists the active members by name, the signed-in user marked «(tú)», with this week's status from the same state as Inicio's «Cómo va el club esta semana» (#69). The current week is 3: in the default session only Carmen and Jordi have read it, so they show «✓ Leído» and everyone else «Leyendo»; marking week 3 on Inicio turns the signed-in user's status into «✓ Leído». Profiles (`/miembros/<id>`) never show ratings or reviews; another member's profile links to Estadísticas, and your own to «Editar mi perfil» (`/mi-perfil`, see «Mi perfil» below). Every `avatarUrl` is `null`, so avatars are initials; tests set one to see an image avatar.
 
 | Member | Profile case | Week 3 |
 |---|---|---|
@@ -140,3 +140,15 @@ Miembros (`/miembros`) lists the active members by name, the signed-in user mark
 | `/miembros/no-existe` | Unknown member: the not-found page. | — |
 
 With `?mock-data=empty` the club has only the admin: Miembros lists «Lucía (tú)» with no week line or status and says «Todavía no hay más miembros en el club.», and her profile is empty.
+
+## Mi perfil
+
+Mi perfil (`/mi-perfil`, #94) edits the signed-in user's own profile and lists their own ratings. The calls take no member id, so each session edits only itself. «Libros favoritos» offers every `terminado` or `archivado` book by title: «Ángel Guerra», «Cumbres borrascosas», «El ingenioso hidalgo don Quijote de la Mancha», «El sí de las niñas», «Fortunata y Jacinta» and «Niebla».
+
+| Session | Form values | «Mis valoraciones», newest first |
+|---|---|---|
+| Default admin (Lucía) | Her short bio and quote; favourites «Niebla», «Cumbres borrascosas»; no photo. | «El ingenioso hidalgo…», «El sí de las niñas», «Fortunata y Jacinta», «Cumbres borrascosas» (3,8). Editing «Cumbres borrascosas» moves it first with «editada el 9 de octubre de 2026»; finishing and rating «Ángel Guerra» adds it first. |
+| `?mock-session=member` (Mateo) | No bio; his quote; favourite «El ingenioso hidalgo…». | «El ingenioso hidalgo…», «Niebla». |
+| `?mock-data=empty` (admin) | Only her name; no favourites and no books to choose («El club aún no ha terminado ningún libro…»). | Empty: «Aquí aparecerán tus valoraciones de los libros del club.» |
+
+A photo must be JPEG, PNG or WebP of at most 2 MB; it is previewed and sent only with «Guardar cambios». The mock keeps the saved name, texts, favourites and photo (as a data URL) in memory, so Miembros, the profiles, Inicio, «Valoraciones», Votaciones, Reuniones and Estadísticas show them until the next full page load.
