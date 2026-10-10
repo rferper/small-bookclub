@@ -543,3 +543,37 @@ export interface MyReviewEntry {
   submittedAt: string
   editedAt: string | null
 }
+
+// Administración (#70): the member allowlist, for the admin only. These are
+// the only shapes that carry a Discord user id, a role or an access status;
+// no member-facing call ever does. No rating, review, profile text or
+// favourite either.
+export type MemberAccess = 'active' | 'revoked'
+
+export interface AdminMember {
+  member: MemberSummary
+  // The exact Discord user id on the allowlist: 17–20 ASCII digits.
+  discordId: string
+  role: Role
+  status: MemberAccess
+  addedAt: string
+  // Set only when the member is revoked, otherwise null.
+  revokedAt: string | null
+  isMe: boolean
+  isCurator: boolean
+}
+
+export interface AdminMembers {
+  // Active members first, then revoked ones; each group by display name with
+  // Spanish collation.
+  members: AdminMember[]
+  // The current curator, or null when nobody is assigned.
+  curator: MemberSummary | null
+}
+
+// A new allowlist entry. The server trims both values; adding approves the
+// member at once, with the `member` role and an empty profile.
+export interface NewMember {
+  discordId: string
+  displayName: string
+}
