@@ -281,7 +281,7 @@ describe('No ratings on profiles', () => {
     }
   })
 
-  it.each((['admin', 'member'] as const).flatMap((session) => ACTIVE.map(([id, name]) => [session, name, id])))(
+  it.each((['admin', 'member'] as const).flatMap((session) => ACTIVE.map(([id, name]) => [session, name, id] as const)))(
     'shows no rating data to the %s on %s’s profile',
     async (session, name, id) => {
       const { main } = await openProfile(id, { session })
