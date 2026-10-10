@@ -90,11 +90,12 @@ describe('Book page', () => {
     expect(within(meetings[3]).getByRole('link')).toHaveAttribute('href', '/reuniones/mt3')
   })
 
-  it('shows a ratings placeholder without numbers or names', async () => {
+  // Adapted in #67: the placeholder became the locked ratings section.
+  it('shows locked ratings without numbers or names', async () => {
     await openBook('b3')
 
     const ratings = region('Valoraciones')
-    expect(ratings).toHaveTextContent('Aquí aparecerán las valoraciones del club sobre este libro.')
+    expect(await within(ratings).findByRole('checkbox', { name: 'He terminado el libro' })).toBeInTheDocument()
     expect(ratings.textContent).not.toMatch(/\d|★|Lucía|Mateo|Carmen/)
   })
 
@@ -145,21 +146,33 @@ describe('Book page', () => {
     expect(main.querySelector('b')).toBeNull()
   })
 
-  it('asks only for the book, never for ratings or summaries', async () => {
+  // Adapted in #67: «Valoraciones» loads with its own gated call.
+  it('asks for the book and its ratings, never for meetings or summaries', async () => {
     const { tracked } = await openBook('b3')
-    expect(tracked.clubDataCalls()).toEqual(['getBook'])
+    await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
+    expect(tracked.clubDataCalls()).toEqual(['getBook', 'getBookRatings'])
   })
 
-  it('looks the same for a member and an admin, with no edit controls', async () => {
-    const asAdmin = await openBook('b3', { session: 'admin' })
-    const adminText = asAdmin.main.textContent
-    expect(within(asAdmin.main).queryByRole('button')).not.toBeInTheDocument()
-    asAdmin.unmount()
+  // Adapted in #67: «Valoraciones» depends on the user's own state (see
+  // RatingsSection.test.tsx), so the comparison covers the rest of the page.
+  it('looks the same for a member and an admin outside «Valoraciones», with no edit controls', async () => {
+    const outsideRatings = async (session: 'admin' | 'member') => {
+      const { main, unmount } = await openBook('b3', { session })
+      await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
+      const copy = main.cloneNode(true) as HTMLElement
+      for (const section of copy.querySelectorAll('section')) {
+        if (section.querySelector('h2')?.textContent === 'Valoraciones') section.remove()
+      }
+      expect(within(copy).queryByRole('button')).not.toBeInTheDocument()
+      expect(copy).not.toHaveTextContent('He terminado el libro')
+      const text = copy.textContent
+      unmount()
+      return text
+    }
 
-    const asMember = await openBook('b3', { session: 'member' })
-    expect(asMember.main.textContent).toBe(adminText)
-    expect(within(asMember.main).queryByRole('button')).not.toBeInTheDocument()
-    expect(asMember.main).not.toHaveTextContent('He terminado el libro')
+    const adminText = await outsideRatings('admin')
+    expect(adminText).toContain('Plan de lectura')
+    expect(await outsideRatings('member')).toBe(adminText)
   })
 
   it('shows a friendly page for an unknown book', async () => {
@@ -183,7 +196,8 @@ describe('Book page', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Reintentar' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'La Regenta' })).toBeInTheDocument()
-    expect(tracked.clubDataCalls()).toEqual(['getBook', 'getBook'])
+    // Adapted in #67: the ratings load once the book is shown.
+    expect(tracked.clubDataCalls().filter((method) => method === 'getBook')).toEqual(['getBook', 'getBook'])
   })
 
   it('returns to the sign-in screen when getBook gets a 401', async () => {

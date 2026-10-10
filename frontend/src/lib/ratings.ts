@@ -19,6 +19,26 @@ export const SCORE_VALUES: readonly number[] = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 
 
 export const REVIEW_TEXT_MAX_LENGTH = 5000
 
+// A short line under some criteria, taken only from §5.5's descriptions.
+export const CRITERION_HINTS: Partial<Record<Criterion, string>> = {
+  disfrute: 'Cuánto lo has disfrutado',
+  estilo: 'Prosa y estilo',
+  huella: 'Impresión duradera',
+}
+
+export const ratingFormPath = (bookId: string) => `/biblioteca/${encodeURIComponent(bookId)}/valorar`
+
+// Router state set when the rating form opens the book page after saving,
+// so «Valoraciones» confirms it and takes focus.
+export interface RatingSavedState {
+  ratingSaved: true
+}
+export const isRatingSavedState = (state: unknown): state is RatingSavedState =>
+  typeof state === 'object' && state !== null && (state as Partial<RatingSavedState>).ratingSaved === true
+
+// Shown for a «propuesto» or «elegido» book, on the book page and the form.
+export const NOT_RATABLE_MESSAGE = 'El club todavía no ha leído este libro, así que aún no se puede valorar.'
+
 export function isValidScore(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 1 && value <= 5 && Number.isInteger(value * 2)
 }

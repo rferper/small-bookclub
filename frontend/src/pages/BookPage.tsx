@@ -5,6 +5,7 @@ import type { BookDetail, BookMeeting, ScheduleWeek } from '../api/types'
 import { BookCover } from '../components/BookCover'
 import { BookStatusLabel } from '../components/BookStatusLabel'
 import { Card, EmptyState } from '../components/Card'
+import { RatingsSection } from '../components/RatingsSection'
 import { LoadError, Loading } from '../components/Status'
 import {
   formatAuthors,
@@ -24,8 +25,9 @@ export function BookPage() {
 }
 
 function BookPageContent({ bookId }: { bookId: string }) {
-  // Only the book itself: its ratings (#67) and meeting summaries (#65) are
-  // gated and loaded on their own pages, never here.
+  // Only the book itself: its meeting summaries (#65) are gated and live on
+  // the meeting pages, and its ratings (#67) are gated and loaded by the
+  // «Valoraciones» section with their own call.
   const book = useApiData((api) => api.getBook(bookId))
 
   if (book.status === 'loading') return <Loading />
@@ -44,7 +46,8 @@ function BackToLibrary() {
   )
 }
 
-function BookNotFound() {
+// Also used by the rating form for an unknown book.
+export function BookNotFound() {
   return (
     <section className="rounded-xl border border-wood/30 bg-paper p-6">
       <h1 className="text-3xl text-forest">No encontramos este libro</h1>
@@ -59,7 +62,7 @@ function BookNotFound() {
 }
 
 // Same page for members and admins: editing a book belongs to the admin
-// screens (#70) and «He terminado el libro» to the ratings section (#67).
+// screens (#70). «He terminado el libro» lives in the ratings section.
 function BookView({ book }: { book: BookDetail }) {
   const metadata = [
     ['Publicación', book.publicationDate],
@@ -113,10 +116,7 @@ function BookView({ book }: { book: BookDetail }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Schedule weeks={book.schedule} />
         <Meetings meetings={book.meetings} />
-        <Card title="Valoraciones">
-          {/* Placeholder for the ratings section (#67), which unlocks once a member has finished the book. */}
-          <EmptyState>Aquí aparecerán las valoraciones del club sobre este libro.</EmptyState>
-        </Card>
+        <RatingsSection bookId={book.id} />
       </div>
     </div>
   )

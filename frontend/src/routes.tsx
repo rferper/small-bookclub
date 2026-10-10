@@ -6,6 +6,7 @@ import { LibraryPage } from './pages/LibraryPage'
 import { MeetingPage } from './pages/MeetingPage'
 import { MeetingsPage } from './pages/MeetingsPage'
 import { NotFoundPage, PlaceholderPage } from './pages/PlaceholderPage'
+import { RatePage } from './pages/RatePage'
 import { VotePage } from './pages/VotePage'
 import { VotesPage } from './pages/VotesPage'
 import { SessionGate } from './session/SessionGate'
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomePage /> },
           { path: 'biblioteca', element: <LibraryPage /> },
           { path: 'biblioteca/:bookId', element: <BookPage /> },
+          { path: 'biblioteca/:bookId/valorar', element: <RatePage /> },
           { path: 'reuniones', element: <MeetingsPage /> },
           { path: 'reuniones/:meetingId', element: <MeetingPage /> },
           { path: 'votaciones', element: <VotesPage /> },
