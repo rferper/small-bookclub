@@ -122,3 +122,21 @@ Every case in «Fixture ratings», «Fixture votes» and «Fixture meetings» is
 | Default admin after rating «Niebla» (any scores) | Carmen 3, Elena 2, Inés 2, Jordi 1, Mateo 2, Pablo 2. | Carmen unchanged; everyone else still insufficient. |
 | Default admin after editing «Cumbres borrascosas» to 4 in every criterion | Unchanged. | Carmen: overall difference 2,6/3 = 0,867 (0,9). |
 | `?mock-session=member` after finishing and rating «Fortunata y Jacinta» (`b12`) and then «El sí de las niñas» (`b13`) with 4 in every criterion | After `b12`: Lucía 2 (still insufficient). After both: Carmen 2, Elena 2, Inés 1, Jordi 0, Lucía 3, Pablo 2. | Lucía: overall difference 2,9/3 = 0,967 (1,0); criteria Disfrute 3,5/3, Estilo 1, Personajes 1, Trama 2/3, Huella 4/3 (1,2 · 1,0 · 1,0 · 0,7 · 1,3); books «El ingenioso hidalgo…» 3,8 / 4,2 / 0,4, «El sí de las niñas» 4,0 / 2,3 / 1,7, «Fortunata y Jacinta» 4,0 / 4,8 / 0,8. «Cumbres borrascosas» is absent: Mateo has not rated it. |
+
+## Fixture members
+
+Miembros (`/miembros`) lists the active members by name, the signed-in user marked «(tú)», with this week's status from the same state as Inicio's «Cómo va el club esta semana» (#69). The current week is 3: in the default session only Carmen and Jordi have read it, so they show «✓ Leído» and everyone else «Leyendo»; marking week 3 on Inicio turns the signed-in user's status into «✓ Leído». Profiles (`/miembros/<id>`) never show ratings or reviews; another member's profile links to Estadísticas, and your own to «Editar mi perfil» (`/mi-perfil`, still a placeholder until #94). Every `avatarUrl` is `null`, so avatars are initials; tests set one to see an image avatar.
+
+| Member | Profile case | Week 3 |
+|---|---|---|
+| `/miembros/m1` Lucía (default admin) | Short bio, a quote and two favourites («Niebla», «Cumbres borrascosas»). Her own profile in the default session. | Leyendo |
+| `/miembros/m2` Mateo (`?mock-session=member`) | No bio; a quote and one favourite with a long title («El ingenioso hidalgo don Quijote de la Mancha»). | Leyendo |
+| `/miembros/m3` Carmen | Full: a two-paragraph bio with literal `<b>` and `<script>` text, a two-line quote and three favourites («Cumbres borrascosas», «Fortunata y Jacinta», «El ingenioso hidalgo don Quijote de la Mancha»). | ✓ Leído |
+| `/miembros/m4` Pablo | Empty: no bio, no quote and no favourites. | Leyendo |
+| `/miembros/m5` Inés | Long bio (over 400 characters), no quote, one favourite («El sí de las niñas»). | Leyendo |
+| `/miembros/m6` Jordi (`?mock-session=curator`) | Short bio and a quote, no favourites. | ✓ Leído |
+| `/miembros/m7` Elena | Short bio, no quote, two favourites («Ángel Guerra», «Niebla»). | Leyendo |
+| `/miembros/m8` Tomás | Revoked: he has a bio, a quote and a favourite, but he is never listed and his profile shows the same «No encontramos a este miembro» page as `/miembros/no-existe`. No other screen or figure includes him. | — |
+| `/miembros/no-existe` | Unknown member: the not-found page. | — |
+
+With `?mock-data=empty` the club has only the admin: Miembros lists «Lucía (tú)» with no week line or status and says «Todavía no hay más miembros en el club.», and her profile is empty.
