@@ -2,6 +2,9 @@ import { ApiError, type ApiClient } from '../client'
 import type {
   AdminMember,
   AdminMembers,
+  AdminBook,
+  BookInput,
+  BookMetadataResult,
   BookDetail,
   BookRatings,
   BookSummary,
@@ -44,8 +47,9 @@ import {
   readAsDataUrl,
 } from '../../lib/profile'
 import { discordIdProblem } from '../../lib/admin'
+import { bookErrors, CATALOGUE_LIMITS, DATE_FIELDS } from '../../lib/catalogue'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
-import { createClubState, type MockBook, type MockMember, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
+import { createClubState, METADATA_RESULTS, type MockBook, type MockMember, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
 import { ratingGate } from './ratingGate'
 import { countedReviews } from './statisticsGate'
@@ -476,7 +480,78 @@ export function createMockClient({
   }
   const unknownMember = () => new ApiError(404, 'No existe ese miembro.')
 
+  // Explicit projection: no related record or private field can enter an admin response.
+  const toAdminBook = (book: MockBook): AdminBook => ({
+    ...toLibraryBook(book), authors: [...book.authors], description: book.description,
+    publicationDate: book.publicationDate, publisher: book.publisher, isbn: book.isbn, pageCount: book.pageCount,
+    plannedStartDate: book.plannedStartDate, plannedEndDate: book.plannedEndDate,
+    originVote: book.originVote ? { ...book.originVote } : null,
+  })
+  const catalogueAccess = (method: Method) => {
+    requireSignedIn()
+    if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede gestionar los libros.')
+    failIfConfigured(method)
+  }
+  const saveBook = async (input: BookInput, id?: string): Promise<AdminBook> => {
+    if (id !== undefined) findBook(id)
+    const errors = bookErrors(input)
+    if (Object.keys(errors).length) throw new ApiError(400, Object.values(errors).join(' '))
+    const pendingCover = input.cover
+    const imported = pendingCover.action === 'metadata' ? METADATA_RESULTS.find((r) => r.id === pendingCover.resultId) : null
+    if (input.cover.action === 'metadata' && !imported) throw new ApiError(400, 'No existe esa portada de metadatos.')
+    // Capture and normalise every field before reading a file; no input aliases.
+    const clean: BookInput = {
+      title: input.title.trim(), authors: input.authors.map((a) => a.trim()).filter(Boolean),
+      description: input.description, publicationDate: input.publicationDate, publisher: input.publisher, isbn: input.isbn,
+      pageCount: input.pageCount, status: input.status, datesApproximate: input.datesApproximate,
+      plannedStartDate: input.plannedStartDate, plannedEndDate: input.plannedEndDate,
+      readingStartDate: input.readingStartDate, readingEndDate: input.readingEndDate, cover: { ...input.cover },
+    }
+    for (const field of ['description', 'publicationDate', 'publisher', 'isbn', ...DATE_FIELDS] as const) clean[field] = input[field]?.trim() || null
+    const uploaded = input.cover.action === 'replace' ? await readAsDataUrl(input.cover.file).catch(() => { throw new ApiError(400, 'No se ha podido leer la portada.') }) : null
+    // Recheck after asynchronous image reading. The conflict check and commit
+    // have no await between them, so concurrent creates cannot both activate.
+    requireSignedIn()
+    if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede gestionar los libros.')
+    const existing = id !== undefined ? findBook(id) : null
+    const active = state.books.find((b) => b.status === 'leyendo' && b.id !== id)
+    if (clean.status === 'leyendo' && active) throw new ApiError(409, `«${active.title}» ya está Leyendo. Cambia primero su estado antes de marcar otro libro como Leyendo.`)
+    const { cover, ...metadata } = clean
+    let newId = id ?? 'book-1'
+    if (!id) {
+      let number = 1
+      while (state.books.some((b) => b.id === newId)) newId = `book-${++number}`
+    }
+    const saved: MockBook = { ...metadata, id: newId, originVote: existing?.originVote ?? null,
+      coverUrl: cover.action === 'remove' ? null : cover.action === 'replace' ? uploaded : cover.action === 'metadata' ? imported!.coverUrl : existing?.coverUrl ?? null }
+    if (existing) state.books[state.books.findIndex((b) => b.id === id)] = saved
+    else state.books.push(saved)
+    return toAdminBook(saved)
+  }
+
   return {
+    async listAdminBooks(): Promise<AdminBook[]> {
+      catalogueAccess('listAdminBooks')
+      return [...state.books].sort((a, b) => a.title.localeCompare(b.title, 'es')).map(toAdminBook)
+    },
+    async getAdminBook(bookId: string): Promise<AdminBook> {
+      catalogueAccess('getAdminBook')
+      return toAdminBook(findBook(bookId))
+    },
+    async createBook(input: BookInput): Promise<AdminBook> {
+      catalogueAccess('createBook')
+      return saveBook(input)
+    },
+    async updateBook(bookId: string, input: BookInput): Promise<AdminBook> {
+      catalogueAccess('updateBook')
+      return saveBook(input, bookId)
+    },
+    async searchBookMetadata(query: string): Promise<BookMetadataResult[]> {
+      catalogueAccess('searchBookMetadata')
+      if (typeof query !== 'string' || !query.trim() || query.trim().length > CATALOGUE_LIMITS.query) throw new ApiError(400, 'Escribe un título o autor de hasta 200 caracteres.')
+      const text = query.trim().toLocaleLowerCase('es')
+      return METADATA_RESULTS.filter((r) => [r.title, ...r.authors].some((v) => v.toLocaleLowerCase('es').includes(text))).map((r) => ({ ...r, authors: [...r.authors] }))
+    },
     async getSession(): Promise<Session> {
       failIfConfigured('getSession')
       const me = state.members.find((m) => m.id === state.currentUserId)
@@ -581,6 +656,8 @@ export function createMockClient({
         publisher: book.publisher,
         isbn: book.isbn,
         pageCount: book.pageCount,
+        plannedStartDate: book.plannedStartDate,
+        plannedEndDate: book.plannedEndDate,
         schedule: state.weeks
           .filter((w) => w.bookId === book.id)
           .sort((a, b) => a.weekNumber - b.weekNumber)

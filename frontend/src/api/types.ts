@@ -154,6 +154,8 @@ export interface OriginVote {
 }
 
 export interface BookDetail extends LibraryBook {
+  plannedStartDate: string | null
+  plannedEndDate: string | null
   // Plain text, never HTML.
   description: string | null
   // Free text as entered, e.g. "1884–1885".
@@ -579,3 +581,11 @@ export interface NewMember {
   discordId: string
   displayName: string
 }
+
+// Admin catalogue (#95): metadata only; related records stay in their own APIs.
+export type AdminBook = Omit<BookDetail, 'schedule' | 'meetings'>
+export type BookMetadata = Pick<AdminBook, 'title' | 'authors' | 'description' | 'publicationDate' | 'publisher' | 'isbn' | 'pageCount' | 'coverUrl'>
+export type BookCoverChange = AvatarChange | { action: 'metadata'; resultId: string }
+// A whole catalogue edit, atomically saved. id and originVote cannot be edited.
+export type BookInput = Omit<AdminBook, 'id' | 'originVote' | 'coverUrl'> & { cover: BookCoverChange }
+export type BookMetadataResult = BookMetadata & { id: string }

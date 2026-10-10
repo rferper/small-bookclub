@@ -1,7 +1,7 @@
 // Fictional club data for the mock API. The members are invented; the books
 // and quotes are public-domain works. Never put real club data here.
 
-import type { BookDetail, CriterionScores, CurrentUser, LiteraryQuote, MemberSummary, RatingRubric } from '../types'
+import type { BookDetail, BookMetadataResult, CriterionScores, CurrentUser, LiteraryQuote, MemberSummary, RatingRubric } from '../types'
 
 export interface MockWeek {
   id: string
@@ -614,6 +614,8 @@ export function createClubState(): MockState {
 // A book with only the given fields; every optional one is empty.
 function book(fields: Pick<MockBook, 'id' | 'title' | 'authors' | 'status'> & Partial<MockBook>): MockBook {
   return {
+    plannedStartDate: null,
+    plannedEndDate: null,
     coverUrl: null,
     readingStartDate: null,
     readingEndDate: null,
@@ -627,6 +629,13 @@ function book(fields: Pick<MockBook, 'id' | 'title' | 'authors' | 'status'> & Pa
     ...fields,
   }
 }
+
+// Fictional search source, deliberately independent of catalogue edits.
+export const METADATA_RESULTS: readonly BookMetadataResult[] = [
+  { id: 'metadata-1', title: 'El jardín de las cartas', authors: ['Alba del Río', 'Nicolás Prado'], description: 'Una biblioteca de pueblo guarda cartas que esperan respuesta.', publicationDate: '1987', publisher: 'Editorial Sendero', isbn: 'Edición ficticia 1987', pageCount: 240,
+    coverUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==' },
+  { id: 'metadata-2', title: 'La casa del faro', authors: ['Vera Montes'], description: null, publicationDate: '1992', publisher: null, isbn: null, pageCount: null, coverUrl: null },
+]
 
 // A meeting with only the given fields: not cancelled, attendance not
 // recorded, not marked safe, and no summary or highlights.

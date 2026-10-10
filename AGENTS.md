@@ -2,7 +2,7 @@
 
 Private website for a book club of 6–10 friends, and the author's course final project.
 Django + Django Ninja JSON API, React + Vite + TypeScript frontend, SQLite, Spanish UI.
-The backlog lives in GitHub issues (`rferper/small-bookclub`); work on one issue per session.
+The backlog lives in GitHub issues (`rferper/small-bookclub`); work on one issue at a time. Multiple issues may be completed sequentially in a session when the user explicitly authorizes it.
 
 ## Repository layout
 

@@ -4,6 +4,11 @@ import { Link } from 'react-router'
 // own entry here (#95–#101); there are no placeholders for the others.
 const SECTIONS = [
   {
+    to: '/administracion/libros',
+    title: 'Libros',
+    description: 'Añade y corrige libros, sus portadas, estados y fechas de lectura.',
+  },
+  {
     to: '/administracion/miembros',
     title: 'Miembros y curaduría',
     description: 'Añade miembros con su ID de Discord, retira o devuelve el acceso y elige quién tiene la curaduría.',
