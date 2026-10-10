@@ -87,15 +87,42 @@ function Ratings({ loaded, reload, savedJustNow }: { loaded: BookRatings; reload
     }
   }
 
-  if (!ratings.ratable) return <p className="max-w-prose">{NOT_RATABLE_MESSAGE}</p>
+  return (
+    <div className="grid gap-3">
+      {/* Kept above whatever the reloaded ratings show, so it is never lost. */}
+      <p role="status" className={changedMeanwhile ? 'max-w-prose' : 'sr-only'}>
+        {changedMeanwhile &&
+          'No se ha podido cambiar porque el libro ha cambiado mientras tanto. Aquí tienes cómo está ahora.'}
+      </p>
+      {!ratings.ratable ? (
+        <p className="max-w-prose">{NOT_RATABLE_MESSAGE}</p>
+      ) : ratings.club.status === 'visible' && ratings.myReview ? (
+        <VisibleRatings
+          ratings={ratings}
+          club={ratings.club}
+          myReview={ratings.myReview}
+          savedJustNow={savedJustNow}
+        />
+      ) : (
+        <LockedRatings ratings={ratings} pending={pending} failed={failed} onToggle={(finished) => void toggle(finished)} />
+      )}
+    </div>
+  )
+}
 
-  const { club } = ratings
-  if (club.status === 'visible' && ratings.myReview) {
-    return (
-      <VisibleRatings ratings={ratings} club={club} myReview={ratings.myReview} savedJustNow={savedJustNow} />
-    )
-  }
-
+// Locked: only the user's own flag and the rule. Nothing says whether anyone
+// else has finished or rated the book.
+function LockedRatings({
+  ratings,
+  pending,
+  failed,
+  onToggle,
+}: {
+  ratings: BookRatings
+  pending: boolean | null
+  failed: boolean
+  onToggle: (finished: boolean) => void
+}) {
   return (
     <div className="grid gap-3">
       <div>
@@ -105,7 +132,7 @@ function Ratings({ loaded, reload, savedJustNow }: { loaded: BookRatings; reload
             className="size-5 accent-forest disabled:opacity-60"
             checked={pending ?? ratings.finishedByMe}
             disabled={pending !== null}
-            onChange={(event) => void toggle(event.target.checked)}
+            onChange={(event) => onToggle(event.target.checked)}
           />
           He terminado el libro
         </label>
@@ -115,9 +142,6 @@ function Ratings({ loaded, reload, savedJustNow }: { loaded: BookRatings; reload
           </p>
         )}
       </div>
-      <p role="status" className={changedMeanwhile ? 'max-w-prose' : 'sr-only'}>
-        {changedMeanwhile && 'No se ha podido cambiar porque el libro ha cambiado mientras tanto. Aquí tienes cómo está ahora.'}
-      </p>
       {ratings.finishedByMe && (
         <p>
           <Link to={ratingFormPath(ratings.book.id)} className={linkClass}>
