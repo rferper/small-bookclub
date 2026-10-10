@@ -123,3 +123,9 @@ export function formatVoteCount(count: number, open = true): string {
 export function formatTitles(titles: string[]): string {
   return formatAuthors(titles.map((title) => `«${title}»`))
 }
+
+// A member's public status for the current reading week, in Inicio's
+// low-pressure wording (#69): never «pendiente», «atrasado» or a ranking.
+export function formatWeekStatus(completed: boolean): string {
+  return completed ? '✓ Leído' : 'Leyendo'
+}
