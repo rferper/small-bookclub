@@ -417,3 +417,44 @@ export interface Statistics {
   thresholds: StatisticsThresholds
   ratings: RatingStatistics
 }
+
+// Taste compatibility (§5.6, #93): the viewer against each other member.
+// One book both have rated, with each member's overall and the absolute
+// difference between them. Values are never rounded.
+export interface SharedBook {
+  book: BookSummary
+  myOverall: number
+  theirOverall: number
+  // |myOverall − theirOverall|, between 0 and 4.
+  difference: number
+}
+
+// Decided by the server. Below the threshold it carries no other key at all:
+// no difference, book or score.
+export type TasteComparison =
+  | { status: 'insufficient' }
+  | {
+      status: 'available'
+      // Mean over the shared books of the overall differences (0–4).
+      overallDifference: number
+      // Mean over the same books of the absolute difference per criterion.
+      criterionDifferences: CriterionScores
+      // By title with Spanish collation.
+      books: SharedBook[]
+    }
+
+export interface MemberCompatibility {
+  member: MemberSummary
+  // Books the viewer has unlocked (finished and rated) that this member has
+  // rated too; 0 when there are none.
+  sharedBookCount: number
+  comparison: TasteComparison
+}
+
+export interface TasteCompatibility {
+  // Shared books needed before any difference is computed or sent.
+  minSharedBooks: number
+  // Every other member of the club, by display name; never by score. The
+  // viewer is not listed.
+  members: MemberCompatibility[]
+}
