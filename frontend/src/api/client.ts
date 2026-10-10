@@ -9,6 +9,7 @@ import type {
   ReviewInput,
   Session,
   Statistics,
+  TasteCompatibility,
   Vote,
   VotesOverview,
 } from './types'
@@ -92,6 +93,11 @@ export interface ApiClient {
   // the books this user has finished and rated; the others are absent, and
   // nothing says how many there are.
   getStatistics(): Promise<Statistics>
+  // Taste compatibility (#93): the signed-in user against every other member,
+  // only on the books this user has finished and rated and the other member
+  // has rated too. Below `minSharedBooks` an entry carries only the count;
+  // other books are absent.
+  getTasteCompatibility(): Promise<TasteCompatibility>
 }
 
 // Methods that manage the session itself; every other method returns club data.

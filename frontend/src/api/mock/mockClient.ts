@@ -18,12 +18,14 @@ import type {
   ReviewInput,
   Session,
   Statistics,
+  TasteCompatibility,
   Vote,
   VoteHistoryItem,
   VoteOutcome,
   VotesOverview,
 } from '../types'
 import { CRITERIA, clubAggregates, isValidScore, REVIEW_TEXT_MAX_LENGTH, reviewOverall } from '../../lib/ratings'
+import { MIN_SHARED_BOOKS, tasteCompatibility } from '../../lib/compatibility'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
 import { createClubState, type MockBook, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
 import { meetingGate } from './meetingGate'
@@ -688,6 +690,27 @@ export function createMockClient({
           members: toMemberSummaries([...memberIds]),
           viewerId: state.currentUserId,
           thresholds: STATISTICS_THRESHOLDS,
+        }),
+      }
+    },
+
+    async getTasteCompatibility(): Promise<TasteCompatibility> {
+      requireSignedIn()
+      failIfConfigured('getTasteCompatibility')
+      // The same gate as the statistics, decided on every call for the
+      // signed-in user: only the reviews of books they have finished and
+      // rated reach the maths, so no other book (not even a count) can reach
+      // the response. There is no role input.
+      const counted = countedReviews({ userId: state.currentUserId, reviews: state.reviews, finished: state.finished })
+      const bookIds = new Set(counted.map((r) => r.bookId))
+      return {
+        minSharedBooks: MIN_SHARED_BOOKS,
+        members: tasteCompatibility({
+          reviews: counted.map((r) => ({ bookId: r.bookId, memberId: r.userId, scores: { ...r.scores } })),
+          viewerId: state.currentUserId,
+          members: toMemberSummaries(state.members.map((m) => m.id)),
+          books: state.books.filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
+          minSharedBooks: MIN_SHARED_BOOKS,
         }),
       }
     },
