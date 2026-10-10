@@ -39,6 +39,16 @@ Defined in `frontend/src/index.css` under `@theme`, so each is a Tailwind colour
 - `ActionButton`: a button for one async action (sign in, sign out). It is disabled while the action runs and shows a Spanish `role="alert"` message next to it if the action fails. Variants: primary, secondary and quiet (header).
 - `AuthScreen`: the centred paper card used instead of the club for the sign-in, access-denied and session-error screens; it has its own `main` and serif `h1`, and no navigation.
 
+## Charts
+
+First used by the radar in «Comparación con el club» (#92). Hand-built inline SVG, sized with a `viewBox` so it scales down to a phone; at most 28rem wide.
+
+- Every chart has a visible, equivalent `<table>` next to or below it, with a caption, column headers and row headers. The `svg` is `role="img"` with an `aria-label` that says what it compares and that the values are in the table.
+- Series differ in more than colour: the main series (a member) is a solid `forest` line with round markers and a light `forest` fill; the comparison series (the club) is a dashed `bark` line with hollow square markers and no fill, drawn on top. Strokes are at least 2 px and use tokens with at least 3:1 on `paper`. Fills stay translucent so every outline and marker remains visible where shapes overlap.
+- A visible HTML legend names each series, with a sample of its line and marker.
+- Grid lines and axes may use `wood` at reduced opacity; labels use text tokens only (`forest`, `moss`, `bark`), never `soft-green` or `wood`, and render at 12 CSS px or more.
+- No animation, transition, tooltip or focusable element inside a chart; the data never lives only in a hover.
+
 ## Layout
 
 - Mobile-first, with an equally comfortable desktop layout (especially statistics).

@@ -91,4 +91,6 @@ The ratings on each book page («Valoraciones») and its rating form (`/bibliote
 | `/biblioteca/b6` «Ángel Guerra» (`archivado`) | Locked, not finished; nobody has rated it, so finishing and rating it gives n = 1. | The same. |
 | `/biblioteca/b4`, `/biblioteca/b5` (`elegido`, `propuesto`) | Not ratable. | Not ratable. |
 
+Wherever the ratings are visible, «Comparación con el club» shows the radar chart and its table (#92): admin `/biblioteca/b2` (Lucía, Carmen, Inés and Jordi), `?mock-session=member` `/biblioteca/b1` (Mateo, Elena and Pablo), and n = 1 on admin `/biblioteca/b6` after marking it finished and rating it (no selector; both shapes coincide).
+
 The rubric has no descriptions unless `?mock-rubric=ejemplo` is used. The mock lives in memory, so a rating saved in the browser lasts until the next full page load.
