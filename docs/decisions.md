@@ -196,3 +196,11 @@ Short records of technical decisions. Add one entry per decision; newest at the 
 **Why:** §3 requires an exact Discord-ID allowlist and admin-managed curator assignment, while §5.4 and §9 preserve history without destructive cascades. Administration must not leak gated ratings into operational views.
 
 **Consequence:** Reversible: backend enforcement remains in #8 (allowlist), #7 (revocation/session invalidation), #30 (curator), #11 (permissions), #6 (first admin) and #5 (sign-in). #71 defines the OpenAPI entries; mock types remain the draft contract. The remaining admin screens are #95 (books and metadata), #96 (meetings and attendance), #97 (reading plans), #98 (summaries and highlights), #99 (quotes and rubric), #100 (recycle bin) and #101 (exports, backups and audit log). No new dependencies.
+
+## 2026-10-10: Own weekly completion on book details (#90)
+
+**Decision:** `getBook(bookId).schedule` adds `completedByMe`, derived from the same mock `completions` state as Inicio and the central meeting spoiler gate. Each schedule row uses the existing `setWeekCompleted(weekId, completed)` operation, which acts only for the signed-in user and stays idempotent. The row keeps its confirmed state until saving succeeds, disables only its own control while saving, guards duplicate in-flight activations and shows a local Spanish alert on failure. The existing book-id page key discards row state on navigation. Meeting records and home progress refresh on their next page load; no polling or cross-tab synchronization is added.
+
+**Why:** §5.2 allows members to finish late and independently toggle each assignment. The explicit reversible assumption in #90 permits every existing assignment, including future assignments and assignments on finished or archived books, with no date cutoff or automatic changes. Weekly completion leaves the personal book-finished flag and ratings gate independent. The control names its week and exposes its confirmed selected state with `aria-pressed`.
+
+**Consequence:** The draft TypeScript types remain the contract until #71 defines OpenAPI. Backend completion/ownership enforcement remains #22 and permission/spoiler enforcement remains the existing backend issues. No endpoint, client method or dependency is added; state persists for the mock-client lifetime only.

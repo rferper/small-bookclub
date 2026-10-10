@@ -157,10 +157,14 @@ describe('Book page', () => {
   // RatingsSection.test.tsx), so the comparison covers the rest of the page.
   it('looks the same for a member and an admin outside «Valoraciones», with no edit controls', async () => {
     const outsideRatings = async (session: 'admin' | 'member') => {
-      const { main, unmount } = await openBook('b3', { session })
+      // Compare the same own-user state; #90 displays each viewer's flags.
+      const state = createClubState()
+      state.completions = {}
+      const { main, unmount } = await openBook('b3', { session, state })
       await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
-      // Locked b3 has no buttons anywhere on the page, the section included.
-      expect(within(main).queryByRole('button')).not.toBeInTheDocument()
+      // #90 adds own-week controls only; no admin editor or override.
+      expect(within(main).getAllByRole('button')).toHaveLength(5)
+      expect(within(main).getAllByRole('button', { name: /^Semana \d: Marcar como leído$/ })).toHaveLength(5)
       expect(main).toHaveTextContent('He terminado el libro')
       const copy = main.cloneNode(true) as HTMLElement
       const ratingSections = [...copy.querySelectorAll('section')].filter(
