@@ -4,6 +4,9 @@
 import type { BookDetail, BookMetadataResult, CriterionScores, CurrentUser, LiteraryQuote, MemberSummary, RatingRubric } from '../types'
 
 export interface MockWeek {
+  deletedAt?: string
+  deletedBy?: string
+  purgeDueAt?: string
   id: string
   bookId: string
   weekNumber: number

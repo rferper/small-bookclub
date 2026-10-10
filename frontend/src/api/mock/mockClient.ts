@@ -1,5 +1,6 @@
 import { ApiError, type ApiClient } from '../client'
 import type {
+  AdminReadingPlan, ReadingWeekInput,
   AdminMeeting, AdminMeetingCalendar, MeetingInput,
   AdminMember,
   AdminMembers,
@@ -49,6 +50,7 @@ import {
 } from '../../lib/profile'
 import { discordIdProblem } from '../../lib/admin'
 import { meetingInstant } from '../../lib/meetingTime'
+import { readingErrors, readingWarnings } from '../../lib/readingPlan'
 import { bookErrors, CATALOGUE_LIMITS, DATE_FIELDS } from '../../lib/catalogue'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
 import { createClubState, METADATA_RESULTS, type MockBook, type MockMember, type MockMeeting, type MockReview, type MockState, type MockVote } from './fixtures'
@@ -133,7 +135,7 @@ export function createMockClient({
   })
 
   const toAssignment = (meetingId: string): MeetingAssignment | null => {
-    const week = state.weeks.find((w) => w.meetingId === meetingId)
+    const week = state.weeks.find((w) => !w.deletedAt && w.meetingId === meetingId)
     return week
       ? {
           weekNumber: week.weekNumber,
@@ -359,7 +361,7 @@ export function createMockClient({
     const activeBook = state.books.find((b) => b.status === 'leyendo') ?? null
     const meeting = nextMeeting()
     return (
-      (activeBook && meeting && state.weeks.find((w) => w.bookId === activeBook.id && w.meetingId === meeting.id)) || null
+      (activeBook && meeting && state.weeks.find((w) => !w.deletedAt && w.bookId === activeBook.id && w.meetingId === meeting.id)) || null
     )
   }
 
@@ -543,6 +545,7 @@ export function createMockClient({
     return meeting
   }
   const toAdminMeeting = (meeting: MockMeeting): AdminMeeting => ({
+    ...(state.weeks.find((w) => w.meetingId === meeting.id && w.deletedAt) ? { removedWeekNumber: state.weeks.find((w) => w.meetingId === meeting.id)!.weekNumber } : {}),
     id: meeting.id, startsAt: meeting.startsAt, bookId: meeting.bookId,
     weekId: state.weeks.find((w) => w.meetingId === meeting.id)?.id ?? null,
     cancelled: meeting.cancelled, upcoming: isUpcoming(meeting),
@@ -557,6 +560,7 @@ export function createMockClient({
     if (input.bookId !== null && !state.books.some((b) => b.id === input.bookId)) throw new ApiError(404, 'No existe ese libro.')
     const week = input.weekId === null ? null : state.weeks.find((w) => w.id === input.weekId)
     if (input.weekId !== null && !week) throw new ApiError(404, 'No existe esa semana.')
+    if (week?.deletedAt && !(existing && week.meetingId === existing.id && existing.bookId === input.bookId)) throw new ApiError(404, 'No existe esa semana activa.')
     if (week && week.bookId !== input.bookId) throw new ApiError(400, 'La semana debe pertenecer al libro seleccionado.')
     if (week?.meetingId && week.meetingId !== id) throw new ApiError(409, 'Esta semana ya está vinculada a otra reunión. Desvincúlala allí primero.')
     let newId = id ?? 'meeting-1'
@@ -570,13 +574,76 @@ export function createMockClient({
     return toAdminMeeting(saved)
   }
 
+  const activeWeeks = (bookId: string) => state.weeks.filter((w) => w.bookId === bookId && !w.deletedAt).sort((a, b) => a.weekNumber - b.weekNumber)
+  const planAccess = (method: Method) => {
+    requireSignedIn()
+    if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede gestionar los planes de lectura.')
+    failIfConfigured(method)
+  }
+  const toPlan = (bookId: string): AdminReadingPlan => {
+    const book = findBook(bookId)
+    return { book: { id: book.id, title: book.title, pageCount: book.pageCount },
+      weeks: activeWeeks(bookId).map((w) => ({ id: w.id, weekNumber: w.weekNumber, percentStart: w.percentStart, percentEnd: w.percentEnd, pageStart: w.pageStart, pageEnd: w.pageEnd, dueDate: w.dueDate, notes: w.notes, meetingId: w.meetingId, completionCount: new Set(state.completions[w.id] ?? []).size })),
+      meetings: state.meetings.filter((m) => m.bookId === bookId).map((m) => ({ id: m.id, startsAt: m.startsAt, cancelled: m.cancelled })) }
+  }
+  const findActiveWeek = (bookId: string, id: string) => {
+    findBook(bookId)
+    const week = activeWeeks(bookId).find((w) => w.id === id)
+    if (!week) throw new ApiError(404, 'No existe esa semana activa.')
+    return week
+  }
+  const requireAcknowledgement = (bookId: string, weeks: ReadingWeekInput[], acknowledged: boolean) => {
+    const warnings = readingWarnings(weeks, findBook(bookId).pageCount)
+    if (warnings.length && acknowledged !== true) throw new ApiError(400, `Confirma los avisos antes de guardar: ${warnings.join(' ')}`)
+  }
+  const saveWeek = (bookId: string, input: ReadingWeekInput, acknowledged: boolean, id?: string) => {
+    findBook(bookId)
+    const existing = id ? findActiveWeek(bookId, id) : null
+    if (!input) throw new ApiError(400, 'Introduce los datos de la semana.')
+    const errors = readingErrors(input)
+    if (errors.length) throw new ApiError(400, errors.join(' '))
+    const meeting = input.meetingId === null ? null : findMeeting(input.meetingId)
+    if (meeting && meeting.bookId !== bookId) throw new ApiError(400, 'La reunión debe pertenecer al mismo libro.')
+    if (meeting && state.weeks.some((w) => w.meetingId === meeting.id && w.id !== id)) throw new ApiError(409, 'Esta reunión ya tiene una semana vinculada. Desvincúlala primero.')
+    const clean: ReadingWeekInput = { percentStart: input.percentStart, percentEnd: input.percentEnd, pageStart: input.pageStart, pageEnd: input.pageEnd, dueDate: input.dueDate, notes: input.notes?.trim() || null, meetingId: input.meetingId }
+    const weeks = activeWeeks(bookId)
+    requireAcknowledgement(bookId, existing ? weeks.map((w) => w.id === id ? clean : w) : [...weeks, clean], acknowledged)
+    if (existing) Object.assign(existing, clean)
+    else {
+      let newId = 'week-1'
+      for (let n = 2; state.weeks.some((w) => w.id === newId); n++) newId = `week-${n}`
+      state.weeks.push({ ...clean, id: newId, bookId, weekNumber: weeks.length + 1 })
+    }
+    return toPlan(bookId)
+  }
+
   return {
+    async getAdminReadingPlan(bookId) { planAccess('getAdminReadingPlan'); return toPlan(bookId) },
+    async createReadingWeek(bookId, input, acknowledged) { planAccess('createReadingWeek'); return saveWeek(bookId, input, acknowledged) },
+    async updateReadingWeek(bookId, id, input, acknowledged) { planAccess('updateReadingWeek'); return saveWeek(bookId, input, acknowledged, id) },
+    async reorderReadingWeeks(bookId, ids, acknowledged) {
+      planAccess('reorderReadingWeeks'); findBook(bookId)
+      const weeks = activeWeeks(bookId)
+      if (Array.isArray(ids) && ids.some((id) => state.weeks.some((w) => w.id === id && w.deletedAt))) throw new ApiError(404, 'No existe esa semana activa.')
+      if (!Array.isArray(ids) || ids.length !== weeks.length || new Set(ids).size !== ids.length || ids.some((id) => !weeks.some((w) => w.id === id))) throw new ApiError(400, 'Incluye cada semana activa exactamente una vez.')
+      const ordered = ids.map((id) => weeks.find((w) => w.id === id)!)
+      requireAcknowledgement(bookId, ordered, acknowledged)
+      ordered.forEach((w, i) => { w.weekNumber = i + 1 })
+      return toPlan(bookId)
+    },
+    async removeReadingWeek(bookId, id) {
+      planAccess('removeReadingWeek'); const week = findActiveWeek(bookId, id)
+      week.deletedAt = state.now; week.deletedBy = state.currentUserId
+      week.purgeDueAt = new Date(Date.parse(state.now) + 30 * 24 * 60 * 60 * 1000).toISOString()
+      activeWeeks(bookId).forEach((w, i) => { w.weekNumber = i + 1 })
+      return toPlan(bookId)
+    },
     async listAdminMeetings(): Promise<AdminMeetingCalendar> {
       meetingAccess('listAdminMeetings')
       const ordered = [...state.meetings].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
       return { upcoming: ordered.filter(isUpcoming).map(toAdminMeeting), past: ordered.filter((m) => !isUpcoming(m)).reverse().map(toAdminMeeting),
         books: [...state.books].sort((a, b) => a.title.localeCompare(b.title, 'es')).map((b) => ({ id: b.id, title: b.title })),
-        weeks: state.weeks.map((w) => ({ id: w.id, bookId: w.bookId, weekNumber: w.weekNumber, meetingId: w.meetingId })),
+        weeks: state.weeks.filter((w) => !w.deletedAt).map((w) => ({ id: w.id, bookId: w.bookId, weekNumber: w.weekNumber, meetingId: w.meetingId })),
         activeMembers: toMemberSummaries(state.members.map((m) => m.id)) }
     },
     async getAdminMeeting(id) { meetingAccess('getAdminMeeting'); return toAdminMeeting(findMeeting(id)) },
@@ -695,7 +762,7 @@ export function createMockClient({
     async setWeekCompleted(weekId: string, completed: boolean): Promise<void> {
       requireSignedIn()
       failIfConfigured('setWeekCompleted')
-      if (!state.weeks.some((w) => w.id === weekId)) throw new ApiError(404, 'No existe esa semana de lectura.')
+      if (!state.weeks.some((w) => w.id === weekId && !w.deletedAt)) throw new ApiError(404, 'No existe esa semana de lectura.')
       // Always acts on the signed-in member only, like the real API will.
       const others = (state.completions[weekId] ?? []).filter((id) => id !== state.currentUserId)
       state.completions[weekId] = completed ? [...others, state.currentUserId] : others
@@ -724,7 +791,7 @@ export function createMockClient({
         plannedStartDate: book.plannedStartDate,
         plannedEndDate: book.plannedEndDate,
         schedule: state.weeks
-          .filter((w) => w.bookId === book.id)
+          .filter((w) => w.bookId === book.id && !w.deletedAt)
           .sort((a, b) => a.weekNumber - b.weekNumber)
           .map((w) => {
             const meeting = meetings.find((m) => m.id === w.meetingId)
@@ -747,7 +814,7 @@ export function createMockClient({
             id: m.id,
             startsAt: m.startsAt,
             cancelled: m.cancelled,
-            weekNumber: state.weeks.find((w) => w.meetingId === m.id)?.weekNumber ?? null,
+            weekNumber: state.weeks.find((w) => !w.deletedAt && w.meetingId === m.id)?.weekNumber ?? null,
           })),
         originVote: book.originVote,
       }

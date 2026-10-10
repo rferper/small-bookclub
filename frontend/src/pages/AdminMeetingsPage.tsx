@@ -29,6 +29,7 @@ export function AdminMeetingsPage() {
       {calendar.data[group].length ? <ul className="grid gap-4">{calendar.data[group].map((meeting) => <li key={meeting.id} className="min-w-0 border-b border-wood/20 pb-3">
         <Link className={linkClass} to={`${base}/${encodeURIComponent(meeting.id)}/editar`}>Editar reunión del {formatMeetingDateWithYear(meeting.startsAt)}</Link>
         <p className="break-words text-bark">{calendar.data.books.find((b) => b.id === meeting.bookId)?.title ?? 'Sin libro'}{meeting.weekId && ` · Semana ${calendar.data.weeks.find((w) => w.id === meeting.weekId)?.weekNumber}`}</p>
+        {meeting.removedWeekNumber !== undefined && <p>Semana retirada ({meeting.removedWeekNumber})</p>}
         {meeting.cancelled && <p className="font-semibold">Cancelada</p>}
       </li>)}</ul> : <EmptyState>{group === 'upcoming' ? 'No hay próximas reuniones. Puedes crear una cuando quieras.' : 'Todavía no hay reuniones pasadas.'}</EmptyState>}
     </Card>)}
@@ -96,7 +97,7 @@ function MeetingEditor({ calendar, meeting, reload }: { calendar: AdminMeetingCa
           <label htmlFor={`${prefix}-date`}>Fecha<input ref={firstField} id={`${prefix}-date`} className={inputClass} type="date" value={local.date} onChange={(e) => setLocal({ ...local, date: e.target.value })} /></label>
           <label htmlFor={`${prefix}-time`}>Hora<input id={`${prefix}-time`} className={inputClass} type="time" value={local.time} onChange={(e) => setLocal({ ...local, time: e.target.value })} /></label>
           <label htmlFor={`${prefix}-book`}>Libro<select id={`${prefix}-book`} className={inputClass} value={bookId} onChange={(e) => { setBookId(e.target.value); setWeekId('') }}><option value="">Sin libro</option>{calendar.books.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}</select></label>
-          <label htmlFor={`${prefix}-week`}>Semana de lectura<select id={`${prefix}-week`} className={inputClass} disabled={!bookId} value={weekId} onChange={(e) => setWeekId(e.target.value)}><option value="">Sin semana</option>{calendar.weeks.filter((w) => w.bookId === bookId).map((w) => <option key={w.id} value={w.id}>Semana {w.weekNumber}{w.meetingId && w.meetingId !== meeting?.id ? ' (vinculada a otra reunión)' : ''}</option>)}</select></label>
+          <label htmlFor={`${prefix}-week`}>Semana de lectura<select id={`${prefix}-week`} className={inputClass} disabled={!bookId} value={weekId} onChange={(e) => setWeekId(e.target.value)}><option value="">Sin semana</option>{meeting?.removedWeekNumber !== undefined && weekId === meeting.weekId && bookId === meeting.bookId && <option value={meeting.weekId!} disabled>Semana retirada ({meeting.removedWeekNumber}, vínculo existente)</option>}{calendar.weeks.filter((w) => w.bookId === bookId).map((w) => <option key={w.id} value={w.id}>Semana {w.weekNumber}{w.meetingId && w.meetingId !== meeting?.id ? ' (vinculada a otra reunión)' : ''}</option>)}</select></label>
         </fieldset>
         <button className={buttonClass} disabled={busy}>Guardar reunión</button>
       </form>

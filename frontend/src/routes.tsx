@@ -2,6 +2,7 @@ import type { RouteObject } from 'react-router'
 import { AdminGuard } from './admin/AdminGuard'
 import { Layout } from './components/Layout'
 import { AdminHubPage } from './pages/AdminHubPage'
+import { AdminReadingPlansPage } from './pages/AdminReadingPlansPage'
 import { AdminBooksPage, AdminBookCreatePage, AdminBookEditPage } from './pages/AdminBooksPage'
 import { AdminMembersPage } from './pages/AdminMembersPage'
 import { AdminMeetingsPage, AdminMeetingEditPage } from './pages/AdminMeetingsPage'
@@ -48,6 +49,8 @@ export const routes: RouteObject[] = [
             element: <AdminGuard />,
             children: [
               { index: true, element: <AdminHubPage /> },
+              { path: 'lecturas', element: <AdminReadingPlansPage /> },
+              { path: 'lecturas/:bookId', element: <AdminReadingPlansPage /> },
               { path: 'miembros', element: <AdminMembersPage /> },
               { path: 'reuniones', element: <AdminMeetingsPage /> },
               { path: 'reuniones/nueva', element: <AdminMeetingEditPage /> },
