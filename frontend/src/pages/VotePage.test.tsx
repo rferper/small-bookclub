@@ -63,7 +63,9 @@ describe('Vote page: open vote', () => {
       'La gaviota',
       BUSCON,
     ])
-    // The management section (#91) loads the catalogue for «Añadir libros».
+    // The management section (#91) loads the catalogue for «Añadir libros»
+    // in an effect, so wait for it instead of racing it on a busy machine.
+    await within(region('Añadir libros')).findByRole('button', { name: 'Añadir «Doña Perfecta»' })
     expect(tracked.clubDataCalls()).toEqual(['getVote', 'listBooks'])
     expectNoBrokenValues(main)
   })
