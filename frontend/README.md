@@ -108,3 +108,17 @@ Estadísticas (`/estadisticas`, #68) counts only the ratings of the books the si
 | `?mock-data=empty` (admin) | None. | `{ status: 'empty' }`: «Libros leídos» 0, «Reuniones celebradas» 0 and one empty state, with no highlights, charts or tables. | — | — |
 
 Every case in «Fixture ratings», «Fixture votes» and «Fixture meetings» is unchanged, and «Ángel Guerra» (`b6`) is still unrated. The new books are archived, so Inicio's count of `terminado` books (#44) is unchanged too.
+
+## Fixture taste compatibility
+
+«Gustos en común» on Estadísticas (#93) compares the signed-in user with one other member, chosen in «Comparar con» (the first by name is selected). A book counts as shared only if the signed-in user has unlocked it (finished **and** rated, as in «Fixture statistics») and the other member has rated it too; a finished flag without a rating never counts. The admin gets the same as anyone else in her situation. At least 3 shared books are needed; below that only the count is sent and the page shows «Aún no hay suficientes libros en común.». The difference is the mean of |your overall − their overall| over the shared books (0–4); displayed values are rounded to one decimal, the data is not. The fixtures are the same as in «Fixture statistics».
+
+| Session | Shared books per member (by name) | Comparison |
+|---|---|---|
+| Default admin (Lucía) | Carmen 3, Elena 1, Inés 2, Jordi 1, Mateo 1, Pablo 1. Elena has finished «Cumbres borrascosas» and Jordi «Fortunata y Jacinta» without rating them, so they count 1, not 2. | Carmen (selected): overall difference 2,8/3 = 0,933 (shown «0,9 puntos, en 3 libros en común»); criteria Disfrute 4/3, Estilo 2/3, Personajes 4/3, Trama 2,5/3, Huella 5,5/3 (1,3 · 0,7 · 1,3 · 0,8 · 1,8); books «Cumbres borrascosas» 3,8 / 4,4 / 0,6, «El sí de las niñas» 2,3 / 4,3 / 2,0, «Fortunata y Jacinta» 4,8 / 4,6 / 0,2. Everyone else insufficient. |
+| `?mock-session=member` (Mateo) | Carmen 0, Elena 1, Inés 0, Jordi 0, Lucía 1, Pablo 1. | All insufficient; no book in the response. |
+| `?mock-session=curator` (Jordi) | Carmen 1, Elena 0, Inés 1, Lucía 1, Mateo 0, Pablo 0. | All insufficient. |
+| `?mock-data=empty` (admin) | — | No «Gustos en común» section (no ratings to show), and no call. |
+| Default admin after rating «Niebla» (any scores) | Carmen 3, Elena 2, Inés 2, Jordi 1, Mateo 2, Pablo 2. | Carmen unchanged; everyone else still insufficient. |
+| Default admin after editing «Cumbres borrascosas» to 4 in every criterion | Unchanged. | Carmen: overall difference 2,6/3 = 0,867 (0,9). |
+| `?mock-session=member` after finishing and rating «Fortunata y Jacinta» (`b12`) and then «El sí de las niñas» (`b13`) with 4 in every criterion | After `b12`: Lucía 2 (still insufficient). After both: Carmen 2, Elena 2, Inés 1, Jordi 0, Lucía 3, Pablo 2. | Lucía: overall difference 2,9/3 = 0,967 (1,0); criteria Disfrute 3,5/3, Estilo 1, Personajes 1, Trama 2/3, Huella 4/3 (1,2 · 1,0 · 1,0 · 0,7 · 1,3); books «El ingenioso hidalgo…» 3,8 / 4,2 / 0,4, «El sí de las niñas» 4,0 / 2,3 / 1,7, «Fortunata y Jacinta» 4,0 / 4,8 / 0,8. «Cumbres borrascosas» is absent: Mateo has not rated it. |

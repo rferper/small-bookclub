@@ -187,7 +187,16 @@ describe('getTasteCompatibility after rating or editing, without reloading the m
 
     await api.setBookFinished('b13', true)
     await api.saveMyReview('b13', { scores: flat(4), text: null })
-    const three = entryOf(await api.getTasteCompatibility(), 'Lucía')
+    const both = await api.getTasteCompatibility()
+    expect(counts(both)).toEqual([
+      ['Carmen', 2],
+      ['Elena', 2],
+      ['Inés', 1],
+      ['Jordi', 0],
+      ['Lucía', 3],
+      ['Pablo', 2],
+    ])
+    const three = entryOf(both, 'Lucía')
     expect(three.sharedBookCount).toBe(3)
     const lucia = available(three.comparison)
     expect(lucia.overallDifference).toEqual(close(2.9 / 3))
