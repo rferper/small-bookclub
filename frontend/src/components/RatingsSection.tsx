@@ -14,6 +14,7 @@ import {
   ratingFormPath,
 } from '../lib/ratings'
 import { Avatar } from './Avatar'
+import { ClubComparison } from './ClubComparison'
 import { Card } from './Card'
 import { LoadError, Loading } from './Status'
 
@@ -230,6 +231,8 @@ function VisibleRatings({
           </table>
         </section>
       </div>
+
+      <ClubComparison club={club} />
 
       <section aria-labelledby={othersId} className="grid gap-3">
         <h3 id={othersId} className="text-lg text-forest">

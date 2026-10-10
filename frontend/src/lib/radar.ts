@@ -14,6 +14,17 @@ export interface Point {
   y: number
 }
 
+// The chart's drawing box in SVG units. It is 300 wide, so at the narrowest
+// layout (about 286 CSS px on a 360 px phone) a 14-unit label is still over
+// 13 CSS px, and the longest labels («Personajes», «Estilo», «Huella») fit
+// inside the box at this radius.
+export const RADAR_CHART = {
+  width: 300,
+  height: 226,
+  center: { x: 150, y: 118 } as Point,
+  radius: 90,
+} as const
+
 // Angle of axis `index` in radians, clockwise from straight up.
 export function axisAngle(index: number): number {
   return (index * 2 * Math.PI) / RADAR_AXES
