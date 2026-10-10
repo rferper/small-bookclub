@@ -124,6 +124,8 @@ export interface LibraryBook extends BookSummary {
 // by the curator; the frontend shows them as returned (§5.2).
 export interface ScheduleWeek {
   id: string
+  // Own-user flag, from the same state as Inicio and meeting spoiler gating.
+  completedByMe: boolean
   weekNumber: number
   percentStart: number
   percentEnd: number

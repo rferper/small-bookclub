@@ -1,6 +1,7 @@
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
-import { useApiData } from '../api/hooks'
+import { useApi, useApiData } from '../api/hooks'
 import type { BookDetail, BookMeeting, ScheduleWeek } from '../api/types'
 import { BookCover } from '../components/BookCover'
 import { BookStatusLabel } from '../components/BookStatusLabel'
@@ -124,7 +125,6 @@ function BookView({ book }: { book: BookDetail }) {
 
 const meetingPath = (id: string) => `/reuniones/${encodeURIComponent(id)}`
 
-// Read-only here; marking past weeks as read is #90.
 function Schedule({ weeks }: { weeks: ScheduleWeek[] }) {
   if (weeks.length === 0) {
     return (
@@ -159,11 +159,63 @@ function Schedule({ weeks }: { weeks: ScheduleWeek[] }) {
                   due && <p className="text-bark">Para el {due}</p>
                 )}
                 {week.notes && <p className="mt-1 text-sm break-words">Nota: {week.notes}</p>}
+                <WeekCompletion week={week} />
               </li>
             )
           })}
       </ol>
     </Card>
+  )
+}
+
+// Each row keeps its last confirmed state and its own request/error. A book
+// navigation unmounts it, so a late save cannot change the next book's rows.
+function WeekCompletion({ week }: { week: ScheduleWeek }) {
+  const api = useApi()
+  const [completed, setCompleted] = useState(week.completedByMe)
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const inFlight = useRef(false)
+
+  const toggle = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
+    setSaving(true)
+    setFailed(false)
+    const next = !completed
+    try {
+      await api.setWeekCompleted(week.id, next)
+      setCompleted(next)
+    } catch {
+      setFailed(true)
+    } finally {
+      inFlight.current = false
+      setSaving(false)
+    }
+  }
+
+  const action = completed ? 'Desmarcar' : 'Marcar como leído'
+  return (
+    <div className="mt-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={saving}
+          aria-pressed={completed}
+          aria-label={`Semana ${week.weekNumber}: ${saving ? 'Guardando…' : action}`}
+          className={completed
+            ? 'rounded-lg border-2 border-forest px-4 py-2 font-semibold text-forest hover:bg-sage/50 disabled:opacity-60'
+            : 'rounded-lg bg-forest px-4 py-2 font-semibold text-parchment hover:bg-moss disabled:opacity-60'}
+        >
+          {saving ? 'Guardando…' : action}
+        </button>
+        <p className={completed ? 'text-moss' : 'text-bark'}>
+          {completed ? 'Has marcado esta semana como leída.' : 'Aún no has marcado esta semana como leída.'}
+        </p>
+      </div>
+      {failed && <p role="alert" className="mt-2 text-bark">No se ha podido guardar. Inténtalo de nuevo.</p>}
+    </div>
   )
 }
 

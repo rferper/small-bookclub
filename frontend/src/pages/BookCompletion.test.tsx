@@ -10,6 +10,18 @@ import { renderApp } from '../test/renderApp'
 const control = (week: number) => screen.getByRole('button', { name: new RegExp(`Semana ${week}:`) })
 
 describe('book weekly completion controls', () => {
+  it.each(['terminado', 'archivado'] as const)('offers all five controls on a %s book, including future weeks', async (status) => {
+    const user = userEvent.setup()
+    const state = createClubState()
+    state.books.find((book) => book.id === 'b3')!.status = status
+    renderApp({ path: '/biblioteca/b3', client: createMockClient({ state }) })
+    const plan = await screen.findByRole('region', { name: 'Plan de lectura' })
+    expect(within(plan).getAllByRole('button')).toHaveLength(5)
+    await user.click(control(5))
+    await waitFor(() => expect(control(5)).toHaveAttribute('aria-pressed', 'true'))
+    expect(await screen.findByRole('checkbox', { name: 'He terminado el libro' })).not.toBeChecked()
+  })
+
   it('saves a past week and persists when leaving and returning, without changing other weeks', async () => {
     const user = userEvent.setup()
     const tracked = trackCalls(createMockClient())

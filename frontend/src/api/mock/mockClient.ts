@@ -588,6 +588,7 @@ export function createMockClient({
             const meeting = meetings.find((m) => m.id === w.meetingId)
             return {
               id: w.id,
+              completedByMe: (state.completions[w.id] ?? []).includes(state.currentUserId),
               weekNumber: w.weekNumber,
               percentStart: w.percentStart,
               percentEnd: w.percentEnd,

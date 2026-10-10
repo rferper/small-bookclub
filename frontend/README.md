@@ -79,6 +79,12 @@ The controls follow the server's flags (`canCreateVote`, `canManage`, `canRecord
 | curator, `?mock-vote=tie`, `/votaciones/v2` | The pending tie and a note that the admin records the club's choice; no form. |
 | admin, `?mock-data=empty`, `/votaciones` | No button; a note that a curator must be assigned first in Administración. |
 
+## Weekly completion on book pages (#90)
+
+«Plan de lectura» on `/biblioteca/b3` has five own-user toggles, including past, current and future assignments. The default admin has read week 1 but not week 2; Mateo (`?mock-session=member`) has read weeks 1 and 2; Jordi (`?mock-session=curator`) has also read week 3. Marking week 2 unlocks its published record on the next `/reuniones/mt2` load; unmarking locks it again. Week 3 changes appear on the next Inicio load, including public progress. A book without assignments, such as `/biblioteca/b1`, has no weekly controls.
+
+Any existing assignment remains manually selectable on finished or archived books too. Changes last for the mock-client session, including navigation away and back, and reset on a full reload. Completing all weeks never changes «He terminado el libro» or the ratings gate. A pending action disables only its own row; a failed action preserves the confirmed state and offers retry on that row. Real backend enforcement remains #22 and the HTTP contract remains #71.
+
 ## Fixture ratings
 
 The ratings on each book page («Valoraciones») and its rating form (`/biblioteca/<id>/valorar`) are gated for the signed-in user, the admin included: the club's ratings appear only once the user has marked «He terminado el libro» and sent their own rating (#67). So the case depends on the session:
