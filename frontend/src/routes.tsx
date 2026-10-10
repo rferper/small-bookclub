@@ -7,6 +7,7 @@ import { MeetingPage } from './pages/MeetingPage'
 import { MeetingsPage } from './pages/MeetingsPage'
 import { MemberProfilePage } from './pages/MemberProfilePage'
 import { MembersPage } from './pages/MembersPage'
+import { MyProfilePage } from './pages/MyProfilePage'
 import { NotFoundPage, PlaceholderPage } from './pages/PlaceholderPage'
 import { RatePage } from './pages/RatePage'
 import { StatisticsPage } from './pages/StatisticsPage'
@@ -34,7 +35,7 @@ export const routes: RouteObject[] = [
           { path: 'estadisticas', element: <StatisticsPage /> },
           { path: 'miembros', element: <MembersPage /> },
           { path: 'miembros/:memberId', element: <MemberProfilePage /> },
-          { path: 'mi-perfil', element: <PlaceholderPage title="Mi perfil" /> },
+          { path: 'mi-perfil', element: <MyProfilePage /> },
           { path: 'administracion', element: <PlaceholderPage title="Administración" /> },
           { path: '*', element: <NotFoundPage /> },
         ],
