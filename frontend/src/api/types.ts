@@ -350,3 +350,70 @@ export interface ReviewInput {
   // Plain text; trimmed by the server, and a blank text is saved as null.
   text: string | null
 }
+
+// Statistics (§5.6, #68). How many counted ratings a book or member needs
+// to appear in a highlight.
+export interface StatisticsThresholds {
+  bookRatings: number
+  memberRatings: number
+}
+
+// A book's figures over the ratings the viewer may see. Values are never
+// rounded; only the display rounds.
+export interface BookStatistics {
+  book: BookSummary
+  reviewCount: number
+  // Mean of its reviews' overalls (the #67 club mean).
+  overallMean: number
+  // Population standard deviation of its reviews' overalls; 0 with one review.
+  dispersion: number
+}
+
+export interface MemberStatistics {
+  member: MemberSummary
+  isMe: boolean
+  reviewCount: number
+  // Mean of the member's counted overalls, each rating weighted equally.
+  overallMean: number
+}
+
+// Each list is empty when there is not enough data, and otherwise holds
+// every tied entry, by title or name with Spanish collation.
+export interface StatisticsHighlights {
+  topRated: BookStatistics[]
+  lowestRated: BookStatistics[]
+  mostDivisive: BookStatistics[]
+  mostGenerous: MemberStatistics[]
+  harshest: MemberStatistics[]
+}
+
+// Figures over the ratings of the books the viewer has unlocked (finished
+// and rated), decided by the server. Books the viewer has not unlocked are
+// absent, and nothing says how many there are. The empty shape carries no
+// other key at all.
+export type RatingStatistics =
+  | { status: 'empty' }
+  | {
+      status: 'available'
+      // Books with at least one counted rating.
+      bookCount: number
+      // Ratings counted.
+      reviewCount: number
+      // Means over all counted ratings, each rating weighted equally.
+      overallMean: number
+      criterionMeans: CriterionScores
+      // By overallMean, highest first; ties by title.
+      books: BookStatistics[]
+      // The viewer first, then by display name; never by score.
+      members: MemberStatistics[]
+      highlights: StatisticsHighlights
+    }
+
+export interface Statistics {
+  // Catalogue books with status «terminado» or «archivado». Not gated.
+  booksRead: number
+  // Meetings not cancelled that started before the server's now. Not gated.
+  meetingsHeld: number
+  thresholds: StatisticsThresholds
+  ratings: RatingStatistics
+}
