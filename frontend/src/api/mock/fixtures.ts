@@ -87,12 +87,29 @@ export interface MockReview {
   editedAt: string | null
 }
 
+// A member's website-native profile (§3, #69). Plain text; favourites are
+// ids of books the club has read («terminado» or «archivado»), at most 5.
+export interface MockProfile {
+  bio: string | null
+  favouriteQuote: string | null
+  favouriteBookIds: string[]
+}
+
+export type MockMember = MemberSummary & { role: CurrentUser['role'] }
+
 export interface MockState {
   // Whether someone is signed in. When 'signedIn', currentUserId says who.
   // Tests may change it after rendering to simulate an expired session.
   session: 'signedIn' | 'anonymous' | 'denied'
   currentUserId: string
-  members: (MemberSummary & { role: CurrentUser['role'] })[]
+  // Active members only. Every other call reads this list.
+  members: MockMember[]
+  // Members whose access was revoked (#7). Kept apart, so they are absent
+  // from every call; only Miembros looks them up, to give the same 404 as an
+  // unknown id (#69).
+  revokedMembers: MockMember[]
+  // memberId -> profile (#69). A member without an entry has an empty profile.
+  profiles: Record<string, MockProfile>
   books: MockBook[]
   weeks: MockWeek[]
   meetings: MockMeeting[]
@@ -128,6 +145,62 @@ export function createClubState(): MockState {
       { id: 'm6', displayName: 'Jordi', avatarUrl: null, role: 'member' },
       { id: 'm7', displayName: 'Elena', avatarUrl: null, role: 'member' },
     ],
+    revokedMembers: [{ id: 'm8', displayName: 'Tomás', avatarUrl: null, role: 'member' }],
+    // One case per profile display (frontend/README.md «Fixture members»).
+    profiles: {
+      // Short bio, a quote and two favourites (the default admin's own profile).
+      m1: {
+        bio: 'Organizo las reuniones y siempre llevo demasiados marcapáginas.',
+        favouriteQuote: 'Leer es viajar sin moverse de la silla.',
+        favouriteBookIds: ['b1', 'b2'],
+      },
+      // No bio; a quote and one favourite with a long title (the default member).
+      m2: {
+        bio: null,
+        favouriteQuote: 'Un libro abierto es un cerebro que habla.',
+        favouriteBookIds: ['b14'],
+      },
+      // Full profile: two paragraphs with literal markup, a quote and three favourites.
+      m3: {
+        bio:
+          'Leo por las noches, con té y una lámpara pequeña.\n' +
+          'Me gustan las novelas largas y escribir <b>en negrita</b> no funciona aquí: <script>alert("hola")</script>',
+        favouriteQuote: 'Sea lo que sea de lo que estén hechas nuestras almas,\nla suya y la mía son iguales.',
+        favouriteBookIds: ['b2', 'b12', 'b14'],
+      },
+      // Empty profile: no bio, no quote and no favourites.
+      m4: { bio: null, favouriteQuote: null, favouriteBookIds: [] },
+      // Long bio (over 400 characters) with no quote.
+      m5: {
+        bio:
+          'Llegué al club casi por casualidad, una tarde de lluvia en la que una amiga me prestó un libro viejo con las ' +
+          'esquinas dobladas y me dijo que lo terminara antes del jueves. Desde entonces no he faltado a casi ninguna ' +
+          'reunión. Me gustan los clásicos que asustan un poco por su tamaño, las cartas entre personajes, los ' +
+          'narradores que no se fían de nadie y las conversaciones que empiezan hablando de un capítulo y terminan ' +
+          'hablando de la vida. Leo despacio, subrayo a lápiz y apunto en los márgenes las palabras que no conozco ' +
+          'para buscarlas después.',
+        favouriteQuote: null,
+        favouriteBookIds: ['b13'],
+      },
+      // A bio and a quote, but no favourites yet.
+      m6: {
+        bio: 'Curador de esta temporada. Prefiero los libros que se discuten.',
+        favouriteQuote: 'Donde hay libros, hay conversación.',
+        favouriteBookIds: [],
+      },
+      // A bio and two favourites (one archived), no quote.
+      m7: {
+        bio: 'Recién llegada al club, con muchas ganas de descubrir clásicos.',
+        favouriteQuote: null,
+        favouriteBookIds: ['b6', 'b1'],
+      },
+      // The revoked member's profile is kept but never returned.
+      m8: {
+        bio: 'Tomás ya no forma parte del club.',
+        favouriteQuote: 'Cita de Tomás que nunca debe aparecer.',
+        favouriteBookIds: ['b12'],
+      },
+    },
     books: [
       book({
         id: 'b1',
@@ -578,6 +651,8 @@ export function createEmptyState(): MockState {
   return {
     ...club,
     members: club.members.slice(0, 1),
+    revokedMembers: [],
+    profiles: {},
     books: [],
     weeks: [],
     meetings: [],

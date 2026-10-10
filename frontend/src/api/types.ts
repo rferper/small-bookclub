@@ -458,3 +458,42 @@ export interface TasteCompatibility {
   // viewer is not listed.
   members: MemberCompatibility[]
 }
+
+// Miembros (#69). Profiles are website-native (§3) and carry no rating,
+// review or taste data at all: comparing tastes lives in Estadísticas (#93),
+// so nothing gated can reach a profile. Revoked members are absent.
+
+// One active member in the directory. `completedCurrentWeek` is the public
+// weekly status (§12 decision 55), from the same state as Inicio's progress;
+// null exactly when there is no current reading week.
+export interface MemberDirectoryEntry {
+  member: MemberSummary
+  isMe: boolean
+  completedCurrentWeek: boolean | null
+}
+
+export interface MemberDirectory {
+  // The week number of the club's current reading week, or null.
+  currentWeekNumber: number | null
+  // Every active member, the viewer included, by display name with Spanish
+  // collation; never by progress.
+  members: MemberDirectoryEntry[]
+}
+
+export interface MemberWeekStatus {
+  weekNumber: number
+  completed: boolean
+}
+
+export interface MemberProfile {
+  member: MemberSummary
+  isMe: boolean
+  // Plain text, never HTML; null when there is none.
+  bio: string | null
+  favouriteQuote: string | null
+  // Club books the member chose (read by the club, at most 5), in their
+  // order. A public profile choice: no score, status or date.
+  favouriteBooks: BookSummary[]
+  // This week's reading status, or null when there is no current week.
+  currentWeek: MemberWeekStatus | null
+}

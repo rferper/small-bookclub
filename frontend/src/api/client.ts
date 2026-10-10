@@ -5,6 +5,8 @@ import type {
   LibraryBook,
   MeetingDetail,
   MeetingList,
+  MemberDirectory,
+  MemberProfile,
   RatingRubric,
   ReviewInput,
   Session,
@@ -98,6 +100,14 @@ export interface ApiClient {
   // has rated too. Below `minSharedBooks` an entry carries only the count;
   // other books are absent.
   getTasteCompatibility(): Promise<TasteCompatibility>
+
+  // Miembros (#69), for the signed-in user. Only active members: a revoked
+  // member is absent. Neither call carries any rating, review or taste data.
+  // Every active member with this week's public reading status, by name.
+  listMembers(): Promise<MemberDirectory>
+  // One active member's profile. Rejects with the same 404 ApiError for an
+  // unknown id and for a revoked member's id.
+  getMemberProfile(memberId: string): Promise<MemberProfile>
 }
 
 // Methods that manage the session itself; every other method returns club data.

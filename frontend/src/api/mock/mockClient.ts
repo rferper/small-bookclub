@@ -11,6 +11,8 @@ import type {
   MeetingList,
   MeetingListItem,
   MeetingRecord,
+  MemberDirectory,
+  MemberProfile,
   MemberSummary,
   NextMeeting,
   RatingRubric,
@@ -321,6 +323,25 @@ export function createMockClient({
       .filter((m) => !m.cancelled && m.startsAt >= state.now)
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null
 
+  // The club's current reading week: the week of the book being read that
+  // leads to the next meeting. Inicio and Miembros both use it, so their
+  // weekly statuses always agree.
+  const currentReadingWeek = () => {
+    const activeBook = state.books.find((b) => b.status === 'leyendo') ?? null
+    const meeting = nextMeeting()
+    return (
+      (activeBook && meeting && state.weeks.find((w) => w.bookId === activeBook.id && w.meetingId === meeting.id)) || null
+    )
+  }
+
+  // Active members only: a revoked or unknown id gives the same 404, with no
+  // difference between the two (#69).
+  const findActiveMember = (memberId: string) => {
+    const member = state.members.find((m) => m.id === memberId)
+    if (!member) throw new ApiError(404, 'No existe ese miembro.')
+    return member
+  }
+
   return {
     async getSession(): Promise<Session> {
       failIfConfigured('getSession')
@@ -356,9 +377,7 @@ export function createMockClient({
       failIfConfigured('getHome')
       const activeBook = state.books.find((b) => b.status === 'leyendo') ?? null
       const meeting = nextMeeting()
-      const week =
-        (activeBook && meeting && state.weeks.find((w) => w.bookId === activeBook.id && w.meetingId === meeting.id)) ||
-        null
+      const week = currentReadingWeek()
       const doneBy = week ? (state.completions[week.id] ?? []) : []
 
       const currentWeek: ReadingWeek | null = week && {
@@ -712,6 +731,48 @@ export function createMockClient({
           books: state.books.filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
           minSharedBooks: MIN_SHARED_BOOKS,
         }),
+      }
+    },
+
+    async listMembers(): Promise<MemberDirectory> {
+      requireSignedIn()
+      failIfConfigured('listMembers')
+      // Built field by field: no role, Discord id, revocation, approval or
+      // rating data can reach the response. No role input either.
+      const week = currentReadingWeek()
+      const doneBy = week ? (state.completions[week.id] ?? []) : []
+      return {
+        currentWeekNumber: week ? week.weekNumber : null,
+        members: [...state.members]
+          .sort((a, b) => spanishOrder.compare(a.displayName, b.displayName))
+          .map((m) => ({
+            member: toMember(m.id),
+            isMe: m.id === state.currentUserId,
+            completedCurrentWeek: week ? doneBy.includes(m.id) : null,
+          })),
+      }
+    },
+
+    async getMemberProfile(memberId: string): Promise<MemberProfile> {
+      requireSignedIn()
+      failIfConfigured('getMemberProfile')
+      const member = findActiveMember(memberId)
+      const profile = state.profiles[member.id]
+      const week = currentReadingWeek()
+      // No rating, review or taste data at all: favourites are a public
+      // profile choice, sent as plain book summaries (#69).
+      return {
+        member: toMember(member.id),
+        isMe: member.id === state.currentUserId,
+        bio: profile?.bio ?? null,
+        favouriteQuote: profile?.favouriteQuote ?? null,
+        favouriteBooks: (profile?.favouriteBookIds ?? []).flatMap((id) => {
+          const book = toBookSummary(id)
+          return book ? [book] : []
+        }),
+        currentWeek: week
+          ? { weekNumber: week.weekNumber, completed: (state.completions[week.id] ?? []).includes(member.id) }
+          : null,
       }
     },
   }
