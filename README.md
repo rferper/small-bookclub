@@ -43,6 +43,12 @@ npm run dev   # http://localhost:5173
 
 Backend and Docker Compose instructions: *(to do)*
 
+The mock admin can maintain independent page/percentage targets at
+`/administracion/lecturas`: add, edit, reorder and confirm recoverable removal.
+Warnings require acknowledgement; removed weeks retain completion history for
+30-day recovery and lock linked meeting records. No automatic plan generation
+or recovery UI is included. All changes last for the mock-client session.
+
 The mock admin can manage meeting dates, optional catalogue book/existing week links,
 cancellations and attendance at `/administracion/reuniones`. Meeting form times use
 `VITE_CLUB_TIMEZONE` (default `Europe/Madrid`); nonexistent or ambiguous DST times

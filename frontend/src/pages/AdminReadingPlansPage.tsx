@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import { useApi, useApiData } from '../api/hooks'
@@ -49,8 +49,10 @@ function PlanEditor({ initial }: { initial: AdminReadingPlan }) {
   const [plan, setPlan] = useState(initial), [draft, setDraft] = useState<Draft | null>(null)
   const [order, setOrder] = useState<string[] | null>(null), [removed, setRemoved] = useState<AdminReadingWeek | null>(null)
   const [ack, setAck] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const running = useRef(false), returnFocus = useRef<HTMLButtonElement | null>(null), formField = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (draft) formField.current?.focus() }, [draft?.id, draft !== null])
+  const running = useRef(false), returnFocus = useRef<HTMLButtonElement | null>(null), formField = useRef<HTMLInputElement>(null), addButton = useRef<HTMLButtonElement>(null)
+  const editingKey = draft ? draft.id ?? 'new' : null
+  useLayoutEffect(() => { if (editingKey) formField.current?.focus() }, [editingKey])
+  useLayoutEffect(() => { if (!busy && !editingKey && !order && !removed && returnFocus.current) (returnFocus.current.isConnected ? returnFocus.current : addButton.current)?.focus() }, [busy, editingKey, order, removed])
   const input: ReadingWeekInput | null = draft ? { percentStart: draft.percentStart.trim() ? Number(draft.percentStart) : NaN, percentEnd: draft.percentEnd.trim() ? Number(draft.percentEnd) : NaN, pageStart: draft.pageStart.trim() ? Number(draft.pageStart) : NaN, pageEnd: draft.pageEnd.trim() ? Number(draft.pageEnd) : NaN, dueDate: draft.dueDate || null, notes: draft.notes || null, meetingId: draft.meetingId || null } : null
   const proposed = order ? order.map((id) => plan.weeks.find((w) => w.id === id)!) : input ? draft?.id ? plan.weeks.map((w) => w.id === draft.id ? input : w) : [...plan.weeks, input] : []
   const warnings = readingWarnings(proposed, plan.book.pageCount)
@@ -84,7 +86,7 @@ function PlanEditor({ initial }: { initial: AdminReadingPlan }) {
   }
   return <div className="grid min-w-0 gap-6">
     <Card title={plan.book.title}>
-      <button className={button} disabled={busy || draft !== null || order !== null} onClick={(e) => start(e)}>Añadir semana</button>
+      <button ref={addButton} className={button} disabled={busy || draft !== null || order !== null} onClick={(e) => start(e)}>Añadir semana</button>
       {!plan.weeks.length && <EmptyState>Este libro aún no tiene un plan de lectura. Puedes añadir su primera semana.</EmptyState>}
       <ol className="mt-4 grid gap-4">{plan.weeks.map((w, i) => <li key={w.id} className="min-w-0 border-b border-wood/30 pb-4">
         <h3 className="font-semibold">Semana {w.weekNumber}</h3>

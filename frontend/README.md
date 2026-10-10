@@ -166,6 +166,23 @@ These fixture Discord IDs are entirely fictional, made-up 18-digit strings, neve
 | Elena (`m7`) | `000000000000000107` |
 | Tomás (`m8`, initially revoked) | `000000000000000108` |
 
+## Manual reading plans (#97)
+
+Administración links to `/administracion/lecturas`; select any catalogue book,
+including books without a plan, and edit at `/administracion/lecturas/<id>`.
+Page and percentage ranges are independent manual facts. Optional due dates and
+plain notes remain stored, including under meeting links. Add appends; up/down
+reordering preserves ids and completion history. Structural errors block saves;
+specific range warnings require explicit acknowledgement, reset after input changes.
+
+Removal always confirms the book/week and distinct completion count. Marks and
+the canonical meeting link remain stored with 30-day deletion metadata; active
+pages hide the week and its linked meeting record stays locked, even if marked
+safe. The calendar labels the read-only existing link «Semana retirada»; date-only
+edits preserve it until deliberate unlink/relink. Recovery UI belongs to #100.
+Subsequent member-page navigation sees changes without a full reload; mock state
+still resets on reload. No generation, conversion, backend or HTTP endpoint.
+
 ## Admin catalogue (#95)
 
 The Administración hub also links to Libros (`/administracion/libros`), with create (`/administracion/libros/nuevo`) and edit (`/administracion/libros/<id>/editar`) forms. AdminGuard protects all three; every catalogue/search mock call separately checks the admin role. The client documentation and draft shapes live in `src/api/client.ts` and `types.ts`: `listAdminBooks`, `getAdminBook`, `createBook`, `updateBook`, `searchBookMetadata`, `AdminBook`, `BookInput`, and `BookMetadataResult`. They contain metadata only, never reviews or meeting records.

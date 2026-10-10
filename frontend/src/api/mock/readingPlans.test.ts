@@ -43,7 +43,7 @@ describe('manual reading plan rules', () => {
     const edited = await api.updateReadingWeek('b4', added.id, { ...added, notes: '' }, true)
     expect(edited.weeks[1]).toMatchObject({ id: added.id, weekNumber: 2, percentEnd: 130, pageEnd: 20, dueDate: '2027-01-01', notes: null, completionCount: 2 })
     expect(state.completions[added.id]).toEqual(['m1', 'm8'])
-    expect(state.books).toEqual(before.books); expect(state.finishedBooks).toEqual(before.finishedBooks); expect(state.reviews).toEqual(before.reviews)
+    expect(state.books).toEqual(before.books); expect(state.finished).toEqual(before.finished); expect(state.reviews).toEqual(before.reviews)
     const snapshot = structuredClone(state)
     for (const ids of [[added.id], [added.id, added.id], ['w1', added.id], ['missing', added.id]]) { await expect(api.reorderReadingWeeks('b4', ids, true)).rejects.toMatchObject({ status: 400 }); expect(state).toEqual(snapshot) }
   })
