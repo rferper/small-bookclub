@@ -5,7 +5,7 @@ import type { ApiClient } from '../api/client'
 import { createClubState } from '../api/mock/fixtures'
 import { createMockClient, type MockOptions } from '../api/mock/mockClient'
 import type { BookRatings } from '../api/types'
-import { RADAR_CHART, radarPoints } from '../lib/radar'
+import { RADAR_CHART, radarPoints, ringLabelPoint } from '../lib/radar'
 import { holdCalls, trackCalls } from '../test/clients'
 import { renderApp } from '../test/renderApp'
 
@@ -163,6 +163,34 @@ describe('«Comparación con el club» once visible', () => {
 
     expect(svg.querySelectorAll('a, button, input, select, [tabindex], title, animate, animateTransform')).toHaveLength(0)
     expect(section.innerHTML).not.toMatch(/transition|animate/)
+  })
+
+  it('draws the ring labels last, off the axes and with a paper halo, so no series can cover them', async () => {
+    await openRatings('b2')
+    const svg = chart(comparison())
+    const labels = [...svg.querySelectorAll('text[data-ring-label]')]
+    expect(labels.map((t) => t.textContent)).toEqual(['1', '2', '3', '4', '5'])
+    labels.forEach((label, index) => {
+      const at = ringLabelPoint(center, radius, index + 1)
+      expect(Number(label.getAttribute('x'))).toBeCloseTo(at.x, 9)
+      expect(Number(label.getAttribute('y'))).toBeCloseTo(at.y, 9)
+      // Not on the Disfrute axis (x = centre), where scores of 4–5 are drawn.
+      expect(Math.abs(Number(label.getAttribute('x')) - center.x)).toBeGreaterThan(10)
+    })
+    // Every series shape and marker comes before every ring label in paint order.
+    const shapes = [...svg.querySelectorAll('polygon[data-series], [data-marker]')]
+    expect(shapes).toHaveLength(12)
+    for (const shape of shapes) {
+      for (const label of labels) {
+        expect(shape.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      }
+    }
+    const group = labels[0].parentElement!
+    expect(group).toHaveAttribute('paint-order', 'stroke')
+    expect(group.getAttribute('class')).toMatch(/\bstroke-paper\b/)
+    expect(group.getAttribute('class')).toMatch(/\bfill-bark\b/)
+    expect(Number(group.getAttribute('stroke-width'))).toBeGreaterThan(0)
+    expect(Number(group.getAttribute('font-size'))).toBeGreaterThanOrEqual(13)
   })
 
   it('shows a visible legend with both series', async () => {

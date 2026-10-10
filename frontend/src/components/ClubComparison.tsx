@@ -1,7 +1,15 @@
 import { useId, useState } from 'react'
 import type { ClubRatings, ClubReview, CriterionScores } from '../api/types'
 import { CRITERIA, CRITERION_LABELS, formatMean, formatReviewCount, formatScore } from '../lib/ratings'
-import { pointOnAxis, RADAR_CHART, RADAR_RINGS, radarPoints, radarVertices, ringPoints } from '../lib/radar'
+import {
+  pointOnAxis,
+  RADAR_CHART,
+  RADAR_RINGS,
+  radarPoints,
+  radarVertices,
+  ringLabelPoint,
+  ringPoints,
+} from '../lib/radar'
 
 type VisibleClub = Extract<ClubRatings, { status: 'visible' }>
 
@@ -94,18 +102,6 @@ function RadarChart({ member, means }: { member: ClubReview; means: CriterionSco
         })}
       </g>
 
-      {/* Ring labels along Disfrute, just left of the axis and below each ring. */}
-      <g fontSize={13} textAnchor="end" className="fill-bark">
-        {RADAR_RINGS.map((level) => {
-          const at = pointOnAxis(center, (radius * level) / 5, 0)
-          return (
-            <text key={level} x={at.x - 4} y={at.y} dy="0.95em">
-              {level}
-            </text>
-          )
-        })}
-      </g>
-
       {/* Axis labels, from the same angles as the axes. */}
       <g fontSize={14} className="fill-forest">
         {CRITERIA.map((criterion, index) => {
@@ -156,6 +152,28 @@ function RadarChart({ member, means }: { member: ClubReview; means: CriterionSco
         {memberVertices.map((vertex, index) => (
           <circle key={index} data-marker="member" cx={vertex.x} cy={vertex.y} r={3.5} />
         ))}
+      </g>
+
+      {/* Ring labels last, on the bisector between Huella and Disfrute where
+          no vertex or marker can fall, with a `paper` halo so a polygon edge
+          crossing one never hides it. */}
+      <g
+        fontSize={13}
+        textAnchor="middle"
+        dominantBaseline="central"
+        strokeWidth={3}
+        strokeLinejoin="round"
+        paintOrder="stroke"
+        className="fill-bark stroke-paper"
+      >
+        {RADAR_RINGS.map((level) => {
+          const at = ringLabelPoint(center, radius, level)
+          return (
+            <text key={level} data-ring-label={level} x={at.x} y={at.y}>
+              {level}
+            </text>
+          )
+        })}
       </g>
     </svg>
   )

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { axisAngle, pointOnAxis, radarPoints, radarVertices, ringPoints, type Point } from './radar'
+import {
+  axisAngle,
+  pointOnAxis,
+  RADAR_CHART,
+  RADAR_RINGS,
+  radarPoints,
+  radarVertices,
+  RING_LABEL_OFFSET,
+  ringLabelPoint,
+  ringPoints,
+  type Point,
+} from './radar'
 
 // Exact trigonometry of the regular pentagon, independent of Math.sin/cos.
 const SQRT5 = Math.sqrt(5)
@@ -88,6 +99,43 @@ describe('radar geometry', () => {
   it('draws each guide ring as the pentagon of that value', () => {
     expect(ringPoints(CENTER, RADIUS, 2)).toBe(radarPoints(CENTER, RADIUS, [2, 2, 2, 2, 2]))
     expect(ringPoints({ x: 0, y: 0 }, 50, 5)).toBe('0,-50 47.553,-15.451 29.389,40.451 -29.389,40.451 -47.553,-15.451')
+  })
+
+  it('centres each ring label on the Huella–Disfrute bisector, just outside its ring', () => {
+    // cos 36° and sin 36° in closed form; the bisector points up and to the left.
+    const COS36 = (1 + SQRT5) / 4
+    const SIN36 = Math.sqrt(10 - 2 * SQRT5) / 4
+    for (const level of [1, 2, 3, 4, 5]) {
+      const distance = (RADIUS * level * COS36) / 5 + RING_LABEL_OFFSET
+      const label = ringLabelPoint(CENTER, RADIUS, level)
+      expect(Math.abs(label.x - (CENTER.x - distance * SIN36))).toBeLessThan(1e-9)
+      expect(Math.abs(label.y - (CENTER.y - distance * COS36))).toBeLessThan(1e-9)
+    }
+  })
+
+  it('keeps every ring label clear of every axis, so no vertex or marker can sit under it', () => {
+    const { center, radius, width, height } = RADAR_CHART
+    // Distance from `p` to the axis segment from the centre to full radius.
+    const toAxis = (p: Point, index: number) => {
+      const end = pointOnAxis(center, radius, index)
+      const dx = end.x - center.x
+      const dy = end.y - center.y
+      const t = Math.max(0, Math.min(1, ((p.x - center.x) * dx + (p.y - center.y) * dy) / (dx * dx + dy * dy)))
+      return Math.hypot(p.x - (center.x + t * dx), p.y - (center.y + t * dy))
+    }
+    // A club marker reaches 7 units from its axis (a 12-unit square plus half
+    // its 2-unit stroke); half a 13-unit digit with its halo is about 4.
+    const CLEARANCE = 11
+    for (const level of RADAR_RINGS) {
+      const label = ringLabelPoint(center, radius, level)
+      for (let index = 0; index < 5; index++) {
+        expect(toAxis(label, index)).toBeGreaterThanOrEqual(CLEARANCE)
+      }
+      expect(label.x).toBeGreaterThan(8)
+      expect(label.x).toBeLessThan(width - 8)
+      expect(label.y).toBeGreaterThan(8)
+      expect(label.y).toBeLessThan(height - 8)
+    }
   })
 
   it.each([0, 0.5, 5.5, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(

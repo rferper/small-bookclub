@@ -46,7 +46,7 @@ First used by the radar in «Comparación con el club» (#92). Hand-built inline
 - Every chart has a visible, equivalent `<table>` next to or below it, with a caption, column headers and row headers. The `svg` is `role="img"` with an `aria-label` that says what it compares and that the values are in the table.
 - Series differ in more than colour: the main series (a member) is a solid `forest` line with round markers and a light `forest` fill; the comparison series (the club) is a dashed `bark` line with hollow square markers and no fill, drawn on top. Strokes are at least 2 px and use tokens with at least 3:1 on `paper`. Fills stay translucent so every outline and marker remains visible where shapes overlap.
 - A visible HTML legend names each series, with a sample of its line and marker.
-- Grid lines and axes may use `wood` at reduced opacity; labels use text tokens only (`forest`, `moss`, `bark`), never `soft-green` or `wood`, and render at 12 CSS px or more.
+- Grid lines and axes may use `wood` at reduced opacity; labels use text tokens only (`forest`, `moss`, `bark`), never `soft-green` or `wood`, and render at 12 CSS px or more. Scale labels sit between axes, where no data point can fall, and are drawn after the series with a `paper` halo (`paint-order: stroke`) so no shape covers them.
 - No animation, transition, tooltip or focusable element inside a chart; the data never lives only in a hover.
 
 ## Layout

@@ -70,3 +70,17 @@ export function radarPoints(center: Point, radius: number, values: readonly numb
 export function ringPoints(center: Point, radius: number, level: number): string {
   return radarPoints(center, radius, Array.from({ length: RADAR_AXES }, () => level))
 }
+
+// How far (in SVG units) a ring label's centre sits outside its ring.
+export const RING_LABEL_OFFSET = 5
+
+// Where the label of ring `level` is centred: on the bisector between Huella
+// (the last axis) and Disfrute (the first), just outside the ring's edge.
+// Every data vertex and marker lies on an axis, so none can fall under a
+// label; a polygon edge may still cross one, which the label's halo handles.
+export function ringLabelPoint(center: Point, radius: number, level: number): Point {
+  const half = Math.PI / RADAR_AXES
+  // The ring's edge crosses the bisector at its apothem.
+  const distance = ((radius * level) / RADAR_MAX) * Math.cos(half) + RING_LABEL_OFFSET
+  return { x: center.x - distance * Math.sin(half), y: center.y - distance * Math.cos(half) }
+}
