@@ -169,7 +169,7 @@ describe('Rule order and refusals', () => {
   it('refuses inputs of the wrong type with 400', async () => {
     const { state, api } = client()
     const raw = api.addMember as (input: unknown) => Promise<AdminMembers>
-    await expectRefused(state, () => raw({ discordId: 12345678901234567, displayName: 'Nora' }), 400)
+    await expectRefused(state, () => raw({ discordId: 1234567, displayName: 'Nora' }), 400)
     await expectRefused(state, () => raw({ discordId: '12345678901234567', displayName: null }), 400)
     await expectRefused(state, () => raw(null), 400)
   })
