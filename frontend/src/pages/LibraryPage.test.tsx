@@ -54,7 +54,7 @@ describe('Biblioteca', () => {
   it('shows each shelf book with its cover or placeholder, title, authors and status', async () => {
     await openLibrary()
 
-    expect(within(shelf()).getAllByRole('listitem')).toHaveLength(11)
+    expect(within(shelf()).getAllByRole('listitem')).toHaveLength(14)
     const niebla = screen.getByRole('link', { name: /Niebla/ })
     expect(within(niebla).getByRole('img', { name: 'Portada de «Niebla»' })).toHaveAttribute('src', '/covers/niebla.svg')
     expect(niebla).toHaveTextContent('Miguel de Unamuno')
@@ -93,7 +93,7 @@ describe('Biblioteca', () => {
     expect(router.state.location.search).toBe('?vista=cronologia')
     expect(timeline()).toEqual([
       ['2026', ['b3']],
-      ['2025', ['b1']],
+      ['2025', ['b14', 'b13', 'b12', 'b1']],
       ['2024', ['b2']],
       ['2023', ['b6']],
       ['Fecha desconocida', ['b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11']],
@@ -122,7 +122,7 @@ describe('Biblioteca', () => {
     await openLibrary()
 
     expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toHaveValue('fecha')
-    expect(bookIds(shelf())).toEqual(['b3', 'b1', 'b2', 'b6', 'b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11'])
+    expect(bookIds(shelf())).toEqual(['b3', 'b14', 'b13', 'b12', 'b1', 'b2', 'b6', 'b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11'])
   })
 
   it('sorts the shelf by title with Spanish collation', async () => {
@@ -131,7 +131,7 @@ describe('Biblioteca', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), 'Título')
 
     // «Ángel Guerra» sorts with the A's, not after «Pepita Jiménez».
-    expect(bookIds(shelf())).toEqual(['b6', 'b2', 'b10', 'b8', 'b3', 'b9', 'b5', 'b7', 'b1', 'b4', 'b11'])
+    expect(bookIds(shelf())).toEqual(['b6', 'b2', 'b10', 'b14', 'b13', 'b12', 'b8', 'b3', 'b9', 'b5', 'b7', 'b1', 'b4', 'b11'])
     expect(router.state.location.search).toBe('?orden=titulo')
   })
 
@@ -211,7 +211,7 @@ describe('Biblioteca', () => {
     expect(screen.getByRole('button', { name: 'Estantería' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('combobox', { name: 'Estado' })).toHaveValue('todos')
     expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toHaveValue('fecha')
-    expect(bookIds(shelf())).toEqual(['b3', 'b1', 'b2', 'b6', 'b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11'])
+    expect(bookIds(shelf())).toEqual(['b3', 'b14', 'b13', 'b12', 'b1', 'b2', 'b6', 'b10', 'b8', 'b9', 'b5', 'b7', 'b4', 'b11'])
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
