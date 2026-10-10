@@ -49,6 +49,15 @@ First used by the radar in «Comparación con el club» (#92). Hand-built inline
 - Grid lines and axes may use `wood` at reduced opacity; labels use text tokens only (`forest`, `moss`, `bark`), never `soft-green` or `wood`, and render at 12 CSS px or more. Scale labels sit between axes, where no data point can fall, and are drawn after the series with a `paper` halo (`paint-order: stroke`) so no shape covers them.
 - No animation, transition, tooltip or focusable element inside a chart; the data never lives only in a hover.
 
+### Bar charts
+
+Used in Estadísticas (#68) for a mean per book and per member (`src/components/BarChart.tsx`). Plain HTML and CSS, so long labels wrap like text and nothing needs a `viewBox`.
+
+- Horizontal bars, one per entry in the data's order, each with its label on its own line above the bar (wrapping, never clipped) and its value as text (`formatMean`) in a fixed column after the bar.
+- The scale runs from 0 to 5 with labelled guide marks at 0–5 under the bars; a bar's width is proportional to its unrounded value. The end marks are aligned inside the track so nothing sticks out at 360 px.
+- Bars are solid `forest` (over 3:1 on `paper`); guide lines are `wood` at reduced opacity; labels and values are `forest` or `bark` at 14 px.
+- The chart is one `role="img"` element whose `aria-label` names what it compares and says the values are in the following table; the table (caption, column headers, a row header per entry) is always shown with it and holds the same entries in the same order. On wide screens the chart and table sit side by side.
+
 ## Layout
 
 - Mobile-first, with an equally comfortable desktop layout (especially statistics).
