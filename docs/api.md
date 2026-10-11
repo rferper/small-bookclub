@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend still uses the handwritten types and fictional in-memory mock. There is no backend yet, and schema tests do not prove HTTP authentication, database transactions or server spoiler enforcement. Generated central types/mock adoption is #103, and backend integration response validation is #72.
+`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend uses generated types and the fictional in-memory mock. There is no backend yet, and schema tests do not prove HTTP authentication, database transactions or server spoiler enforcement. Generated central types/mock adoption is #103; backend integration response validation remains #72.
 
 The Home projection correction and regression coverage landed in #104. Finish #71 → #104 → #102 → #103 before backend work. #102 preserves the runtime and its current 1,102-test baseline.
 
@@ -204,3 +204,39 @@ npm run build
 Validation checks OpenAPI 3.1 structure, unique operationIds, local references and every declared schema/media/parameter example against JSON Schema 2020-12 (including date/time formats). No remote references or network resolution are allowed. Focused tests cover fictional session/gated/available/empty/outcome/input examples and negative privacy/input mutations; disposable malformed-document, unresolved-reference and invalid-example mutations must fail the validator. It does not call nonexistent HTTP endpoints. CI performs clean `npm ci` before these contract checks and frontend regression checks. Preserve the active workspace/dev server/native DLLs: dependency changes for #71 are installed in a disposable clean copy; never workspace `npm ci`.
 
 Backend unit/integration and Docker Compose tests are deferred because no backend exists; permission, state/lifecycle predicates, transactionality, OAuth/image validation and response-contract checks need backend implementation/testing. #104 corrected Home privacy; #102 defines administrative contract/export semantics; #103 generates types and adapts central mock/client without losing this contract; #72 validates actual backend responses. There are no paid services or accounts required for this contract tooling.
+
+## Generated frontend ownership (#103)
+
+Root `openapi.yaml` owns wire shapes; committed `frontend/src/api/generated.ts` must
+never be edited by hand. `types.ts` keeps readable generated component aliases,
+`client.ts` derives JSON success bodies from actual operation/status declarations
+and scalar inputs from generated request schemas. Type-level coverage includes all
+client methods and excludes only the provider callback. Internal mock state may
+retain private facts, but public projections compile against generated boundaries.
+
+From `frontend/`, run `npm run generate:api` after contract-first changes and commit
+both files. `npm run check:api` compares deterministic regeneration bytes;
+`npm run validate:contract` and `npm run test:contract` validate declarations/examples;
+`npm run test:type-boundaries` mutates used request/response schemas in disposable
+copies and requires errors at actual TypeScript boundaries. `npm test` includes
+actual mock return-value conformance and forbidden-field mutation cases. CI runs
+these after clean `npm ci` and before build. After installation all checks are offline;
+remote references are refused before generation.
+
+Pinned MIT openapi-typescript 6.7.6 avoids the 7.x TypeScript-5-only peer constraint
+in this TS6 project. The documented object-input API generates from validated memory.
+Redundant OAS discriminator lookup hints are removed only from the cloned generation
+input because v6 incorrectly injects parent names into nullable union references.
+Authoritative const/oneOf branches, absent/required fields and nullability remain
+intact. Binary format generates Blob byte parts; no schema is widened afterward.
+
+`adapters.ts` maps browser File actions to generated profile/cover multipart JSON
+metadata plus optional bytes and FormData without sending HTTP. OAuth 302 handoff is
+separate from JSON results. Local `ClubExport {filename,json}` uses illustrative mock
+JSON and fictional data URLs; authenticated production ZIP/native media remain #102,
+implemented by #49 with fresh authorisation. ApiError(status,message,code?) preserves
+existing callers; explicit envelopes use generated {code,message} conventions.
+
+Complete #71 -> #104 -> #102 -> #103 before backend work. Backend scaffold #1 and
+feature/auth issues implement the contract; #72 verifies actual server responses.
+Backend/integration/Compose checks remain deferred until those systems exist.

@@ -10,17 +10,20 @@ npm run lint    # oxlint
 npm run build   # type-check and production build
 npm run validate:contract # offline OpenAPI 3.1 and declared-example validation
 npm run test:contract # focused contract/privacy/input tests
+npm run generate:api # regenerate committed types after changing root openapi.yaml
+npm run check:api # fail on stale generated types
+npm run test:type-boundaries # mutations must break actual TypeScript boundaries
 ```
 
 The [API contract and complete client inventory](../docs/api.md) describe the
 session/member operations in root `openapi.yaml`, server privacy obligations,
-multipart/CSRF adapters and the remaining #104/#102/#103 work. The current
-handwritten client/types/mock stay in place; schema validation does not implement
+multipart/CSRF adapters and generated ownership in #103. The current
+client uses generated operation results and component aliases; the fictional mock stays in place. Schema validation does not implement
 an HTTP backend or prove server enforcement.
 
 ## Structure
 
-- `src/api/`: the only code that talks to the backend. `client.ts` defines the `ApiClient` interface, `types.ts` the data shapes (the draft API contract), and `mock/` an in-memory implementation with fictional data used until the backend exists. Components get the client through `ApiProvider` and the hooks in `hooks.ts`.
+- `src/api/`: the only code that talks to the backend. `client.ts` defines `ApiClient` using generated operation results, `generated.ts` comes from root OpenAPI, `types.ts` keeps aliases and small local browser/download types, `adapters.ts` declares multipart/OAuth/export/error boundaries, and `mock/` is the fictional in-memory implementation until the backend exists. Components use `ApiProvider` and hooks.
 - `src/pages/`: one component per route; `src/routes.tsx` maps URLs to pages.
 - `src/session/`: `SessionGate`, the root route. It loads the session and shows the sign-in, access-denied or session-error screen at any URL until a member is signed in. This is cosmetic; the backend enforces sign-in and the allowlist.
 - `src/components/`: shared layout and UI pieces.

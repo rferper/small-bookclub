@@ -569,3 +569,30 @@ download/fresh authorisation UI; #50 owns persistent audit; #72 validates backen
 responses. Existing OSS validator/CI checks the whole extension and sensitive-field
 mutations offline; these are schema/declaration tests, not HTTP security evidence.
 No new dependency, account, service, UI or runtime change.
+
+## 2026-10-11: Generated operation boundaries and local adapters (#103)
+
+**Decision:** Pin free MIT openapi-typescript 6.7.6 as a development dependency and
+commit deterministic generated.ts. Central JSON results derive from operations;
+public data aliases derive from components; scalar input arguments derive from
+request properties. Browser File metadata derives from generated schemas and explicit
+multipart helpers produce JSON plus Blob byte parts. OAuth navigation and illustrative
+mock JSON export remain separately declared adapters. Existing UI/mock rules stay intact.
+
+**Why:** The contract must control real boundaries. Version 7.13.0 requires TS ^5,
+conflicting with existing TS6 clean installs; 6.7.6 has no such peer. Its documented
+[object API](https://openapi-ts.dev/6.x/node) works from validated memory offline.
+Redundant discriminator hints are removed on a clone to avoid incorrect parent names
+in nullable references; authoritative const/oneOf unions retain narrowing/omissions.
+Binary format maps to Blob. External refs are rejected before generation.
+
+**Evidence:** Byte freshness, schema validation, actual mock conformance, sensitive
+extra-field rejection and disposable schema mutations complement behavior tests.
+Mutations must fail at real client/mock compilation, without handwritten wire schemas
+or broad casts. Existing ApiError accepts an optional generated code and explicit
+error-envelope adapters preserve callers.
+
+**Consequence:** CI installs cleanly then validates/checks freshness before build.
+Dependency updates were installed in a disposable copy and reviewed manifests copied
+to preserve localhost 5173/native DLLs. Backend HTTP/auth/ZIP enforcement remains in
+its scoped issues; #72 must validate actual server responses.

@@ -1,0 +1,2 @@
+# Generation is byte-deterministic across Windows and Linux checkouts.
+frontend/src/api/generated.ts text eol=lf
