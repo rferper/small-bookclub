@@ -7,8 +7,9 @@ from config.contract import read_contract, resolve
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.parametrize("cookie", [None, "stale-session-cookie", "a" * 32])
 def test_anonymous_health_is_exact_public_json_without_database_access(
-    client, monkeypatch
+    client, monkeypatch, cookie
 ):
     def forbidden_connection(*args, **kwargs):
         raise AssertionError("Liveness must not connect to a database")
@@ -16,6 +17,8 @@ def test_anonymous_health_is_exact_public_json_without_database_access(
     monkeypatch.setattr(
         connections["default"], "ensure_connection", forbidden_connection
     )
+    if cookie is not None:
+        client.cookies["sessionid"] = cookie
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.headers["Content-Type"].split(";")[0] == "application/json"

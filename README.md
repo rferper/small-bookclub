@@ -81,7 +81,7 @@ uv run python -m config.contract
 
 Optional club timezone override: `$env:CLUB_TIMEZONE = 'Europe/Madrid'`. Production example: set `BOOKCLUB_ENV=production`, `DEBUG=false`, a generated private `SECRET_KEY`, `ALLOWED_HOSTS` to the deployed hostname and `DATABASE_PATH` to an intended absolute SQLite location. Settings consume environment variables directly; keep local databases and credentials out of Git.
 
-The custom `users.User` is configured before auth/contenttypes migrations, with an independent website key, exact Discord string identity, native profile and deny-by-default membership. Its initial migration never creates `auth_user`. The only implemented HTTP operation remains health; no authentication/session workflow is available yet.
+The custom `users.User` is configured before auth/contenttypes migrations, with an independent website key, exact Discord string identity, native profile and deny-by-default membership. Its initial migration never creates `auth_user`. Django database sessions and authentication now precede a default backend membership guard: private requests require current persisted approval without revocation, and ineligible sessions are invalidated. Membership refusal precedes CSRF and private work; eligible unsafe requests require CSRF even on Ninja views. The only implemented HTTP operation remains health; no sign-in/session endpoint workflow is available yet. Exact public exceptions and implementation boundaries are documented in [docs/api.md](docs/api.md). The frontend still uses fictional mock data on localhost.
 
 Verify migrations against a disposable database, never by resetting or migrating the owner's existing development database. From `backend/` in PowerShell:
 

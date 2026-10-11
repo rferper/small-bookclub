@@ -210,6 +210,7 @@ def test_initial_migration_installs_only_custom_identity_and_is_repeatable(tmp_p
             )
         }
         assert "users_user" in tables and "auth_user" not in tables
+        assert "django_session" in tables
         sql = database_connection.execute(
             "SELECT sql FROM sqlite_master WHERE name='users_user'"
         ).fetchone()[0]
