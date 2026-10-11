@@ -50,3 +50,19 @@ class RequiredCsrfMiddleware(CsrfViewMiddleware):
         return super().process_view(
             request, protected_view, callback_args, callback_kwargs
         )
+
+
+class AuthenticationCacheMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path_info in {
+            "/api/session",
+            "/api/auth/discord/start",
+            "/api/auth/discord/callback",
+            "/api/auth/logout",
+        }:
+            response["Cache-Control"] = "no-store"
+        return response

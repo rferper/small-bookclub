@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend uses generated types and the fictional in-memory mock. The backend implements only public `GET /api/health` (#1) and a default backend membership guard (#4); the 74 club/provider operations remain unimplemented. Guard integration tests exercise real database sessions and membership refusal through isolated test-only handlers; schema tests do not prove feature transactions or server spoiler enforcement. Generated central types/mock adoption is #103; backend feature response validation remains #72.
+`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. Default frontend mode uses the fictional mock. The backend implements five operations: health, session, Discord start/callback and logout (#1/#5), with the default membership/CSRF guard (#4). The remaining 70 operations are future contracts. Explicit HTTP mode enables only getSession/startSignIn/signOut; other client methods reject 503 without requests or mock fallback. Mounted callback integration tests use the real DB/session/library exchange with provider HTTP mocked; other feature transactions and spoiler enforcement remain their issues/#72.
 
 The Home projection correction and regression coverage landed in #104. Finish #71 → #104 → #102 → #103 before backend work. #102 preserves the runtime and its current 1,102-test baseline.
 
@@ -16,7 +16,7 @@ There is no pagination, cursor, server catalogue search, notification channel or
 
 ## Session, OAuth and CSRF
 
-The backend guard (#4) uses Django database-backed `sessionid` sessions and the existing custom identity. Session/authentication middleware precede membership; membership precedes CommonMiddleware redirects, CSRF, private handler/body validation and lookup. Each private request verifies a persisted current approved row without revocation; role alone never grants membership. Ineligible authenticated sessions are flushed server-side so replay after reapproval cannot restore access. Refusal is exact safe Spanish JSON 401, including unknown private paths. Private unsafe requests from eligible identities require CSRF and return safe closed JSON 403 on failure. Django token/origin validation applies even to Ninja-generated views. The only membership exceptions are exact method/path pairs: GET `/api/health`, `/api/session`, `/api/auth/discord/start`, `/api/auth/discord/callback`; POST `/api/auth/logout`, `/api/auth/demo`. Query strings do not change the boundary; alternate methods, adjacent paths, trailing slashes, docs/admin/static/media are private. Logout/demo exceptions still require CSRF. Only health has a production handler; these exceptions do not implement missing routes or OAuth state validation. Full role/ownership/spoiler helpers remain #11, session/OAuth/logout #5 and demo #75. The guard does not protect the Vite HTML shell or switch the frontend from its mock client.
+The backend guard (#4) uses Django database-backed `sessionid` sessions and the existing custom identity. Session/authentication middleware precede membership; membership precedes CommonMiddleware redirects, CSRF, private handler/body validation and lookup. Each private request verifies a persisted current approved row without revocation; role alone never grants membership. Ineligible authenticated sessions are flushed server-side so replay after reapproval cannot restore access. Refusal is exact safe Spanish JSON 401, including unknown private paths. Private unsafe requests from eligible identities require CSRF and return safe closed JSON 403 on failure. Django token/origin validation applies even to Ninja-generated views. The only membership exceptions are exact method/path pairs: GET `/api/health`, `/api/session`, `/api/auth/discord/start`, `/api/auth/discord/callback`; POST `/api/auth/logout`, `/api/auth/demo`. Query strings do not change the boundary; alternate methods, adjacent paths, trailing slashes, docs/admin/static/media are private. Logout/demo exceptions still require CSRF. Health and the four finite authentication handlers are implemented; demo remains unimplemented. Full role/ownership/spoiler helpers remain #11 and demo #75. The guard does not protect the Vite HTML shell or switch the frontend from its mock client.
 
 The remaining cookie/flow assumptions are implemented by backend #5. Browser and API are same-origin. `sessionid` is the server session cookie: HttpOnly, SameSite=Lax for OAuth navigation, Secure in HTTPS deployment. Local HTTP development does not claim Secure cookies work without HTTPS. Approved exact Discord IDs are checked server-side, revoked access is refused, and approval/revocation is rechecked on every club request.
 
@@ -255,7 +255,7 @@ Full club workflow integration and Compose checks remain deferred; the health bo
 Startup calls `createApiClient(mode, search)`. Omitted mode or `mock` preserves
 fictional preview/query controls. Only exact `http` selects HTTP; empty/invalid
 configuration visibly refuses startup before requests. HTTP ignores mock controls.
-Every existing ApiClient method, including four session methods, explicitly rejects
+The three #5 session adapters are enabled. Every other ApiClient method explicitly rejects
 safe 503 without HTTP/navigation. The typed object and runtime inventory comparison
 require an HTTP behavior decision when adding a method. There is no hybrid/fallback.
 Health remains infrastructure test harness use, never an ApiClient/UI method.
@@ -294,15 +294,89 @@ URLs, data, exceptions and traces never become fallback UI text. The existing
 unauthorized wrapper works with either client: only 401 club calls refresh session;
 session methods, 403/503/protocol/network errors are exempt.
 
-#5 enables only getSession/startSignIn/signOut after backend implementation. Session
+#5 enables only getSession/startSignIn/signOut. Session
 GET bootstraps CSRF. OAuth start/callback require top-level navigation rather than
 JSON fetch. Demo remains #75 and ZIP download #49. Optional development proxy setup
 is in frontend/README.md; it is not a browser cross-origin base or OAuth return URL.
-No backend endpoint/authentication/permission is implemented here; actual backend
-subset remains public health and membership/CSRF middleware foundation.
+The transport itself implements no permissions; #5's finite backend authentication
+and #4's membership/CSRF middleware enforce the current server boundary.
 
-## Implemented backend subset (#1)
+## Implemented backend subset (#1/#5)
 
 `cd backend && uv run python -m config.contract` generates the schema from actual Ninja routes. The registered-route inventory must equal generated path/method keys, including schema-hidden handlers, and every generated operation must exist in the handwritten contract. Health must exist in both. It compares operationId, effective security, statuses, media types, resolved structural response/request schemas, request requiredness and parameters. Local refs are resolved offline; annotations (description/title/examples) are omitted, while required/closedness/types/const and other behavioural constraints remain. Property names and enum/const/default values are preserved. Cyclic/remote refs fail clearly. The locked Ninja registry adapter is covered by tests. The command reports the implemented subset explicitly; it does not demand future contract operations or claim full parity.
 
-Public `GET /api/health` returns exactly `{ "status": "ok" }`, without session, cookies, user data, database access or provider calls. Django integration tests validate the actual HTTP response against the root schema without running migrations. Future routes automatically enter the registered/generated subset; #72 still owns complete permission/spoiler/workflow validation. No HTTP ApiClient or runtime selection is introduced here (#105).
+Public `GET /api/health` returns exactly `{ "status": "ok" }`, without session, cookies, user data, database access or provider calls. Session, OAuth start/callback and logout are also implemented and checked against the independent schemas. Future routes automatically enter the registered/generated subset; #72 still owns complete permission/spoiler/workflow validation. Runtime selection is explicit (#105), defaulting to mock.
+
+## Finite Discord authentication (#5)
+
+Only GET session/start/callback and POST logout are implemented alongside health.
+Every authentication response (including middleware refusals) has Cache-Control:
+no-store. Session always bootstraps csrftoken and re-reads the current native identity;
+deleted/unapproved/revoked sessions are flushed, with old-cookie replay refused.
+Denied ordinary login persists until a new attempt/logout. Demo availability is false.
+Opaque website IDs are serialized native primary keys, never Discord IDs. Native
+avatarUrl is the stored website avatar path; no provider profile fields are imported.
+
+Maintained django-allauth 65.19.7 supplies the OAuth2 callback, authorization-code
+exchange, server-session state, ten-minute TTL and S256 PKCE. The mounted Ninja callback
+delegates to the actual allauth callback view, with narrow adapters for fixed redirect,
+strict raw string ID and native membership handling. The start uses the provider's
+redirect flow with exactly identify; browser scope/auth_params/process/next are ignored.
+The application additionally bounds intent age to [0,600) server seconds. Each attempt
+replaces outstanding state, and each callback consumes/clears it even on failure.
+Allauth signup/account/connection routes are never mounted, no SocialAccount/SocialToken
+is saved, no email association or native profile synchronization occurs, and local
+passwords remain unusable. Provider errors and malformed token/profile responses become
+fixed same-origin redirects without rendering/logging provider exception text.
+
+Ordinary sign-in rotates the key even for the same already signed-in identity, clears
+denial/export freshness and returns /. Failed ordinary login establishes denied with
+no authentication. Export start requires a currently approved admin; non-admin returns
+/administracion and anonymous/ineligible returns / without provider calls. Export intent
+binds both native and Discord identities. A fresh code exchange for that exact current
+approved admin records a server-session timestamp and returns /administracion. The
+provider receives prompt=consent; this does not promise Discord forces password entry.
+Failed/replayed export clears freshness and preserves an otherwise eligible session.
+The retained last-purpose marker identifies failed export replays without reusable state.
+`users.authentication.has_fresh_export_auth(request)` is the handoff to #49: same current
+approved admin, finite nonfuture timestamp, age strictly <300 seconds; invalid authority
+is removed. The record binds both native and exact Discord IDs; replacing either
+identity invalidates freshness, including old records missing a Discord binding.
+No export endpoint/archive/UI is implemented here. Logout flushes all state,
+denial, purpose and freshness markers; real Django CSRF/origin checks apply anonymously
+and when signed in. GET cannot log out.
+
+Configure shell DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET and DISCORD_REDIRECT_URI only
+when the instance owner supplies them. The URI must be an absolute HTTP(S) URL with
+exact path /api/auth/discord/callback and no query/fragment. Register that exact browser
+URI with the provider for a later authorized live check. Absent configuration allows
+boot/health/session; start returns safe Spanish 503. No external app/credentials are
+needed for the offline callback tests. Settings retain inert allauth email configuration
+only to satisfy library checks; no email/password/account endpoint exists.
+
+For separate temporary same-origin HTTP checking, archive the entire committed HEAD to
+a disposable directory (including docs/openapi/scripts), run npm ci in its frontend,
+and use a disposable SQLite path. In one PowerShell terminal inside its backend:
+
+```powershell
+$env:BOOKCLUB_ENV='test'
+$env:DATABASE_PATH="$env:TEMP/bookclub-issue5-http.sqlite3"
+uv sync --locked
+uv run python manage.py migrate --noinput
+uv run python manage.py runserver 127.0.0.1:8185 --noreload
+```
+
+In a second terminal inside its frontend:
+
+```powershell
+$env:VITE_API_MODE='http'
+$env:API_DEV_PROXY_TARGET='http://127.0.0.1:8185'
+npm run dev -- --host 127.0.0.1 --port 5185 --strictPort
+```
+
+Use http://localhost:5185; /api stays on that browser origin through the dev-only proxy.
+With credentials absent, session shows the existing Spanish sign-in gate and OAuth
+start safely returns 503. Offline tests prove success/denial/export without secrets.
+Any later authorized credential check must set DISCORD_REDIRECT_URI to
+http://localhost:5185/api/auth/discord/callback. Stop only these temporary servers
+after checking. Preserve localhost:5173, its native DLLs and the owner's development DB.

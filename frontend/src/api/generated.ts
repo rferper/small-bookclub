@@ -597,7 +597,7 @@ export interface paths {
         };
         /**
          * Same-site OAuth navigation
-         * @description Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact IDs, revoke check, state and identity checked server-side. Server-held same-origin return navigation; deny missing/invalid state without club payload. No access/refresh tokens exposed. Export purpose performs admin reauthentication (#102). For purpose=export require existing approved admin and bind server OAuth state to that same identity; require a fresh provider authentication, not reuse of prior local confirmation. Callback records server recent-auth time only after state, identity and current allowlist/admin checks; wrong identity never authorises export. Safe same-site return only.
+         * @description Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact IDs, revoke check, state and identity checked server-side. Server-held same-origin return navigation; deny missing/invalid state without club payload. No access/refresh tokens exposed. Export purpose performs admin reauthentication (#102). For purpose=export require existing approved admin and bind server OAuth state to that same identity; require a fresh provider authentication, not reuse of prior local confirmation. Callback records server recent-auth time only after state, identity and current allowlist/admin checks; wrong identity never authorises export. Login returns to /; eligible export returns to /administracion. Anonymous/ineligible export returns to /, eligible non-admin to /administracion without OAuth. Responses are noncached; absent configuration gives safe 503.
          */
         get: operations["startSignIn"];
         put?: never;
@@ -617,7 +617,7 @@ export interface paths {
         };
         /**
          * Same-site OAuth navigation
-         * @description Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact IDs, revoke check, state and identity checked server-side. Server-held same-origin return navigation; deny missing/invalid state without club payload. No access/refresh tokens exposed. Export purpose performs admin reauthentication (#102). For server-held export purpose, successful fresh provider authentication must match original approved admin identity and rechecked allowlist/admin role before server stores recent-auth timestamp. Absent/stale authorisation later yields export 409 without expiring approved session. No tokens exposed.
+         * @description Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact IDs, revoke check, state and identity checked server-side. Server-held same-origin return navigation; deny missing/invalid state without club payload. No access/refresh tokens exposed. Export purpose performs admin reauthentication (#102). For server-held export purpose, successful fresh provider authentication must match original approved admin identity and rechecked allowlist/admin role before server stores recent-auth timestamp. Absent/stale authorisation later yields export 409 without expiring approved session. No tokens exposed. State is one-use and expires after ten minutes. Ordinary failure returns to / with denied status; failed export preserves an eligible session and clears freshness. Successful export returns to /administracion; ordinary login never grants freshness. All responses are noncached.
          */
         get: operations["discordCallback"];
         put?: never;
@@ -5580,7 +5580,7 @@ export interface operations {
     startSignIn: {
         parameters: {
             query?: {
-                /** @description export purpose reserves admin recent reauthentication for #102; server stores purpose/return path in OAuth state, no arbitrary external redirect. */
+                /** @description Default login; export requires the current approved admin. Server-held one-use OAuth state expires after ten minutes. Invalid purpose returns safely to / without OAuth. Arbitrary next/return URLs are ignored. */
                 purpose?: "login" | "export";
             };
             header?: never;

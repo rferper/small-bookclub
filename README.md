@@ -33,7 +33,7 @@ Only approved members can sign in (Discord login plus an admin-managed allowlist
 
 ## Running it
 
-The frontend runs with fictional mock data by default. The backend currently implements only public process liveness:
+The frontend runs with fictional mock data by default. The backend implements public health and finite Discord sign-in, session lookup and logout:
 
 ```sh
 cd frontend
@@ -53,7 +53,7 @@ curl http://localhost:8000/api/health
 # {"status":"ok"}
 ```
 
-Health is public process liveness, without database readiness probes, session or provider access. The club HTTP API is unimplemented; all frontend pages continue to use their mock client. HTTP client selection is #105. Containers/Compose remain #73.
+Health is public process liveness, without database readiness probes, session or provider access. Explicit HTTP mode enables session, Discord navigation and logout only; other client methods reject with 503. Default mock mode stays fictional. Discord credentials are optional for startup; absent credentials make OAuth start return safe Spanish 503. See [authentication configuration and isolated HTTP checking](docs/api.md#finite-discord-authentication-5). Containers/Compose remain #73.
 
 `backend/.env.example` documents shell variables; it is a reference, not automatically loaded. Defaults are `BOOKCLUB_ENV=development`, `DEBUG=true`, local allowed hosts, `DATABASE_PATH=development.sqlite3` and `CLUB_TIMEZONE=UTC`. Relative database paths resolve inside backend; `:memory:` is supported for tests. Timezone never follows the machine. `LANGUAGE_CODE=es` and `USE_TZ=True` always apply.
 
