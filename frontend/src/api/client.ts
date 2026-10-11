@@ -201,7 +201,7 @@ export class ApiError extends Error {
 }
 
 
-// Every central method has exactly one contract operation; callback is provider-owned.
+// Every central method has one operation; callback and infrastructure health have no UI method.
 type AssertNever<T extends never> = T
 export type ClientOperationCoverage = AssertNever<Exclude<keyof ApiClient, keyof operations>>
-export type ContractOperationCoverage = AssertNever<Exclude<keyof operations, keyof ApiClient | 'discordCallback'>>
+export type ContractOperationCoverage = AssertNever<Exclude<keyof operations, keyof ApiClient | 'discordCallback' | 'getHealth'>>

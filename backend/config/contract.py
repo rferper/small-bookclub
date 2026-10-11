@@ -56,10 +56,28 @@ def normalize_schema(value):
             }
         elif key == "required":
             result[key] = sorted(child)
-        elif key in {"const", "enum", "default"}:
-            result[key] = copy.deepcopy(child)
-        else:
+        elif key in {
+            "additionalProperties",
+            "unevaluatedProperties",
+            "propertyNames",
+            "contains",
+            "items",
+            "not",
+            "if",
+            "then",
+            "else",
+            "contentSchema",
+            "allOf",
+            "anyOf",
+            "oneOf",
+            "prefixItems",
+            "unevaluatedItems",
+        }:
             result[key] = normalize_schema(child)
+        else:
+            # Arbitrary keyword data (const/default/dependentRequired/extensions)
+            # can contain annotation-like keys whose meaning must be preserved.
+            result[key] = copy.deepcopy(child)
     return result
 
 
@@ -73,10 +91,16 @@ def operations(document):
 
 
 def operation_shape(document, path, operation):
+    def transport(value):
+        return {
+            key: normalize_schema(child) if key == "schema" else copy.deepcopy(child)
+            for key, child in value.items()
+            if key not in ANNOTATIONS
+        }
+
     def media(content):
         return {
-            name: normalize_schema(resolve(document, value))
-            for name, value in content.items()
+            name: transport(resolve(document, value)) for name, value in content.items()
         }
 
     responses = {}
@@ -84,7 +108,9 @@ def operation_shape(document, path, operation):
         response = resolve(document, response)
         responses[str(status)] = {"content": media(response.get("content", {}))}
         if response.get("headers"):
-            responses[str(status)]["headers"] = normalize_schema(response["headers"])
+            responses[str(status)]["headers"] = {
+                name: transport(header) for name, header in response["headers"].items()
+            }
     request = resolve(document, operation.get("requestBody", {}))
     parameters = document["paths"][path].get("parameters", []) + operation.get(
         "parameters", []
@@ -98,7 +124,7 @@ def operation_shape(document, path, operation):
             "content": media(request.get("content", {})),
         },
         "parameters": [
-            normalize_schema(resolve(document, parameter)) for parameter in parameters
+            transport(resolve(document, parameter)) for parameter in parameters
         ],
     }
 

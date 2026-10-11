@@ -136,3 +136,16 @@ def test_schema_annotations_can_be_omitted_without_dropping_property_names_or_va
     assert "title" not in normalized
     assert normalized["properties"]["title"]["minLength"] == 1
     assert normalized["properties"]["description"]["const"] == {"title": "data"}
+
+
+def test_arbitrary_constraint_keyword_data_preserves_annotation_like_names():
+    schema = {
+        "type": "object",
+        "dependentRequired": {"title": ["description"]},
+        "x-rule": {"title": "behaviour"},
+        "allOf": [{"description": "note", "minProperties": 1}],
+    }
+    normalized = normalize_schema(schema)
+    assert normalized["dependentRequired"] == {"title": ["description"]}
+    assert normalized["x-rule"] == {"title": "behaviour"}
+    assert normalized["allOf"] == [{"minProperties": 1}]
