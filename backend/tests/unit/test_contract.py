@@ -20,7 +20,11 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
     contract, generated = documents()
     assert len(contract["paths"]) > len(generated["paths"])
     assert check_schema(contract, generated, implemented_operations(api)) == [
-        "GET /api/health (getHealth)"
+        "GET /api/health (getHealth)",
+        "GET /api/session (getSession)",
+        "GET /api/auth/discord/start (startSignIn)",
+        "GET /api/auth/discord/callback (discordCallback)",
+        "POST /api/auth/logout (signOut)",
     ]
 
 
@@ -116,7 +120,7 @@ def test_future_registered_operation_enters_comparison_with_request_constraints(
     )
     contract["paths"]["/api/fictional"] = {"post": operation}
     registered = implemented_operations(api) | {("/api/fictional", "post")}
-    assert len(check_schema(contract, generated, registered)) == 2
+    assert len(check_schema(contract, generated, registered)) == len(registered)
     generated["paths"]["/api/fictional"]["post"]["requestBody"]["required"] = False
     with pytest.raises(ValueError, match="Schema drift"):
         check_schema(contract, generated, registered)

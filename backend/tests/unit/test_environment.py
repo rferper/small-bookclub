@@ -79,6 +79,10 @@ def test_custom_identity_precedes_auth_and_sessions_without_admin_apps(settings)
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.sessions",
+        "allauth",
+        "allauth.account",
+        "allauth.socialaccount",
+        "allauth.socialaccount.providers.discord",
     ]
     assert settings.AUTH_USER_MODEL == "users.User"
     assert get_user_model() is apps.get_model("users", "User")

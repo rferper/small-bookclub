@@ -740,3 +740,40 @@ JSON success types derive from the contract without a new runtime schema validat
 Transport fake HTTP proves construction/handling, never backend OAuth or gating.
 Disposable browser copies/servers use strict separate ports and existing disposable
 dependencies, preserving localhost:5173/native DLLs/the owner's development DB.
+
+## 2026-10-11: Finite native Discord authentication (#5)
+
+**Decision:** Add free MIT django-allauth[socialaccount] through uv, locked at 65.19.7.
+Its extra brings requests (Apache-2.0, provider HTTP), oauthlib (BSD, OAuth), PyJWT
+(MIT, provider support) and cryptography (Apache/BSD, provider crypto), with locked
+transitives; no external app, service/account or credentials were provisioned.
+Use actual maintained OAuth2 callback/state/code exchange with identify only and
+S256 PKCE. Narrow native adapters validate raw ASCII Discord ID strings and terminate
+allauth before signup/connection/account/token persistence. Provider profiles/email
+are discarded, and no account-management routes are mounted. See official
+[allauth adapters](https://docs.allauth.org/en/dev/socialaccount/adapter.html) and
+[OAuth2 settings](https://docs.allauth.org/en/dev/socialaccount/providers/oauth2.html).
+
+**Reversible flow choices:** Single outstanding server-held intent/state per browser,
+valid server age [0,600) seconds; consume/clear all state on callback. Ignore supplied
+scope/auth_params/process/next, fixed login destination / and eligible export destination
+/administracion. All auth responses are no-store. Native login rotates even an existing
+same-user key and clears denial/export freshness; failed ordinary login flushes and
+sets denial. Session re-reads membership, bootstraps CSRF and never exposes Discord
+identity. Library-required email settings are inert: no email/password route exists.
+
+**Export handoff:** Bind native/Discord admin identity in server intent, require fresh
+provider code exchange, recheck approval/admin role and retain timestamp only in that
+server session. Consent prompt does not guarantee provider password entry. Freshness
+requires nonfuture finite age <300 seconds for that same current approved admin.
+Failures/replays clear freshness while preserving eligible sessions. Retained server
+last-purpose marker safely identifies export replays without retaining reusable state.
+Logout flushes every marker. #49 owns actual export endpoint/archive/UI.
+
+**Frontend/evidence:** Only central getSession/startSignIn/signOut adapters are enabled;
+navigation uses location.assign, reads/logout use existing transport. All other methods
+retain explicit request-free 503. Default mock remains unchanged. Offline mounted
+allauth HTTP tests mock only provider HTTP and check DB/session/state/native profiles,
+CSRF and contracts; fake frontend tests independently prove adapter/gate behavior.
+Clean entire-HEAD temporary archives protect the owner's port5173/DLLs/database.
+No real Discord smoke test is claimed.
