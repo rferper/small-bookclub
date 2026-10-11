@@ -10,6 +10,7 @@ from allauth.socialaccount.internal import statekit
 from allauth.socialaccount.models import SocialAccount, SocialToken
 from django.contrib.auth import SESSION_KEY
 from django.contrib.sessions.models import Session
+from django.core.management import call_command
 from django.test import Client, RequestFactory
 from django.utils import timezone
 from jsonschema import Draft202012Validator
@@ -25,6 +26,80 @@ from users.authentication import (
 from users.models import User
 
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
+
+
+def test_bootstrap_environment_is_inert_until_explicit_command(
+    client, member, provider_http, monkeypatch
+):
+    identity = "100000000000000001"
+    monkeypatch.setenv("INITIAL_ADMIN_DISCORD_ID", identity)
+    provider_http["profile"]["id"] = identity
+    before = list(User.objects.values())
+    finish(client, start(client, INITIAL_ADMIN_DISCORD_ID=identity, role="admin"))
+    assert projection(client) == {"status": "denied", "demoSignInAvailable": False}
+    assert list(User.objects.values()) == before
+    assert not SocialAccount.objects.exists() and not SocialToken.objects.exists()
+    call_command("bootstrap_admin")
+    owner = User.objects.get(discord_user_id=identity)
+    profile = {
+        key: getattr(owner, key)
+        for key in (
+            "pk",
+            "password",
+            "display_name",
+            "bio",
+            "favourite_quote",
+            "avatar_path",
+            "created_at",
+            "updated_at",
+            "discord_user_id",
+        )
+    }
+    finish(client, start(client))
+    session = projection(client)
+    assert session == {
+        "status": "signedIn",
+        "user": {
+            "id": str(owner.pk),
+            "displayName": "Administrador",
+            "avatarUrl": None,
+            "role": "admin",
+        },
+    }
+    assert identity not in json.dumps(session)
+    assert "INITIAL_ADMIN_DISCORD_ID" not in json.dumps(session)
+    owner.refresh_from_db()
+    assert profile == {key: getattr(owner, key) for key in profile}
+    assert User.objects.count() == 2
+    assert not SocialAccount.objects.exists() and not SocialToken.objects.exists()
+
+
+@pytest.mark.parametrize("claims", ["query", "body"])
+def test_bootstrap_looking_http_claims_cannot_elevate_native_member(
+    client, member, provider_http, monkeypatch, claims
+):
+    client = Client(enforce_csrf_checks=True)
+    monkeypatch.setenv("INITIAL_ADMIN_DISCORD_ID", member.discord_user_id)
+    fields = {
+        "INITIAL_ADMIN_DISCORD_ID": member.discord_user_id,
+        "role": "admin",
+        "approved": True,
+        "is_superuser": True,
+    }
+    finish(client, start(client, **fields), **fields)
+    assert projection(client)["user"]["role"] == "member"
+    response = client.post("/api/auth/logout", data=fields)
+    assert response.status_code == 403
+    response = client.generic(
+        "GET",
+        "/api/session" + ("?role=admin" if claims == "query" else ""),
+        data=json.dumps(fields) if claims == "body" else "",
+        content_type="application/json",
+    )
+    check(response, "/api/session")
+    assert response.json()["user"]["role"] == "member"
+    member.refresh_from_db()
+    assert member.role == "member" and User.objects.count() == 1
 
 
 @pytest.fixture(autouse=True)
