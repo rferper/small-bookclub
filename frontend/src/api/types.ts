@@ -92,8 +92,12 @@ export interface ClubStats {
 
 export interface LiteraryQuote {
   text: string
+  author: string | null
   source: string | null
 }
+
+export interface LiteraryQuoteInput extends LiteraryQuote { active: boolean }
+export interface AdminLiteraryQuote extends LiteraryQuoteInput { id: string }
 
 export interface HomeData {
   currentBook: BookSummary | null

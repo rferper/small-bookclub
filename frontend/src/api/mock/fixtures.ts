@@ -1,7 +1,7 @@
 // Fictional club data for the mock API. The members are invented; the books
 // and quotes are public-domain works. Never put real club data here.
 
-import type { BookDetail, BookMetadataResult, CriterionScores, CurrentUser, LiteraryQuote, MemberSummary, RatingRubric } from '../types'
+import type { AdminLiteraryQuote, BookDetail, BookMetadataResult, CriterionScores, CurrentUser, MemberSummary, RatingRubric } from '../types'
 
 export interface MockWeek {
   deletedAt?: string
@@ -148,7 +148,7 @@ export interface MockState {
   reviews: MockReview[]
   // Written by the admin (#70); every anchor is null until then.
   rubric: RatingRubric
-  quotes: LiteraryQuote[]
+  quotes: AdminLiteraryQuote[]
   // Fixed "now" so the mock picks the same current week every time.
   now: string
 }
@@ -607,10 +607,12 @@ export function createClubState(): MockState {
     rubric: emptyRubric(),
     quotes: [
       {
+        id: 'quote-1', active: true, author: null,
         text: 'El que lee mucho y anda mucho, ve mucho y sabe mucho.',
         source: 'Miguel de Cervantes, Don Quijote de la Mancha',
       },
       {
+        id: 'quote-2', active: true, author: null,
         text: 'Retirado en la paz de estos desiertos, / con pocos, pero doctos libros juntos, / vivo en conversación con los difuntos, / y escucho con mis ojos a los muertos.',
         source: 'Francisco de Quevedo',
       },

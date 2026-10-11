@@ -1,4 +1,5 @@
 import type {
+  AdminLiteraryQuote, LiteraryQuoteInput,
   AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
   AdminReadingPlan, ReadingWeekInput,
   AdminMeeting, AdminMeetingCalendar, MeetingInput,
@@ -31,6 +32,10 @@ import type {
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
+  listAdminQuotes(): Promise<AdminLiteraryQuote[]>
+  addLiteraryQuote(input: LiteraryQuoteInput): Promise<AdminLiteraryQuote>
+  updateLiteraryQuote(id: string, input: LiteraryQuoteInput): Promise<AdminLiteraryQuote>
+  saveRatingRubric(input: RatingRubric): Promise<RatingRubric>
   getAdminMeetingRecord(meetingId: string): Promise<AdminMeetingRecord>
   saveMeetingSummary(meetingId: string, input: MeetingSummaryInput): Promise<AdminMeetingRecord>
   createMeetingHighlight(meetingId: string, input: MeetingHighlightInput): Promise<AdminMeetingRecord>

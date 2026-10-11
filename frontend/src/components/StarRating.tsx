@@ -73,7 +73,7 @@ export function StarRating({
       {descriptions.length > 0 && (
         <ul className="grid gap-1 text-sm">
           {descriptions.map(({ stars, text }) => (
-            <li key={stars} className="break-words">
+            <li key={stars} className="whitespace-pre-wrap wrap-anywhere">
               <span className="font-semibold">{formatStars(stars)}:</span> {text}
             </li>
           ))}
