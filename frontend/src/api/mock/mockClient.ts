@@ -59,6 +59,8 @@ import { createClubState, METADATA_RESULTS, type MockBook, type MockMember, type
 import { meetingGate } from './meetingGate'
 import { ratingGate } from './ratingGate'
 import { countedReviews } from './statisticsGate'
+import { bookVisible, hasVisibleBook, meetingVisible, weekVisible, voteVisible } from './visibility'
+import { recycleBin } from './recycleBin'
 
 type Method = keyof ApiClient
 
@@ -119,8 +121,14 @@ export function createMockClient({
     if (state.session !== 'signedIn') throw new ApiError(401, 'No has iniciado sesión.')
   }
 
+  const visibleBooks = () => state.books.filter(bookVisible)
+  const visibleMeetings = () => state.meetings.filter((m) => meetingVisible(state, m))
+  const visibleReviews = () => state.reviews.filter((r) => hasVisibleBook(state, r.bookId))
+  const bin = recycleBin(state)
+  const purgedIdentity = (type: import('../types').DeletedType, id: string) => state.tombstones?.some((t) => t.type === type && t.id === id) ?? false
+
   const toBookSummary = (bookId: string | null): BookSummary | null => {
-    const book = state.books.find((b) => b.id === bookId)
+    const book = visibleBooks().find((b) => b.id === bookId)
     return book ? { id: book.id, title: book.title, authors: book.authors, coverUrl: book.coverUrl } : null
   }
 
@@ -137,7 +145,7 @@ export function createMockClient({
   })
 
   const toAssignment = (meetingId: string): MeetingAssignment | null => {
-    const week = state.weeks.find((w) => !w.deletedAt && w.meetingId === meetingId)
+    const week = state.weeks.find((w) => weekVisible(state, w) && w.meetingId === meetingId)
     return week
       ? {
           weekNumber: week.weekNumber,
@@ -221,7 +229,7 @@ export function createMockClient({
     openedAt: vote.openedAt,
     closedAt: vote.closedAt,
     candidates: vote.candidates.map(({ bookId, approverIds }) => {
-      const book = state.books.find((b) => b.id === bookId)!
+      const book = visibleBooks().find((b) => b.id === bookId)!
       return {
         book: {
           ...toBookSummary(bookId)!,
@@ -247,9 +255,10 @@ export function createMockClient({
     candidateCount: vote.candidates.length,
   })
 
-  const findVote = (voteId: string) => {
+  const findVote = (voteId: string, action = true) => {
     const vote = state.votes.find((v) => v.id === voteId)
     if (!vote) throw new ApiError(404, 'No existe esa votación.')
+    if (!voteVisible(state, vote)) throw new ApiError(action ? 409 : 404, action ? 'Esta votación contiene un libro retirado. Restaura el libro para recuperar la votación sin cambiar sus votos.' : 'No existe esa votación.')
     return vote
   }
 
@@ -260,7 +269,7 @@ export function createMockClient({
     return findVote(voteId)
   }
   const findBook = (bookId: string) => {
-    const book = state.books.find((b) => b.id === bookId)
+    const book = visibleBooks().find((b) => b.id === bookId)
     if (!book) throw new ApiError(404, 'No existe ese libro.')
     return book
   }
@@ -352,7 +361,7 @@ export function createMockClient({
   }
 
   const nextMeeting = () =>
-    state.meetings
+    visibleMeetings()
       .filter((m) => !m.cancelled && isUpcoming(m))
       .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null
 
@@ -360,7 +369,7 @@ export function createMockClient({
   // leads to the next meeting. Inicio and Miembros both use it, so their
   // weekly statuses always agree.
   const currentReadingWeek = () => {
-    const activeBook = state.books.find((b) => b.status === 'leyendo') ?? null
+    const activeBook = visibleBooks().find((b) => b.status === 'leyendo') ?? null
     const meeting = nextMeeting()
     return (
       (activeBook && meeting && state.weeks.find((w) => !w.deletedAt && w.bookId === activeBook.id && w.meetingId === meeting.id)) || null
@@ -391,7 +400,7 @@ export function createMockClient({
       bio: profile?.bio ?? null,
       favouriteQuote: profile?.favouriteQuote ?? null,
       favouriteBooks: favouriteBooksOf(state.currentUserId),
-      favouriteOptions: state.books
+      favouriteOptions: visibleBooks()
         .filter(mayBeFavourite)
         .sort((a, b) => spanishOrder.compare(a.title, b.title))
         .map((b) => toBookSummary(b.id)!),
@@ -430,7 +439,7 @@ export function createMockClient({
     if (!Array.isArray(ids) || ids.length > FAVOURITE_BOOKS_MAX) throw invalid('Puedes elegir hasta 5 libros favoritos.')
     if (new Set(ids).size !== ids.length) throw invalid('Un libro favorito está repetido.')
     for (const id of ids) {
-      const book = state.books.find((b) => b.id === id)
+      const book = visibleBooks().find((b) => b.id === id)
       if (!book || !mayBeFavourite(book)) throw invalid('Solo puedes elegir libros que el club haya leído.')
     }
     const avatar = raw.avatar as Partial<{ action: string; file: unknown }> | undefined
@@ -521,13 +530,13 @@ export function createMockClient({
     requireSignedIn()
     if (!isAdmin()) throw new ApiError(403, 'Solo la administración puede gestionar los libros.')
     const existing = id !== undefined ? findBook(id) : null
-    const active = state.books.find((b) => b.status === 'leyendo' && b.id !== id)
+    const active = visibleBooks().find((b) => b.status === 'leyendo' && b.id !== id)
     if (clean.status === 'leyendo' && active) throw new ApiError(409, `«${active.title}» ya está Leyendo. Cambia primero su estado antes de marcar otro libro como Leyendo.`)
     const { cover, ...metadata } = clean
     let newId = id ?? 'book-1'
     if (!id) {
       let number = 1
-      while (state.books.some((b) => b.id === newId)) newId = `book-${++number}`
+      while (state.books.some((b) => b.id === newId) || purgedIdentity('book', newId)) newId = `book-${++number}`
     }
     const saved: MockBook = { ...metadata, id: newId, originVote: existing?.originVote ?? null,
       coverUrl: cover.action === 'remove' ? null : cover.action === 'replace' ? uploaded : cover.action === 'metadata' ? imported!.coverUrl : existing?.coverUrl ?? null }
@@ -542,7 +551,7 @@ export function createMockClient({
     failIfConfigured(method)
   }
   const findMeeting = (id: string) => {
-    const meeting = state.meetings.find((m) => m.id === id)
+    const meeting = visibleMeetings().find((m) => m.id === id)
     if (!meeting) throw new ApiError(404, 'No existe esa reunión.')
     return meeting
   }
@@ -559,14 +568,14 @@ export function createMockClient({
     if (!input || typeof input.startsAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(input.startsAt) || !Number.isFinite(Date.parse(input.startsAt))) throw new ApiError(400, 'Introduce una fecha y una hora válidas con zona horaria.')
     try { meetingInstant(input.startsAt.slice(0, 10), input.startsAt.slice(11, 16), 'UTC') }
     catch { throw new ApiError(400, 'Introduce una fecha y una hora válidas con zona horaria.') }
-    if (input.bookId !== null && !state.books.some((b) => b.id === input.bookId)) throw new ApiError(404, 'No existe ese libro.')
+    if (input.bookId !== null && !hasVisibleBook(state, input.bookId)) throw new ApiError(404, 'No existe ese libro.')
     const week = input.weekId === null ? null : state.weeks.find((w) => w.id === input.weekId)
     if (input.weekId !== null && !week) throw new ApiError(404, 'No existe esa semana.')
     if (week?.deletedAt && !(existing && week.meetingId === existing.id && existing.bookId === input.bookId)) throw new ApiError(404, 'No existe esa semana activa.')
     if (week && week.bookId !== input.bookId) throw new ApiError(400, 'La semana debe pertenecer al libro seleccionado.')
     if (week?.meetingId && week.meetingId !== id) throw new ApiError(409, 'Esta semana ya está vinculada a otra reunión. Desvincúlala allí primero.')
     let newId = id ?? 'meeting-1'
-    for (let n = 2; !id && state.meetings.some((m) => m.id === newId); n++) newId = `meeting-${n}`
+    for (let n = 2; !id && (state.meetings.some((m) => m.id === newId) || purgedIdentity('meeting', newId)); n++) newId = `meeting-${n}`
     const saved: MockMeeting = existing ?? { id: newId, bookId: null, startsAt: '', cancelled: false, attendance: null, markedSafe: false, summary: null, highlights: [] }
     // Validate everything before touching either side of the canonical link.
     saved.startsAt = input.startsAt; saved.bookId = input.bookId
@@ -585,8 +594,8 @@ export function createMockClient({
   const toPlan = (bookId: string): AdminReadingPlan => {
     const book = findBook(bookId)
     return { book: { id: book.id, title: book.title, pageCount: book.pageCount },
-      weeks: activeWeeks(bookId).map((w) => ({ id: w.id, weekNumber: w.weekNumber, percentStart: w.percentStart, percentEnd: w.percentEnd, pageStart: w.pageStart, pageEnd: w.pageEnd, dueDate: w.dueDate, notes: w.notes, meetingId: w.meetingId, completionCount: new Set(state.completions[w.id] ?? []).size })),
-      meetings: state.meetings.filter((m) => m.bookId === bookId).map((m) => ({ id: m.id, startsAt: m.startsAt, cancelled: m.cancelled })) }
+      weeks: activeWeeks(bookId).map((w) => ({ id: w.id, weekNumber: w.weekNumber, percentStart: w.percentStart, percentEnd: w.percentEnd, pageStart: w.pageStart, pageEnd: w.pageEnd, dueDate: w.dueDate, notes: w.notes, meetingId: w.meetingId, ...(w.meetingId && state.meetings.some((m) => m.id === w.meetingId && m.deletedAt) ? { removedMeeting: true } : {}), completionCount: new Set(state.completions[w.id] ?? []).size })),
+      meetings: visibleMeetings().filter((m) => m.bookId === bookId).map((m) => ({ id: m.id, startsAt: m.startsAt, cancelled: m.cancelled })) }
   }
   const findActiveWeek = (bookId: string, id: string) => {
     findBook(bookId)
@@ -604,7 +613,8 @@ export function createMockClient({
     if (!input) throw new ApiError(400, 'Introduce los datos de la semana.')
     const errors = readingErrors(input)
     if (errors.length) throw new ApiError(400, errors.join(' '))
-    const meeting = input.meetingId === null ? null : findMeeting(input.meetingId)
+    const retainedMeeting = existing?.meetingId === input.meetingId ? state.meetings.find((m) => m.id === input.meetingId) : null
+    const meeting = input.meetingId === null ? null : retainedMeeting?.deletedAt ? retainedMeeting : findMeeting(input.meetingId)
     if (meeting && meeting.bookId !== bookId) throw new ApiError(400, 'La reunión debe pertenecer al mismo libro.')
     if (meeting && state.weeks.some((w) => w.meetingId === meeting.id && w.id !== id)) throw new ApiError(409, 'Esta reunión ya tiene una semana vinculada. Desvincúlala primero.')
     const clean: ReadingWeekInput = { percentStart: input.percentStart, percentEnd: input.percentEnd, pageStart: input.pageStart, pageEnd: input.pageEnd, dueDate: input.dueDate, notes: input.notes?.trim() || null, meetingId: input.meetingId }
@@ -613,7 +623,7 @@ export function createMockClient({
     if (existing) Object.assign(existing, clean)
     else {
       let newId = 'week-1'
-      for (let n = 2; state.weeks.some((w) => w.id === newId); n++) newId = `week-${n}`
+      for (let n = 2; (state.weeks.some((w) => w.id === newId) || purgedIdentity('week', newId)); n++) newId = `week-${n}`
       state.weeks.push({ ...clean, id: newId, bookId, weekNumber: weeks.length + 1 })
     }
     return toPlan(bookId)
@@ -649,16 +659,24 @@ export function createMockClient({
     const clean = normalizeQuote(input)
     if (!clean) throw new ApiError(400, 'Revisa el texto (1–1.000 caracteres) y la atribución (hasta 200 caracteres).')
     let id = 'quote-1'
-    for (let n = 2; state.quotes.some((quote) => quote.id === id); n++) id = `quote-${n}`
+    for (let n = 2; (state.quotes.some((quote) => quote.id === id) || purgedIdentity('quote', id)); n++) id = `quote-${n}`
     const quote = { id, ...clean }; state.quotes.push(quote); return { ...quote }
   }
 
+  const binAccess = (method: Method) => { requireSignedIn(); requireAdmin(); failIfConfigured(method) }
   return {
-    async listAdminQuotes() { literaryAccess('listAdminQuotes'); return state.quotes.map((quote) => ({ ...quote })) },
+    async getRecycleBin() { binAccess('getRecycleBin'); return bin.list() },
+    async getDeletionPreview(type, id) { binAccess('getDeletionPreview'); return bin.preview(type, id) },
+    async deleteBook(id) { binAccess('deleteBook'); return bin.remove('book', id) },
+    async deleteMeeting(id) { binAccess('deleteMeeting'); return bin.remove('meeting', id) },
+    async deleteLiteraryQuote(id) { binAccess('deleteLiteraryQuote'); return bin.remove('quote', id) },
+    async restoreDeleted(type, id) { binAccess('restoreDeleted'); return bin.restore(type, id) },
+    async purgeDeleted(type, id) { binAccess('purgeDeleted'); return bin.purge(type, id) },
+    async listAdminQuotes() { literaryAccess('listAdminQuotes'); return state.quotes.filter((quote) => !quote.deletedAt).map(({ id, text, author, source, active }) => ({ id, text, author, source, active })) },
     async addLiteraryQuote(input) { literaryAccess('addLiteraryQuote'); return saveQuote(input) },
     async updateLiteraryQuote(id, input) {
       literaryAccess('updateLiteraryQuote')
-      const quote = state.quotes.find((quote) => quote.id === id)
+      const quote = state.quotes.find((quote) => quote.id === id && !quote.deletedAt)
       if (!quote) throw new ApiError(404, 'Esta cita ya no está disponible. Vuelve a cargar la lista.')
       if (typeof input?.text === 'string' && state.quotes.some((other) => other.id !== id && quoteKey(other.text) === quoteKey(input.text))) throw new ApiError(409, 'Ya existe una cita con este texto. Edita la cita existente.')
       const clean = normalizeQuote(input)
@@ -680,7 +698,7 @@ export function createMockClient({
     async createMeetingHighlight(id, input) {
       meetingAccess('createMeetingHighlight'); const meeting = findMeeting(id), clean = cleanHighlight(input)
       let newId = 'highlight-1'
-      for (let n = 2; state.meetings.some((m) => m.highlights.some((h) => h.id === newId)); n++) newId = `highlight-${n}`
+      for (let n = 2; (state.meetings.some((m) => m.highlights.some((h) => h.id === newId)) || purgedIdentity('highlight', newId)); n++) newId = `highlight-${n}`
       meeting.highlights.push({ id: newId, ...clean }); return toAdminRecord(meeting)
     },
     async updateMeetingHighlight(id, highlightId, input) {
@@ -725,10 +743,10 @@ export function createMockClient({
     },
     async listAdminMeetings(): Promise<AdminMeetingCalendar> {
       meetingAccess('listAdminMeetings')
-      const ordered = [...state.meetings].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+      const ordered = [...visibleMeetings()].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
       return { upcoming: ordered.filter(isUpcoming).map(toAdminMeeting), past: ordered.filter((m) => !isUpcoming(m)).reverse().map(toAdminMeeting),
-        books: [...state.books].sort((a, b) => a.title.localeCompare(b.title, 'es')).map((b) => ({ id: b.id, title: b.title })),
-        weeks: state.weeks.filter((w) => !w.deletedAt).map((w) => ({ id: w.id, bookId: w.bookId, weekNumber: w.weekNumber, meetingId: w.meetingId })),
+        books: [...visibleBooks()].sort((a, b) => a.title.localeCompare(b.title, 'es')).map((b) => ({ id: b.id, title: b.title })),
+        weeks: state.weeks.filter((w) => weekVisible(state, w)).map((w) => ({ id: w.id, bookId: w.bookId, weekNumber: w.weekNumber, meetingId: w.meetingId })),
         activeMembers: toMemberSummaries(state.members.map((m) => m.id)) }
     },
     async getAdminMeeting(id) { meetingAccess('getAdminMeeting'); return toAdminMeeting(findMeeting(id)) },
@@ -749,7 +767,7 @@ export function createMockClient({
     },
     async listAdminBooks(): Promise<AdminBook[]> {
       catalogueAccess('listAdminBooks')
-      return [...state.books].sort((a, b) => a.title.localeCompare(b.title, 'es')).map(toAdminBook)
+      return [...visibleBooks()].sort((a, b) => a.title.localeCompare(b.title, 'es')).map(toAdminBook)
     },
     async getAdminBook(bookId: string): Promise<AdminBook> {
       catalogueAccess('getAdminBook')
@@ -801,7 +819,7 @@ export function createMockClient({
     async getHome(): Promise<HomeData> {
       requireSignedIn()
       failIfConfigured('getHome')
-      const activeBook = state.books.find((b) => b.status === 'leyendo') ?? null
+      const activeBook = visibleBooks().find((b) => b.status === 'leyendo') ?? null
       const meeting = nextMeeting()
       const week = currentReadingWeek()
       const doneBy = week ? (state.completions[week.id] ?? []) : []
@@ -834,14 +852,14 @@ export function createMockClient({
               completed: doneBy.includes(id),
             }))
           : [],
-        recentActivity: [...state.activity].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
+        recentActivity: state.activity.filter((a) => (!a.bookId || hasVisibleBook(state, a.bookId)) && (!a.meetingId || visibleMeetings().some((m) => m.id === a.meetingId)) && (!a.voteId || state.votes.some((v) => v.id === a.voteId && voteVisible(state, v)))).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map(({ id, type, occurredAt, text }) => ({ id, type, occurredAt, text })),
         stats: {
-          booksCompleted: state.books.filter((b) => b.status === 'terminado').length,
-          reviews: state.reviewCount,
+          booksCompleted: visibleBooks().filter((b) => b.status === 'terminado').length,
+          reviews: Math.max(0, state.reviewCount - state.reviews.filter((r) => !hasVisibleBook(state, r.bookId)).length),
           members: state.members.length,
         },
         quote: (() => {
-          const active = state.quotes.filter((quote) => quote.active)
+          const active = state.quotes.filter((quote) => quote.active && !quote.deletedAt)
           const quote = active[Math.floor(random() * active.length)]
           return quote ? { text: quote.text, author: quote.author, source: quote.source } : null
         })(),
@@ -851,7 +869,7 @@ export function createMockClient({
     async setWeekCompleted(weekId: string, completed: boolean): Promise<void> {
       requireSignedIn()
       failIfConfigured('setWeekCompleted')
-      if (!state.weeks.some((w) => w.id === weekId && !w.deletedAt)) throw new ApiError(404, 'No existe esa semana de lectura.')
+      if (!state.weeks.some((w) => w.id === weekId && weekVisible(state, w))) throw new ApiError(404, 'No existe esa semana de lectura.')
       // Always acts on the signed-in member only, like the real API will.
       const others = (state.completions[weekId] ?? []).filter((id) => id !== state.currentUserId)
       state.completions[weekId] = completed ? [...others, state.currentUserId] : others
@@ -860,15 +878,15 @@ export function createMockClient({
     async listBooks(): Promise<LibraryBook[]> {
       requireSignedIn()
       failIfConfigured('listBooks')
-      return state.books.map(toLibraryBook)
+      return visibleBooks().map(toLibraryBook)
     },
 
     async getBook(bookId: string): Promise<BookDetail> {
       requireSignedIn()
       failIfConfigured('getBook')
-      const book = state.books.find((b) => b.id === bookId)
+      const book = visibleBooks().find((b) => b.id === bookId)
       if (!book) throw new ApiError(404, 'No existe ese libro.')
-      const meetings = state.meetings.filter((m) => m.bookId === book.id)
+      const meetings = visibleMeetings().filter((m) => m.bookId === book.id)
       // Meeting summaries and highlights are gated (§5.3) and never sent here.
       return {
         ...toLibraryBook(book),
@@ -912,7 +930,7 @@ export function createMockClient({
     async listMeetings(): Promise<MeetingList> {
       requireSignedIn()
       failIfConfigured('listMeetings')
-      const byDate = [...state.meetings].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+      const byDate = [...visibleMeetings()].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
       // Cancelled meetings stay in the list their date puts them in. No
       // summaries or highlights here: they live behind getMeeting's gate.
       return {
@@ -927,7 +945,7 @@ export function createMockClient({
     async getMeeting(meetingId: string): Promise<MeetingDetail> {
       requireSignedIn()
       failIfConfigured('getMeeting')
-      const meeting = state.meetings.find((m) => m.id === meetingId)
+      const meeting = visibleMeetings().find((m) => m.id === meetingId)
       if (!meeting) throw new ApiError(404, 'No existe esa reunión.')
       return {
         ...toMeetingListItem(meeting),
@@ -943,9 +961,9 @@ export function createMockClient({
       const current = currentVote()
       return {
         curator: state.curatorId ? toMember(state.curatorId) : null,
-        current: current && toVote(current),
+        current: current && voteVisible(state, current) ? toVote(current) : null,
         history: state.votes
-          .filter((v) => v.status === 'closed')
+          .filter((v) => v.status === 'closed' && voteVisible(state, v))
           .sort((a, b) => Date.parse(b.closedAt!) - Date.parse(a.closedAt!))
           .map(toVoteHistoryItem),
         canCreateVote: mayManageVotes() && state.curatorId !== null && current === null,
@@ -955,7 +973,7 @@ export function createMockClient({
     async getVote(voteId: string): Promise<Vote> {
       requireSignedIn()
       failIfConfigured('getVote')
-      return toVote(findVote(voteId))
+      return toVote(findVote(voteId, false))
     },
 
     async setApproval(voteId: string, bookId: string, approved: boolean): Promise<Vote> {
@@ -976,7 +994,9 @@ export function createMockClient({
       failIfConfigured('createVote')
       if (!mayManageVotes()) throw new ApiError(403, 'Solo la curaduría o la administración pueden preparar una votación.')
       if (state.curatorId === null) throw new ApiError(409, 'Primero hay que asignar la curaduría.')
-      if (currentVote()) throw new ApiError(409, 'Ya hay una votación en preparación o abierta.')
+      const retainedCurrent = currentVote()
+      if (retainedCurrent && !voteVisible(state, retainedCurrent)) throw new ApiError(409, 'La votación actual contiene un libro retirado. Restaura el libro para recuperar la votación sin cambiar sus votos.')
+      if (retainedCurrent) throw new ApiError(409, 'Ya hay una votación en preparación o abierta.')
       let n = state.votes.length
       while (state.votes.some((v) => v.id === `v${n}`)) n++
       // The vote belongs to the current curator, even when the admin creates it.
@@ -1128,17 +1148,17 @@ export function createMockClient({
       // Decided on every call for the signed-in user: the reviews of books
       // they have not unlocked are dropped before any figure is computed, so
       // nothing of those books (not even a count) can reach the response.
-      const counted = countedReviews({ userId: state.currentUserId, reviews: state.reviews, finished: state.finished })
+      const counted = countedReviews({ userId: state.currentUserId, reviews: visibleReviews(), finished: state.finished })
       const bookIds = new Set(counted.map((r) => r.bookId))
       const memberIds = new Set(counted.map((r) => r.userId))
       return {
-        booksRead: state.books.filter((b) => b.status === 'terminado' || b.status === 'archivado').length,
+        booksRead: visibleBooks().filter((b) => b.status === 'terminado' || b.status === 'archivado').length,
         // Like the server: by its own clock (state.now).
-        meetingsHeld: state.meetings.filter((m) => !m.cancelled && Date.parse(m.startsAt) < Date.parse(state.now)).length,
+        meetingsHeld: visibleMeetings().filter((m) => !m.cancelled && Date.parse(m.startsAt) < Date.parse(state.now)).length,
         thresholds: { ...STATISTICS_THRESHOLDS },
         ratings: ratingStatistics({
           reviews: counted.map((r) => ({ bookId: r.bookId, memberId: r.userId, scores: { ...r.scores } })),
-          books: state.books.filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
+          books: visibleBooks().filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
           members: toMemberSummaries([...memberIds]),
           viewerId: state.currentUserId,
           thresholds: STATISTICS_THRESHOLDS,
@@ -1153,7 +1173,7 @@ export function createMockClient({
       // signed-in user: only the reviews of books they have finished and
       // rated reach the maths, so no other book (not even a count) can reach
       // the response. There is no role input.
-      const counted = countedReviews({ userId: state.currentUserId, reviews: state.reviews, finished: state.finished })
+      const counted = countedReviews({ userId: state.currentUserId, reviews: visibleReviews(), finished: state.finished })
       const bookIds = new Set(counted.map((r) => r.bookId))
       return {
         minSharedBooks: MIN_SHARED_BOOKS,
@@ -1161,7 +1181,7 @@ export function createMockClient({
           reviews: counted.map((r) => ({ bookId: r.bookId, memberId: r.userId, scores: { ...r.scores } })),
           viewerId: state.currentUserId,
           members: toMemberSummaries(state.members.map((m) => m.id)),
-          books: state.books.filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
+          books: visibleBooks().filter((b) => bookIds.has(b.id)).map((b) => toBookSummary(b.id)!),
           minSharedBooks: MIN_SHARED_BOOKS,
         }),
       }
@@ -1237,7 +1257,7 @@ export function createMockClient({
       failIfConfigured('listMyReviews')
       // The user's own reviews only, built field by field: no other member,
       // count, mean or club data can reach the response. Not gated (§5.5).
-      return state.reviews
+      return visibleReviews()
         .filter((r) => r.userId === state.currentUserId)
         .map((r) => ({ review: r, book: toBookSummary(r.bookId)! }))
         .sort(

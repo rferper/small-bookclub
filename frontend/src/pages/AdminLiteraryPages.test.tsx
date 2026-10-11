@@ -69,7 +69,7 @@ describe('quote forms', () => {
     await screen.findByText('Cambios guardados.')
     expect(state.quotes[0]).toMatchObject({ id: quote.id, text: 'Texto corregido / literal', active: false })
     expect(screen.getByText('Inactiva')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Eliminar/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Eliminar cita/ })).toHaveLength(1)
     await act(() => app.router.navigate('/'))
     await screen.findByRole('heading', { name: 'Inicio' })
     expect(screen.queryByRole('region', { name: 'Una cita para hoy' })).not.toBeInTheDocument()

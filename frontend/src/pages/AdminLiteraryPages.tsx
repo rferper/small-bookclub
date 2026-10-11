@@ -6,6 +6,7 @@ import { ApiError } from '../api/client'
 import { useApi, useApiData } from '../api/hooks'
 import type { AdminLiteraryQuote, LiteraryQuoteInput, RatingRubric } from '../api/types'
 import { Card } from '../components/Card'
+import { DeleteContentButton } from '../components/DeleteContentButton'
 import { LoadError, Loading } from '../components/Status'
 import { ANCHORS, normalizeQuote, normalizeRubric } from '../lib/literary'
 import { CRITERIA, CRITERION_LABELS } from '../lib/ratings'
@@ -67,6 +68,7 @@ function QuotesEditor({ initial, reload }: { initial: AdminLiteraryQuote[]; relo
         {(quote.author || quote.source) && <p className="mt-1 whitespace-pre-wrap text-bark">{[quote.author, quote.source].filter(Boolean).join(', ')}</p>}
         <p className="my-2 text-bark">{quote.active ? 'Activa' : 'Inactiva'}</p>
         <button type="button" className={secondary} disabled={save.pending} aria-label={`Editar cita: ${quote.text}`} onClick={() => select(quote)}>Editar</button>
+        <DeleteContentButton type="quote" id={quote.id} label={`cita «${quote.text}»`} disabled={save.pending} onDeleted={reload} />
       </li>)}</ul>
     </Card>
     <Card title={editing ? 'Editar cita' : 'Nueva cita'} className="min-w-0">

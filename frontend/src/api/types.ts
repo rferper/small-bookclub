@@ -245,7 +245,7 @@ export interface ReadingWeekInput {
   percentStart: number; percentEnd: number; pageStart: number; pageEnd: number
   dueDate: string | null; notes: string | null; meetingId: string | null
 }
-export interface AdminReadingWeek extends ReadingWeekInput { id: string; weekNumber: number; completionCount: number }
+export interface AdminReadingWeek extends ReadingWeekInput { id: string; weekNumber: number; completionCount: number; removedMeeting?: boolean }
 export interface AdminReadingPlan {
   book: { id: string; title: string; pageCount: number | null }
   weeks: AdminReadingWeek[]
@@ -632,3 +632,15 @@ export type BookCoverChange = AvatarChange | { action: 'metadata'; resultId: str
 // A whole catalogue edit, atomically saved. id and originVote cannot be edited.
 export type BookInput = Omit<AdminBook, 'id' | 'originVote' | 'coverUrl'> & { cover: BookCoverChange }
 export type BookMetadataResult = BookMetadata & { id: string }
+// Admin-only recovery projection: no catalogue, review or profile payload.
+export type DeletedType = 'book' | 'meeting' | 'quote' | 'week' | 'highlight'
+export interface RecycleBinEntry {
+  type: DeletedType
+  id: string
+  label: string
+  deletedAt: string
+  deletedByName: string
+  purgeDueAt: string
+  expired: boolean
+  dependencies: string[]
+}

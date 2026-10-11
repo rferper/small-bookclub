@@ -9,6 +9,7 @@ import { BOOK_STATUSES, BOOK_STATUS_LABELS } from '../lib/library'
 import { AVATAR_ACCEPT, avatarProblem, readAsDataUrl } from '../lib/profile'
 import { BookCover } from './BookCover'
 import { Card } from './Card'
+import { DeleteContentButton } from './DeleteContentButton'
 
 const buttonClass = 'rounded-lg border border-forest px-4 py-2 text-forest hover:bg-sage/40 disabled:opacity-60'
 const inputClass = 'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
@@ -124,6 +125,7 @@ export function BookForm({ book }: { book?: AdminBook }) {
   return <div className="grid max-w-5xl gap-6">
     <Link to="/administracion/libros" className="text-moss underline underline-offset-4">Volver a Libros</Link>
     <h1 className="text-3xl text-forest sm:text-4xl">{book ? 'Editar libro' : 'Añadir libro'}</h1>
+    {book && <DeleteContentButton type="book" id={book.id} label={`libro «${book.title}»`} disabled={saving || readingFile} onDeleted={() => navigate('/administracion/libros')} />}
     <Card title="Buscar metadatos">
       <form onSubmit={search} noValidate className="grid gap-3">
         <label htmlFor={fieldId('query')}>Título o autor</label>

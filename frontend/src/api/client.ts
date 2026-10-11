@@ -1,4 +1,5 @@
 import type {
+  DeletedType, RecycleBinEntry,
   AdminLiteraryQuote, LiteraryQuoteInput,
   AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
   AdminReadingPlan, ReadingWeekInput,
@@ -32,6 +33,14 @@ import type {
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
+  getRecycleBin(): Promise<RecycleBinEntry[]>
+  getDeletionPreview(type: 'book' | 'meeting' | 'quote', id: string): Promise<{ label: string; dependencies: string[] }>
+  deleteBook(id: string): Promise<RecycleBinEntry[]>
+  deleteMeeting(id: string): Promise<RecycleBinEntry[]>
+  deleteLiteraryQuote(id: string): Promise<RecycleBinEntry[]>
+  restoreDeleted(type: DeletedType, id: string): Promise<RecycleBinEntry[]>
+  purgeDeleted(type: DeletedType, id: string): Promise<RecycleBinEntry[]>
+
   listAdminQuotes(): Promise<AdminLiteraryQuote[]>
   addLiteraryQuote(input: LiteraryQuoteInput): Promise<AdminLiteraryQuote>
   updateLiteraryQuote(id: string, input: LiteraryQuoteInput): Promise<AdminLiteraryQuote>

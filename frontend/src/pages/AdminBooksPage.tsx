@@ -6,6 +6,7 @@ import { useAdminAccess } from '../admin/context'
 import { BookForm } from '../components/BookForm'
 import { BookStatusLabel } from '../components/BookStatusLabel'
 import { Card, EmptyState } from '../components/Card'
+import { DeleteContentButton } from '../components/DeleteContentButton'
 import { Loading, LoadError } from '../components/Status'
 
 const adminBookPath = (id: string) => `/administracion/libros/${encodeURIComponent(id)}/editar`
@@ -25,6 +26,7 @@ export function AdminBooksPage() {
       {books.status === 'error' && <LoadError onRetry={books.reload} message="No se ha podido cargar el catálogo." />}
       {books.status === 'ready' && (books.data.length ? <ul className="grid gap-3">{books.data.map((book) => <li key={book.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-wood/20 py-3">
         <Link to={adminBookPath(book.id)} className={`min-w-0 break-words ${linkClass}`}>Editar «{book.title}»</Link><BookStatusLabel status={book.status} />
+        <DeleteContentButton type="book" id={book.id} label={`libro «${book.title}»`} onDeleted={books.reload} />
       </li>)}</ul> : <EmptyState>Aún no hay libros en el catálogo. Puedes añadir el primero cuando quieras.</EmptyState>)}
     </Card>
   </div>
