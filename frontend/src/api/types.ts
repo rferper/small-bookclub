@@ -97,6 +97,8 @@ export interface ActivityEvent {
 
 export interface ClubStats {
   booksCompleted: number
+  // Retained reviews on visible books the viewer has finished and rated,
+  // using the statistics gate; never a global club total.
   reviews: number
   members: number
 }

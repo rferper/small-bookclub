@@ -841,6 +841,20 @@ export function createMockClient({
       const meeting = nextMeeting()
       const week = currentReadingWeek()
       const doneBy = week ? (state.completions[week.id] ?? []) : []
+      const counted = countedReviews({ userId: state.currentUserId, reviews: visibleReviews(), finished: state.finished })
+      const unlockedBooks = new Set(counted.map((review) => review.bookId))
+      // Check canonical provenance and current access before projecting event text.
+      const activity = state.activity.filter((event) => {
+        if (event.bookId && !hasVisibleBook(state, event.bookId)) return false
+        if (event.meetingId && !visibleMeetings().some((m) => m.id === event.meetingId)) return false
+        if (event.voteId && !state.votes.some((v) => v.id === event.voteId && voteVisible(state, v))) return false
+        if (event.type === 'review_available') return !!event.bookId && unlockedBooks.has(event.bookId)
+        if (event.type === 'summary_published') {
+          const subject = visibleMeetings().find((m) => m.id === event.meetingId)
+          return !!subject?.summary?.published && toMeetingRecord(subject).status === 'visible'
+        }
+        return true
+      })
 
       const currentWeek: ReadingWeek | null = week && {
         id: week.id,
@@ -870,10 +884,10 @@ export function createMockClient({
               completed: doneBy.includes(id),
             }))
           : [],
-        recentActivity: state.activity.filter((a) => (!a.bookId || hasVisibleBook(state, a.bookId)) && (!a.meetingId || visibleMeetings().some((m) => m.id === a.meetingId)) && (!a.voteId || state.votes.some((v) => v.id === a.voteId && voteVisible(state, v)))).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map(({ id, type, occurredAt, text }) => ({ id, type, occurredAt, text })),
+        recentActivity: activity.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map(({ id, type, occurredAt, text }) => ({ id, type, occurredAt, text })),
         stats: {
           booksCompleted: visibleBooks().filter((b) => b.status === 'terminado').length,
-          reviews: Math.max(0, state.reviewCount - state.reviews.filter((r) => !hasVisibleBook(state, r.bookId)).length),
+          reviews: counted.length,
           members: state.members.length,
         },
         quote: (() => {

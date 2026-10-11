@@ -95,6 +95,14 @@ Any existing assignment remains manually selectable on finished or archived book
 
 ## Fixture ratings
 
+Inicio's `stats.reviews` is the viewer-permitted count of actual retained reviews
+on visible books they have finished and rated, matching statistics (#104).
+The default admin sees 13 and the default member 5; no unlocked book gives zero.
+Review activity uses that same gate. Summary activity requires its canonical
+visible meeting, a currently published summary and the member meeting-record gate.
+The default admin's unread week-2 summary is omitted, including its event metadata;
+ordinary book/vote/nomination activity and public weekly progress remain visible.
+
 The ratings on each book page («Valoraciones») and its rating form (`/biblioteca/<id>/valorar`) are gated for the signed-in user, the admin included: the club's ratings appear only once the user has marked «He terminado el libro» and sent their own rating (#67). So the case depends on the session:
 
 | Book | Default admin (Lucía) | `?mock-session=member` (Mateo) |

@@ -200,7 +200,7 @@ function NextMeetingCard({ data }: { data: HomeData }) {
 function StatsCard({ data }: { data: HomeData }) {
   const items = [
     { value: data.stats.booksCompleted, label: data.stats.booksCompleted === 1 ? 'libro leído' : 'libros leídos' },
-    { value: data.stats.reviews, label: data.stats.reviews === 1 ? 'valoración' : 'valoraciones' },
+    { value: data.stats.reviews, label: data.stats.reviews === 1 ? 'valoración visible' : 'valoraciones visibles' },
     { value: data.stats.members, label: data.stats.members === 1 ? 'miembro' : 'miembros' },
   ]
   return (

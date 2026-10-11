@@ -156,9 +156,9 @@ describe('mock ratings: nothing leaks', () => {
     const books = await api.listBooks()
     const details = await Promise.all(books.map((b) => api.getBook(b.id)))
     const home = await api.getHome()
-    // Inicio's club-wide review count (#44) is the only "reviews" key, and it is a number.
-    expect(home.stats.reviews).toBe(12)
-    const { reviews: _clubWideCount, ...stats } = home.stats
+    // Inicio counts only retained reviews on the viewer's unlocked books.
+    expect(home.stats.reviews).toBe(session === 'admin' ? 13 : 5)
+    const { reviews: _visibleCount, ...stats } = home.stats
     const others = [{ ...home, stats }, await api.listMeetings(), await api.getVotes(), await api.getVote('v0')]
     const catalogue = JSON.stringify([books, details])
     expect(catalogue).not.toMatch(/rating|review|score|average|overall|mean|finished/i)
