@@ -522,3 +522,50 @@ events are produced. Ordinary activity, public progress and approvals are unchan
 **Consequence:** No dependency or wire shape change; #71 already declares these
 predicates. The mock and documentation now agree. Backend Home/activity enforcement
 remains #44/#45, and no frontend filtering is claimed as server enforcement.
+
+## 2026-10-11: Complete administrative production contract (#102)
+
+**Decision:** Extend OpenAPI 3.1 with all 42 administrative methods, closed explicit
+operational/editor/allowlist/bin/audit schemas, inputs and production download
+declarations. All 73 central client methods now have unique operationIds plus the
+provider callback; docs inventory/negative fixtures enforce completeness. Admin
+requires current approved identity/role (401 then 403 before lookup/validation);
+curator stays limited to voting. Catalogue/calendar never contain ratings or
+substantive records; drafts belong to editor endpoints, while admin member views
+retain #71 gates. Safe bin/preview use generic quote/highlight labels and operational
+dependencies, intentionally narrower than local mock labels; #103 owns adapters.
+
+**Reversible transport assumptions:** Resource creation is 201; result-returning
+updates/soft removals are 200. Cover edits use atomic multipart JSON metadata plus
+replace-only sniffed JPEG/PNG/WebP bytes <=2,097,152; metadata result id is the sole
+imported-cover reference. Stable/canonical links, independent ranges/publication,
+warning acknowledgement (400 when absent), null versus empty attendance, five whole
+rubric criteria and conservative noncascade recovery/purge preserve existing rules.
+No automatic job or backend enforcement is implemented. #12/#46/#47 may refine
+production erasure before implementation.
+
+**Export:** Fix GET /api/admin/backups, POST /api/admin/export and GET
+/api/admin/audit-log. Backup policy stays pending with nullable last timestamp (#48).
+Export requires CSRF and successful fresh server-verified Discord authentication
+for the same still approved admin via existing purpose=export OAuth start/callback.
+Freshness is five minutes by server time, age <300 seconds; future timestamp invalid.
+Missing/stale authorisation is strict 409 reauthentication_required without download
+or session expiry; confirmation/request boolean insufficient. Implement/test #49/#5.
+
+Successful export is authenticated application/zip attachment, fixed safe server
+filename club-de-lectura.zip and Cache-Control no-store. Version 1 UTF-8 manifest.json
+and club.json contain whitelisted business records including private reviews,
+drafts, revoked/recoverable history, deletion metadata, minimal tombstones and safe
+audit. Stable native media ids refer to available bytes under safe media paths;
+unavailable media is explicit, with no external fetch/data URL. Sessions/OAuth
+credentials/secrets/purged substantive payloads are excluded. This explicit draft
+format under spec §9/#49 promises neither import/restoration nor backup retention.
+Change schemaVersion/contract first if later implementation needs another format.
+
+**Boundary and evidence:** Local ClubExport filename/json and fictional data URLs
+remain illustrative mock JSON, never production wire or restorable snapshot. #103
+owns generated types/local adapters preserving demo download/tests; #49 owns ZIP
+download/fresh authorisation UI; #50 owns persistent audit; #72 validates backend
+responses. Existing OSS validator/CI checks the whole extension and sensitive-field
+mutations offline; these are schema/declaration tests, not HTTP security evidence.
+No new dependency, account, service, UI or runtime change.

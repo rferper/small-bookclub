@@ -1,11 +1,10 @@
 openapi: 3.1.0
 info:
-  title: Small Bookclub member API
-  version: 1.0.0
-  description: "Private Spanish book club; contract foundation/member operations (#71). Administration
-    #102; generated types/mock adoption #103; backend response validation #72. This document
-    implements no HTTP/security enforcement. Same-site cookie session; approved allowlist and
-    revocation rechecked on every club request. See docs/api.md."
+  title: Small Bookclub API
+  version: 1.1.0
+  description: "Private Spanish book club member (#71) and administration (#102) contract. Future
+    same-site cookie API; no HTTP implementation/security enforcement. Approved access rechecked on
+    every request. Generated adoption #103, backend response validation #72. See docs/api.md."
 servers:
   - url: /
     description: Same origin; local HTTP development permitted. HTTPS deployment required for Secure cookies.
@@ -14,6 +13,8 @@ tags:
     description: Session and same-site OAuth navigation.
   - name: Member
     description: Approved member data; admin follows same spoiler gates in member views.
+  - name: Admin
+    description: Effective approved admin only; explicit operational/editor projections. Curator not admin.
 security:
   - sessionCookie: []
 paths:
@@ -1306,7 +1307,11 @@ paths:
       description: Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact
         IDs, revoke check, state and identity checked server-side. Server-held same-origin return
         navigation; deny missing/invalid state without club payload. No access/refresh tokens
-        exposed. Export purpose performs admin reauthentication (#102).
+        exposed. Export purpose performs admin reauthentication (#102). For purpose=export require
+        existing approved admin and bind server OAuth state to that same identity; require a fresh
+        provider authentication, not reuse of prior local confirmation. Callback records server
+        recent-auth time only after state, identity and current allowlist/admin checks; wrong
+        identity never authorises export. Safe same-site return only.
       responses:
         "302":
           description: Redirect to Discord authorisation from start, or safe same-origin page/session gate
@@ -1353,7 +1358,11 @@ paths:
       description: Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact
         IDs, revoke check, state and identity checked server-side. Server-held same-origin return
         navigation; deny missing/invalid state without club payload. No access/refresh tokens
-        exposed. Export purpose performs admin reauthentication (#102).
+        exposed. Export purpose performs admin reauthentication (#102). For server-held export
+        purpose, successful fresh provider authentication must match original approved admin
+        identity and rechecked allowlist/admin role before server stores recent-auth timestamp.
+        Absent/stale authorisation later yields export 409 without expiring approved session. No
+        tokens exposed.
       responses:
         "302":
           description: Redirect to Discord authorisation from start, or safe same-origin page/session gate
@@ -1368,6 +1377,2343 @@ paths:
           $ref: "#/components/responses/Error500"
         "503":
           $ref: "#/components/responses/Error503"
+  /api/admin/backups:
+    get:
+      operationId: getBackupInfo
+      summary: getBackupInfo
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupInfo"
+              example:
+                policy: pending
+                lastBackupAt: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/admin/export:
+    post:
+      operationId: exportClubData
+      summary: exportClubData
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Requires recent same-approved-admin Discord OAuth reauthentication after verified
+        identity/allowlist checks. Five minutes by server clock, recorded server-side (#49/#5).
+        Confirmation/request boolean insufficient; no body accepted. Include UTF-8 manifest.json +
+        club.json and available website media. Authenticated noncached attachment; sessions/secrets
+        excluded. Export event included once in safe audit.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Authenticated private ZIP attachment; never a JSON wire response.
+          headers:
+            Content-Disposition:
+              required: true
+              description: Safe server filename without supplied path; fixed draft name.
+              schema:
+                type: string
+                const: attachment; filename="club-de-lectura.zip"
+              example: attachment; filename="club-de-lectura.zip"
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                const: no-store
+              example: no-store
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          description: Missing/stale recent authorisation; no download, existing approved session remains valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReauthenticationError"
+              example:
+                code: reauthentication_required
+                message: Vuelve a identificarte con Discord para exportar los datos.
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      x-recent-reauthentication:
+        provider: Discord
+        sameApprovedAdmin: true
+        freshnessSeconds: 300
+        clock: server
+        entry: /api/auth/discord/start?purpose=export
+        callback: /api/auth/discord/callback
+  /api/admin/audit-log:
+    get:
+      operationId: getAuditLog
+      summary: getAuditLog
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEvent"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/admin/bin:
+    get:
+      operationId: getRecycleBin
+      summary: getRecycleBin
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/admin/deletion-preview/{type}/{id}:
+    get:
+      operationId: getDeletionPreview
+      summary: getDeletionPreview
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Only book/meeting/quote preview types; safe operational dependencies.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletionPreview"
+              example:
+                label: Registro ficticio
+                dependencies: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - book
+              - meeting
+              - quote
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/bin/{type}/{id}/restore:
+    post:
+      operationId: restoreDeleted
+      summary: restoreDeleted
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Missing/nonremoved/purged target 404. Expired restore 409. Restore selected
+        metadata only, not independently removed descendants; required parent first. One leyendo,
+        quote uniqueness and canonical same-book/one-to-one link checks 409. Meeting restoration
+        allowed with removed linked week (gate remains locked). Purge is dependency-blocked 409,
+        never cascades: book weeks/meetings/reviews/finished/favourites/votes; meeting
+        reservations/attendance/highlights; week completions/links. Quote/highlight eligible
+        independently. 30-day deadline does not promise automatic job. #12/#46/#47 refine production
+        erasure first."
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/DeletedType"
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/bin/{type}/{id}:
+    delete:
+      operationId: purgeDeleted
+      summary: purgeDeleted
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Missing/nonremoved/purged target 404. Expired restore 409. Restore selected
+        metadata only, not independently removed descendants; required parent first. One leyendo,
+        quote uniqueness and canonical same-book/one-to-one link checks 409. Meeting restoration
+        allowed with removed linked week (gate remains locked). Purge is dependency-blocked 409,
+        never cascades: book weeks/meetings/reviews/finished/favourites/votes; meeting
+        reservations/attendance/highlights; week completions/links. Quote/highlight eligible
+        independently. 30-day deadline does not promise automatic job. #12/#46/#47 refine production
+        erasure first."
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/DeletedType"
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/books/{id}:
+    delete:
+      operationId: deleteBook
+      summary: deleteBook
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
+        repeated/missing target 404. Never cascade purge; member projections suppress removed
+        targets/dependent content.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/meetings/{id}:
+    delete:
+      operationId: deleteMeeting
+      summary: deleteMeeting
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
+        repeated/missing target 404. Never cascade purge; member projections suppress removed
+        targets/dependent content.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/quotes/{id}:
+    delete:
+      operationId: deleteLiteraryQuote
+      summary: deleteLiteraryQuote
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
+        repeated/missing target 404. Never cascade purge; member projections suppress removed
+        targets/dependent content.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+    put:
+      operationId: updateLiteraryQuote
+      summary: updateLiteraryQuote
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Stable id/order, normalized duplicates 409.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLiteraryQuote"
+              example:
+                id: quote-fiction-1
+                text: Texto literario ficticio.
+                author: null
+                source: null
+                active: true
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiteraryQuoteInput"
+            example:
+              text: Texto literario ficticio.
+              author: null
+              source: null
+              active: true
+  /api/admin/quotes:
+    get:
+      operationId: listAdminQuotes
+      summary: listAdminQuotes
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminLiteraryQuote"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+    post:
+      operationId: addLiteraryQuote
+      summary: addLiteraryQuote
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Normalized duplicate 409, including recoverable quotes.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "201":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLiteraryQuote"
+              example:
+                id: quote-fiction-1
+                text: Texto literario ficticio.
+                author: null
+                source: null
+                active: true
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiteraryQuoteInput"
+            example:
+              text: Texto literario ficticio.
+              author: null
+              source: null
+              active: true
+  /api/admin/rating-rubric:
+    put:
+      operationId: saveRatingRubric
+      summary: saveRatingRubric
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Validate all 25 anchors before commit.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingRubric"
+              example:
+                disfrute:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                estilo:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                personajes:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                trama:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                huella:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingRubricInput"
+            example:
+              disfrute:
+                "1": null
+                "2": null
+                "3": null
+                "4": null
+                "5": null
+              estilo:
+                "1": null
+                "2": null
+                "3": null
+                "4": null
+                "5": null
+              personajes:
+                "1": null
+                "2": null
+                "3": null
+                "4": null
+                "5": null
+              trama:
+                "1": null
+                "2": null
+                "3": null
+                "4": null
+                "5": null
+              huella:
+                "1": null
+                "2": null
+                "3": null
+                "4": null
+                "5": null
+  /api/admin/meetings/{meetingId}/record:
+    get:
+      operationId: getAdminMeetingRecord
+      summary: getAdminMeetingRecord
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Draft editor only.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/meetings/{meetingId}/record/summary:
+    put:
+      operationId: saveMeetingSummary
+      summary: saveMeetingSummary
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Independent publication, blank published 400.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingSummaryInput"
+            example:
+              text: ""
+              published: false
+  /api/admin/meetings/{meetingId}/record/highlights:
+    post:
+      operationId: createMeetingHighlight
+      summary: createMeetingHighlight
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Active speakers only on creation.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "201":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingHighlightInput"
+            example:
+              text: IntervenciÃ³n ficticia
+              published: false
+              kind: paraphrase
+              speakerIds: []
+  /api/admin/meetings/{meetingId}/record/highlights/{highlightId}:
+    put:
+      operationId: updateMeetingHighlight
+      summary: updateMeetingHighlight
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Retain/remove unchanged revoked attribution; new revoked/unknown speaker choices
+        400.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+        - name: highlightId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingHighlightInput"
+            example:
+              text: IntervenciÃ³n ficticia
+              published: false
+              kind: paraphrase
+              speakerIds: []
+    delete:
+      operationId: removeMeetingHighlight
+      summary: removeMeetingHighlight
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Soft removal keeps publication/content/attribution and original position with
+        30-day metadata.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+        - name: highlightId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/meetings/{meetingId}/record/highlights/order:
+    put:
+      operationId: reorderMeetingHighlights
+      summary: reorderMeetingHighlights
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Exact active permutation; keep removed slots.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdOrder"
+            example:
+              ids: []
+  /api/admin/meetings/{meetingId}/record/safe:
+    put:
+      operationId: setMeetingRecordSafe
+      summary: setMeetingRecordSafe
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Both safe values conflict 409 when any active/removed week link exists.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingRecord"
+              example:
+                id: meeting-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                week: null
+                markedSafe: false
+                summary: null
+                highlights: []
+                speakerOptions: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafeInput"
+            example:
+              safe: true
+  /api/admin/books/{bookId}/reading-plan:
+    get:
+      operationId: getAdminReadingPlan
+      summary: getAdminReadingPlan
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Active operational plan.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReadingPlan"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  pageCount: null
+                weeks: []
+                meetings: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/books/{bookId}/reading-plan/weeks:
+    post:
+      operationId: createReadingWeek
+      summary: createReadingWeek
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Canonical links and recomputed warning acknowledgement required; refusal atomic.
+        Unacknowledged recomputed warnings are 400 invalid_input (not conversion); occupied link is
+        409 conflict.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "201":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReadingPlan"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  pageCount: null
+                weeks: []
+                meetings: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadingWeekWrite"
+            example:
+              input:
+                percentStart: 0
+                percentEnd: 25
+                pageStart: 1
+                pageEnd: 80
+                dueDate: null
+                notes: null
+                meetingId: null
+              acknowledged: false
+  /api/admin/books/{bookId}/reading-plan/weeks/{weekId}:
+    put:
+      operationId: updateReadingWeek
+      summary: updateReadingWeek
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Stable id retains completions; canonical links and recomputed warning
+        acknowledgement. Unacknowledged recomputed warnings are 400 invalid_input (not conversion);
+        occupied link is 409 conflict.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReadingPlan"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  pageCount: null
+                weeks: []
+                meetings: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadingWeekWrite"
+            example:
+              input:
+                percentStart: 0
+                percentEnd: 25
+                pageStart: 1
+                pageEnd: 80
+                dueDate: null
+                notes: null
+                meetingId: null
+              acknowledged: false
+    delete:
+      operationId: removeReadingWeek
+      summary: removeReadingWeek
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Retain facts/completions/canonical meeting link, 30-day removal metadata; linked
+        member record locked even if safe.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReadingPlan"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  pageCount: null
+                weeks: []
+                meetings: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/books/{bookId}/reading-plan/weeks/order:
+    put:
+      operationId: reorderReadingWeeks
+      summary: reorderReadingWeeks
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Exact active permutation then full-plan warnings recomputed. Unacknowledged
+        recomputed warnings are 400 invalid_input (not conversion); occupied link is 409 conflict.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReadingPlan"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  pageCount: null
+                weeks: []
+                meetings: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadingWeekOrder"
+            example:
+              ids: []
+              acknowledged: false
+  /api/admin/meetings:
+    get:
+      operationId: listAdminMeetings
+      summary: listAdminMeetings
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeetingCalendar"
+              example:
+                upcoming: []
+                past: []
+                books: []
+                weeks: []
+                activeMembers: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+    post:
+      operationId: createMeeting
+      summary: createMeeting
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Canonical book/week links validated; occupied reservation 409.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "201":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeeting"
+              example:
+                startsAt: 2026-01-15T19:00:00Z
+                bookId: null
+                weekId: null
+                id: meeting-fiction-1
+                cancelled: false
+                upcoming: true
+                attendance: null
+                attendanceEligible: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingInput"
+            example:
+              startsAt: 2026-01-15T19:00:00Z
+              bookId: null
+              weekId: null
+  /api/admin/meetings/{meetingId}:
+    get:
+      operationId: getAdminMeeting
+      summary: getAdminMeeting
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Operational attendance editor.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeeting"
+              example:
+                startsAt: 2026-01-15T19:00:00Z
+                bookId: null
+                weekId: null
+                id: meeting-fiction-1
+                cancelled: false
+                upcoming: true
+                attendance: null
+                attendanceEligible: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+    put:
+      operationId: updateMeeting
+      summary: updateMeeting
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Unchanged removed association retained; deliberate unlink/relink releases it. No
+        reading facts change.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeeting"
+              example:
+                startsAt: 2026-01-15T19:00:00Z
+                bookId: null
+                weekId: null
+                id: meeting-fiction-1
+                cancelled: false
+                upcoming: true
+                attendance: null
+                attendanceEligible: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingInput"
+            example:
+              startsAt: 2026-01-15T19:00:00Z
+              bookId: null
+              weekId: null
+  /api/admin/meetings/{meetingId}/cancelled:
+    put:
+      operationId: setMeetingCancelled
+      summary: setMeetingCancelled
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Preserve records/attendance; member projection suppresses them while cancelled.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeeting"
+              example:
+                startsAt: 2026-01-15T19:00:00Z
+                bookId: null
+                weekId: null
+                id: meeting-fiction-1
+                cancelled: false
+                upcoming: true
+                attendance: null
+                attendanceEligible: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelledInput"
+            example:
+              cancelled: true
+  /api/admin/meetings/{meetingId}/attendance:
+    put:
+      operationId: setMeetingAttendance
+      summary: setMeetingAttendance
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Strictly past and not cancelled; active selections replace while revoked recorded
+        history retained.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMeeting"
+              example:
+                startsAt: 2026-01-15T19:00:00Z
+                bookId: null
+                weekId: null
+                id: meeting-fiction-1
+                cancelled: false
+                upcoming: true
+                attendance: null
+                attendanceEligible: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceInput"
+            example:
+              memberIds: []
+  /api/admin/books:
+    get:
+      operationId: listAdminBooks
+      summary: listAdminBooks
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminBook"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+    post:
+      operationId: createBook
+      summary: createBook
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Single leyendo rechecked after async image processing immediately before commit,
+        409 with safe current-book label.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "201":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBook"
+              example:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+                status: propuesto
+                readingStartDate: null
+                readingEndDate: null
+                datesApproximate: false
+                plannedStartDate: null
+                plannedEndDate: null
+                description: null
+                publicationDate: null
+                publisher: null
+                isbn: null
+                pageCount: null
+                originVote: null
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/BookMultipart"
+            example:
+              metadata:
+                title: Texto ficticio
+                authors: []
+                status: propuesto
+                readingStartDate: null
+                readingEndDate: null
+                datesApproximate: false
+                plannedStartDate: null
+                plannedEndDate: null
+                description: null
+                publicationDate: null
+                publisher: null
+                isbn: null
+                pageCount: null
+                coverAction: keep
+            encoding:
+              metadata:
+                contentType: application/json
+              cover:
+                contentType: image/jpeg, image/png, image/webp
+  /api/admin/books/{bookId}:
+    get:
+      operationId: getAdminBook
+      summary: getAdminBook
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Metadata only.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBook"
+              example:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+                status: propuesto
+                readingStartDate: null
+                readingEndDate: null
+                datesApproximate: false
+                plannedStartDate: null
+                plannedEndDate: null
+                description: null
+                publicationDate: null
+                publisher: null
+                isbn: null
+                pageCount: null
+                originVote: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+    put:
+      operationId: updateBook
+      summary: updateBook
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Stable id/originVote preserved; same atomic whole edit and single leyendo
+        invariant.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminBook"
+              example:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+                status: propuesto
+                readingStartDate: null
+                readingEndDate: null
+                datesApproximate: false
+                plannedStartDate: null
+                plannedEndDate: null
+                description: null
+                publicationDate: null
+                publisher: null
+                isbn: null
+                pageCount: null
+                originVote: null
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/BookMultipart"
+            example:
+              metadata:
+                title: Texto ficticio
+                authors: []
+                status: propuesto
+                readingStartDate: null
+                readingEndDate: null
+                datesApproximate: false
+                plannedStartDate: null
+                plannedEndDate: null
+                description: null
+                publicationDate: null
+                publisher: null
+                isbn: null
+                pageCount: null
+                coverAction: keep
+            encoding:
+              metadata:
+                contentType: application/json
+              cover:
+                contentType: image/jpeg, image/png, image/webp
+  /api/admin/book-metadata:
+    get:
+      operationId: searchBookMetadata
+      summary: searchBookMetadata
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Explicit trimmed title/author query, blank/overlong 400. No write from
+        search/local selection; actual free provider lookup #15."
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookMetadataResult"
+              example: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 200
+            x-trimmedMaxLength: 200
+            minLength: 1
+            x-trimmedMinLength: 1
+          example: Texto ficticio
+  /api/admin/members:
+    get:
+      operationId: getAdminMembers
+      summary: getAdminMembers
+      tags:
+        - Admin
+      description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. "
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMembers"
+              example:
+                members: []
+                curator: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+    post:
+      operationId: addMember
+      summary: addMember
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Existing active/revoked Discord id 409 before invalid input 400.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "201":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMembers"
+              example:
+                members: []
+                curator: null
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewMember"
+            example:
+              discordId: "12345678901234567"
+              displayName: Persona ficticia
+  /api/admin/members/{memberId}/revoke:
+    post:
+      operationId: revokeMember
+      summary: revokeMember
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Missing 404, signed-in admin/already revoked 409; clear curator if needed, retain
+        contributions.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMembers"
+              example:
+                members: []
+                curator: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/members/{memberId}/restore:
+    post:
+      operationId: restoreMember
+      summary: restoreMember
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Missing 404, already active 409; preserved own profile.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMembers"
+              example:
+                members: []
+                curator: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+  /api/admin/curator:
+    put:
+      operationId: setCurator
+      summary: setCurator
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Unknown/revoked member 404, null clears; existing votes retain recorded curator;
+        no role changes.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMembers"
+              example:
+                members: []
+                curator: null
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CuratorInput"
+            example:
+              memberId: null
 components:
   securitySchemes:
     sessionCookie:
@@ -3711,6 +6057,2818 @@ components:
       examples:
         - code: unauthenticated
           message: Debes iniciar sesión.
+    AdminBook:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+          maxLength: 200
+          x-trimmedMaxLength: 200
+          minLength: 1
+          x-trimmedMinLength: 1
+        authors:
+          type: array
+          items:
+            type: string
+            maxLength: 120
+            x-trimmedMaxLength: 120
+            minLength: 1
+            x-trimmedMinLength: 1
+          maxItems: 20
+        coverUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        status:
+          type: string
+          enum:
+            - propuesto
+            - elegido
+            - leyendo
+            - terminado
+            - archivado
+        readingStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        readingEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        datesApproximate:
+          type: boolean
+        plannedStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        plannedEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        description:
+          anyOf:
+            - type: string
+              maxLength: 5000
+              x-trimmedMaxLength: 5000
+            - type: "null"
+        publicationDate:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        publisher:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        isbn:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        pageCount:
+          anyOf:
+            - type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            - type: "null"
+        originVote:
+          anyOf:
+            - $ref: "#/components/schemas/OriginVote"
+            - type: "null"
+      required:
+        - id
+        - title
+        - authors
+        - coverUrl
+        - status
+        - readingStartDate
+        - readingEndDate
+        - datesApproximate
+        - plannedStartDate
+        - plannedEndDate
+        - description
+        - publicationDate
+        - publisher
+        - isbn
+        - pageCount
+        - originVote
+      description: Explicit catalogue metadata only; no schedule, ratings, review counts or substantive
+        meeting records. Stable id and originVote are server-owned. Only one retained active book
+        may be leyendo (409). Dates/status never change automatically.
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          coverUrl: null
+          status: propuesto
+          readingStartDate: null
+          readingEndDate: null
+          datesApproximate: false
+          plannedStartDate: null
+          plannedEndDate: null
+          description: null
+          publicationDate: null
+          publisher: null
+          isbn: null
+          pageCount: null
+          originVote: null
+    BookMetadataInput:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          x-trimmedMaxLength: 200
+          minLength: 1
+          x-trimmedMinLength: 1
+        authors:
+          type: array
+          items:
+            type: string
+            maxLength: 120
+            x-trimmedMaxLength: 120
+            minLength: 1
+            x-trimmedMinLength: 1
+          maxItems: 20
+        status:
+          type: string
+          enum:
+            - propuesto
+            - elegido
+            - leyendo
+            - terminado
+            - archivado
+        readingStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        readingEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        datesApproximate:
+          type: boolean
+        plannedStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        plannedEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        description:
+          anyOf:
+            - type: string
+              maxLength: 5000
+              x-trimmedMaxLength: 5000
+            - type: "null"
+        publicationDate:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        publisher:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        isbn:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        pageCount:
+          anyOf:
+            - type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            - type: "null"
+        coverAction:
+          enum:
+            - keep
+            - remove
+            - replace
+            - metadata
+          type: string
+        metadataResultId:
+          $ref: "#/components/schemas/Id"
+      required:
+        - title
+        - authors
+        - status
+        - readingStartDate
+        - readingEndDate
+        - datesApproximate
+        - plannedStartDate
+        - plannedEndDate
+        - description
+        - publicationDate
+        - publisher
+        - isbn
+        - pageCount
+        - coverAction
+      description: Trim first; optional blank text becomes null, omit blank author lines. Validate each
+        planned/actual date pair independently, reject year 0000/end before own start. No required
+        dates or forced date agreement. metadataResultId required only for metadata cover action,
+        server checks known search result; no arbitrary cover URLs accepted.
+      examples:
+        - title: Texto ficticio
+          authors: []
+          status: propuesto
+          readingStartDate: null
+          readingEndDate: null
+          datesApproximate: false
+          plannedStartDate: null
+          plannedEndDate: null
+          description: null
+          publicationDate: null
+          publisher: null
+          isbn: null
+          pageCount: null
+          coverAction: keep
+      allOf:
+        - if:
+            properties:
+              coverAction:
+                const: metadata
+            required:
+              - coverAction
+          then:
+            required:
+              - metadataResultId
+          else:
+            not:
+              required:
+                - metadataResultId
+    BookMultipart:
+      type: object
+      additionalProperties: false
+      properties:
+        metadata:
+          $ref: "#/components/schemas/BookMetadataInput"
+        cover:
+          type: string
+          format: binary
+          minLength: 1
+          x-maxBytes: 2097152
+          x-contentTypes:
+            - image/jpeg
+            - image/png
+            - image/webp
+      required:
+        - metadata
+      description: "Atomic metadata/cover transaction: JSON metadata part, optional binary cover. Sniff
+        content; nonempty JPEG/PNG/WebP <=2097152 bytes inclusive. No File/blob/data URL JSON.
+        Validate before any change."
+      examples:
+        - metadata:
+            title: Texto ficticio
+            authors: []
+            status: propuesto
+            readingStartDate: null
+            readingEndDate: null
+            datesApproximate: false
+            plannedStartDate: null
+            plannedEndDate: null
+            description: null
+            publicationDate: null
+            publisher: null
+            isbn: null
+            pageCount: null
+            coverAction: keep
+      allOf:
+        - if:
+            properties:
+              metadata:
+                properties:
+                  coverAction:
+                    const: replace
+                required:
+                  - coverAction
+            required:
+              - metadata
+          then:
+            required:
+              - cover
+          else:
+            not:
+              required:
+                - cover
+    BookMetadataResult:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+          maxLength: 200
+          x-trimmedMaxLength: 200
+          minLength: 1
+          x-trimmedMinLength: 1
+        authors:
+          type: array
+          items:
+            type: string
+            maxLength: 120
+            x-trimmedMaxLength: 120
+            minLength: 1
+            x-trimmedMinLength: 1
+          maxItems: 20
+        description:
+          anyOf:
+            - type: string
+              maxLength: 5000
+              x-trimmedMaxLength: 5000
+            - type: "null"
+        publicationDate:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        publisher:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        isbn:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        pageCount:
+          anyOf:
+            - type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            - type: "null"
+        coverUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - id
+        - title
+        - authors
+        - description
+        - publicationDate
+        - publisher
+        - isbn
+        - pageCount
+        - coverUrl
+      description: "Search result id is the sole imported-cover reference; local selection fills blank
+        fields only, not a server write. Real external lookup belongs to #15."
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          description: null
+          publicationDate: null
+          publisher: null
+          isbn: null
+          pageCount: null
+          coverUrl: null
+    NewMember:
+      type: object
+      additionalProperties: false
+      properties:
+        discordId:
+          type: string
+          pattern: ^[0-9]{17,20}$
+        displayName:
+          type: string
+          maxLength: 40
+          x-trimmedMaxLength: 40
+          minLength: 1
+          x-trimmedMinLength: 1
+      required:
+        - discordId
+        - displayName
+      description: Trim both fields. Name is one line without controls/Unicode separators. Approve with
+        member role and empty profile; no role input. Duplicate Discord id active/revoked is 409.
+      examples:
+        - discordId: "12345678901234567"
+          displayName: Persona ficticia
+    AdminMember:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        discordId:
+          type: string
+          pattern: ^[0-9]{17,20}$
+        role:
+          type: string
+          enum:
+            - member
+            - admin
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+        addedAt:
+          $ref: "#/components/schemas/Instant"
+        revokedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+        isMe:
+          type: boolean
+        isCurator:
+          type: boolean
+      required:
+        - member
+        - discordId
+        - role
+        - status
+        - addedAt
+        - revokedAt
+        - isMe
+        - isCurator
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          discordId: "12345678901234567"
+          role: admin
+          status: active
+          addedAt: 2026-01-01T00:00:00Z
+          revokedAt: null
+          isMe: true
+          isCurator: false
+    AdminMembers:
+      type: object
+      additionalProperties: false
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMember"
+        curator:
+          anyOf:
+            - $ref: "#/components/schemas/MemberSummary"
+            - type: "null"
+      required:
+        - members
+        - curator
+      description: Allowlist alone includes Discord identities/access status. Active first, then revoked,
+        Spanish name order. No profile prose/ratings. Revoking curator clears assignment, preserves
+        contributions; never change role.
+      examples:
+        - members: []
+          curator: null
+    CuratorInput:
+      type: object
+      additionalProperties: false
+      properties:
+        memberId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+      required:
+        - memberId
+      examples:
+        - memberId: null
+    MeetingInput:
+      type: object
+      additionalProperties: false
+      properties:
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        bookId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        weekId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+      required:
+        - startsAt
+        - bookId
+        - weekId
+      description: Week must be active and belong to selected book; canonical one-to-one week.meetingId
+        reservation, occupied week 409. No range/due-date/status mutation. Instants require offset;
+        reject ambiguous/gap local time rather than select silently.
+      examples:
+        - startsAt: 2026-01-15T19:00:00Z
+          bookId: null
+          weekId: null
+    AdminMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        bookId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        weekId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        id:
+          $ref: "#/components/schemas/Id"
+        cancelled:
+          type: boolean
+        upcoming:
+          type: boolean
+        attendance:
+          anyOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/MemberSummary"
+            - type: "null"
+        attendanceEligible:
+          type: boolean
+        removedWeekNumber:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+      required:
+        - startsAt
+        - bookId
+        - weekId
+        - id
+        - cancelled
+        - upcoming
+        - attendance
+        - attendanceEligible
+      description: Operational calendar only. Removed link retained read-only until deliberate
+        unlink/relink. Admin editor may retain historical attendance; member views suppress
+        future/cancelled attendance. null is unrecorded, [] is explicitly empty; no erase-to-null
+        action.
+      examples:
+        - startsAt: 2026-01-15T19:00:00Z
+          bookId: null
+          weekId: null
+          id: meeting-fiction-1
+          cancelled: false
+          upcoming: true
+          attendance: null
+          attendanceEligible: false
+    AdminMeetingCalendar:
+      type: object
+      additionalProperties: false
+      properties:
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMeeting"
+        past:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMeeting"
+        books:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Id"
+              title:
+                type: string
+            required:
+              - id
+              - title
+        weeks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Id"
+              bookId:
+                $ref: "#/components/schemas/Id"
+              weekNumber:
+                type: integer
+                minimum: 1
+                maximum: 9007199254740991
+              meetingId:
+                anyOf:
+                  - $ref: "#/components/schemas/Id"
+                  - type: "null"
+            required:
+              - id
+              - bookId
+              - weekNumber
+              - meetingId
+        activeMembers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+      required:
+        - upcoming
+        - past
+        - books
+        - weeks
+        - activeMembers
+      description: Upcoming earliest first/past newest first by server time; cancellation does not change
+        partition. Choices omit removed books/weeks and revoked members. No summary/highlight/rating
+        content.
+      examples:
+        - upcoming: []
+          past: []
+          books: []
+          weeks: []
+          activeMembers: []
+    CancelledInput:
+      type: object
+      additionalProperties: false
+      properties:
+        cancelled:
+          type: boolean
+      required:
+        - cancelled
+      examples:
+        - cancelled: true
+    AttendanceInput:
+      type: object
+      additionalProperties: false
+      properties:
+        memberIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - memberIds
+      description: Only noncancelled meetings strictly before server now (otherwise 409). Replace active
+        selections; preserve recorded revoked attendance ids. New revoked/unknown choices 400.
+        Distinct ids required; [] records empty attendance, null invalid.
+      examples:
+        - memberIds: []
+    ReadingWeekInput:
+      type: object
+      additionalProperties: false
+      properties:
+        percentStart:
+          type: number
+          minimum: 0
+        percentEnd:
+          type: number
+          minimum: 0
+        pageStart:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        pageEnd:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        dueDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        notes:
+          anyOf:
+            - type: string
+              maxLength: 1000
+              x-trimmedMaxLength: 1000
+            - type: "null"
+        meetingId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+      required:
+        - percentStart
+        - percentEnd
+        - pageStart
+        - pageEnd
+        - dueDate
+        - notes
+        - meetingId
+      description: Independent manual percentages/pages; decimals and >100 percentages allowed. No silent
+        conversion. Due date preserved under links; finite numbers, positive safe-integer pages.
+        Notes trim to null. Same-book one-to-one retained links checked atomically.
+      examples:
+        - percentStart: 0
+          percentEnd: 25
+          pageStart: 1
+          pageEnd: 80
+          dueDate: null
+          notes: null
+          meetingId: null
+    ReadingWeekWrite:
+      type: object
+      additionalProperties: false
+      properties:
+        input:
+          $ref: "#/components/schemas/ReadingWeekInput"
+        acknowledged:
+          type: boolean
+      required:
+        - input
+        - acknowledged
+      description: Server recomputes warnings against the proposed complete plan on every write;
+        acknowledgement applies only to submitted inputs. Required explicit true when warnings
+        exist; false yields 400 without mutation. Client resets after any edit.
+      examples:
+        - input:
+            percentStart: 0
+            percentEnd: 25
+            pageStart: 1
+            pageEnd: 80
+            dueDate: null
+            notes: null
+            meetingId: null
+          acknowledged: false
+    IdOrder:
+      type: object
+      additionalProperties: false
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - ids
+      description: Exact permutation of active ids once each; no missing/unknown/duplicate/foreign ids.
+        Nonexact order 400, unknown/foreign active ids 400 (missing parent 404); preserves stable
+        ids and removed highlight slots.
+      examples:
+        - ids: []
+    ReadingWeekOrder:
+      type: object
+      additionalProperties: false
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+        acknowledged:
+          type: boolean
+      required:
+        - ids
+        - acknowledged
+      description: Exact active-week permutation; dates never sort weeks. Recompute full-plan advisory
+        warnings and require explicit acknowledgement, otherwise 400. No pages/percent conversion.
+      examples:
+        - ids: []
+          acknowledged: false
+    AdminReadingWeek:
+      type: object
+      additionalProperties: false
+      properties:
+        percentStart:
+          type: number
+          minimum: 0
+        percentEnd:
+          type: number
+          minimum: 0
+        pageStart:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        pageEnd:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        dueDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        notes:
+          anyOf:
+            - type: string
+              maxLength: 1000
+              x-trimmedMaxLength: 1000
+            - type: "null"
+        meetingId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        id:
+          $ref: "#/components/schemas/Id"
+        weekNumber:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        completionCount:
+          type: integer
+          minimum: 0
+        removedMeeting:
+          type: boolean
+      required:
+        - percentStart
+        - percentEnd
+        - pageStart
+        - pageEnd
+        - dueDate
+        - notes
+        - meetingId
+        - id
+        - weekNumber
+        - completionCount
+      examples:
+        - percentStart: 0
+          percentEnd: 25
+          pageStart: 1
+          pageEnd: 80
+          dueDate: null
+          notes: null
+          meetingId: null
+          id: week-fiction-1
+          weekNumber: 1
+          completionCount: 0
+    AdminReadingPlan:
+      type: object
+      additionalProperties: false
+      properties:
+        book:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              $ref: "#/components/schemas/Id"
+            title:
+              type: string
+            pageCount:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 9007199254740991
+                - type: "null"
+          required:
+            - id
+            - title
+            - pageCount
+        weeks:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminReadingWeek"
+        meetings:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Id"
+              startsAt:
+                $ref: "#/components/schemas/Instant"
+              cancelled:
+                type: boolean
+            required:
+              - id
+              - startsAt
+              - cancelled
+      required:
+        - book
+        - weeks
+        - meetings
+      description: Active weeks contiguous 1..N canonical order; distinct completions include revoked
+        history. Removed meeting link read-only until explicit release. Meeting choices operational
+        only.
+      examples:
+        - book:
+            id: book-fiction-1
+            title: Texto ficticio
+            pageCount: null
+          weeks: []
+          meetings: []
+    MeetingSummaryInput:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+          maxLength: 10000
+          x-trimmedMaxLength: 10000
+        published:
+          type: boolean
+      required:
+        - text
+        - published
+      description: Trim plain text; blank unpublished becomes null summary. Published requires nonblank
+        text. Summary publication is independent of every highlight.
+      examples:
+        - text: ""
+          published: false
+      allOf:
+        - if:
+            properties:
+              published:
+                const: true
+          then:
+            properties:
+              text:
+                minLength: 1
+                pattern: \S
+    MeetingHighlightInput:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+          maxLength: 2000
+          x-trimmedMaxLength: 2000
+          minLength: 1
+          x-trimmedMinLength: 1
+          pattern: \S
+        published:
+          type: boolean
+        kind:
+          type: string
+          enum:
+            - quote
+            - paraphrase
+        speakerIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - text
+        - published
+        - kind
+        - speakerIds
+      description: Trim nonblank plain text; literal line breaks/markup. New speakers must be active;
+        existing revoked attribution may remain unchanged or be removed; no invented attribution.
+        Each publication flag independent.
+      examples:
+        - text: IntervenciÃ³n ficticia
+          published: false
+          kind: paraphrase
+          speakerIds: []
+    AdminMeetingHighlight:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+          maxLength: 2000
+          x-trimmedMaxLength: 2000
+          minLength: 1
+          x-trimmedMinLength: 1
+          pattern: \S
+        published:
+          type: boolean
+        kind:
+          type: string
+          enum:
+            - quote
+            - paraphrase
+        speakerIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+        id:
+          $ref: "#/components/schemas/Id"
+        speakers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+      required:
+        - text
+        - published
+        - kind
+        - speakerIds
+        - id
+        - speakers
+      examples:
+        - text: IntervenciÃ³n ficticia
+          published: false
+          kind: paraphrase
+          speakerIds: []
+          id: highlight-fiction-1
+          speakers: []
+    AdminMeetingRecord:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        cancelled:
+          type: boolean
+        book:
+          anyOf:
+            - $ref: "#/components/schemas/BookSummary"
+            - type: "null"
+        week:
+          anyOf:
+            - type: object
+              additionalProperties: false
+              properties:
+                id:
+                  $ref: "#/components/schemas/Id"
+                weekNumber:
+                  type: integer
+                  minimum: 1
+                  maximum: 9007199254740991
+                removed:
+                  type: boolean
+              required:
+                - id
+                - weekNumber
+                - removed
+            - type: "null"
+        markedSafe:
+          type: boolean
+        summary:
+          anyOf:
+            - $ref: "#/components/schemas/MeetingSummaryInput"
+            - type: "null"
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMeetingHighlight"
+        speakerOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+      required:
+        - id
+        - startsAt
+        - cancelled
+        - book
+        - week
+        - markedSafe
+        - summary
+        - highlights
+        - speakerOptions
+      description: Editor-only drafts; active highlights in canonical order, speaker choices active only
+        but retained attribution may be revoked. Safe marking rejects BOTH states if ANY retained
+        active/removed week links meeting (409); cancellation/removed week always suppresses member
+        content even for admin.
+      examples:
+        - id: meeting-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+          cancelled: false
+          book: null
+          week: null
+          markedSafe: false
+          summary: null
+          highlights: []
+          speakerOptions: []
+    SafeInput:
+      type: object
+      additionalProperties: false
+      properties:
+        safe:
+          type: boolean
+      required:
+        - safe
+      examples:
+        - safe: true
+    LiteraryQuoteInput:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+          maxLength: 1000
+          x-trimmedMaxLength: 1000
+          minLength: 1
+          x-trimmedMinLength: 1
+          pattern: \S
+        author:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        source:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        active:
+          type: boolean
+      required:
+        - text
+        - author
+        - source
+        - active
+      description: Trim nonblank text; optional blank author/source becomes null. Duplicate key collapses
+        whitespace and Spanish lowercase across active/inactive/recoverable quotes excluding edited
+        id (409). Stable ids/insertion order; no rights-verification claim.
+      examples:
+        - text: Texto literario ficticio.
+          author: null
+          source: null
+          active: true
+    AdminLiteraryQuote:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        text:
+          type: string
+          maxLength: 1000
+          x-trimmedMaxLength: 1000
+          minLength: 1
+          x-trimmedMinLength: 1
+          pattern: \S
+        author:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        source:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        active:
+          type: boolean
+      required:
+        - id
+        - text
+        - author
+        - source
+        - active
+      examples:
+        - id: quote-fiction-1
+          text: Texto literario ficticio.
+          author: null
+          source: null
+          active: true
+    RatingRubricInput:
+      type: object
+      additionalProperties: false
+      properties:
+        disfrute:
+          type: object
+          additionalProperties: false
+          properties:
+            "1":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "2":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "3":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "4":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "5":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+          required:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+        estilo:
+          type: object
+          additionalProperties: false
+          properties:
+            "1":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "2":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "3":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "4":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "5":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+          required:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+        personajes:
+          type: object
+          additionalProperties: false
+          properties:
+            "1":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "2":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "3":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "4":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "5":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+          required:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+        trama:
+          type: object
+          additionalProperties: false
+          properties:
+            "1":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "2":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "3":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "4":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "5":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+          required:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+        huella:
+          type: object
+          additionalProperties: false
+          properties:
+            "1":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "2":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "3":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "4":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+            "5":
+              anyOf:
+                - type: string
+                  maxLength: 500
+                  x-trimmedMaxLength: 500
+                - type: "null"
+          required:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+      required:
+        - disfrute
+        - estilo
+        - personajes
+        - trama
+        - huella
+      description: Whole atomic replacement; exactly five criteria and exactly 1..5 whole-star anchors;
+        nullable trimmed text <=500, blank normalizes null. No sixth criterion/half anchor. No
+        invented default prose.
+      examples:
+        - disfrute:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          estilo:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          personajes:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          trama:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          huella:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+    DeletedType:
+      type: string
+      enum:
+        - book
+        - meeting
+        - quote
+        - week
+        - highlight
+      examples:
+        - book
+    BinBook:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          const: book
+          type: string
+        id:
+          $ref: "#/components/schemas/Id"
+        label:
+          type: string
+        deletedAt:
+          $ref: "#/components/schemas/Instant"
+        deletedByName:
+          type: string
+        purgeDueAt:
+          $ref: "#/components/schemas/Instant"
+        expired:
+          type: boolean
+        dependencies:
+          type: array
+          items:
+            type: string
+      required:
+        - type
+        - id
+        - label
+        - deletedAt
+        - deletedByName
+        - purgeDueAt
+        - expired
+        - dependencies
+      description: Safe operational label and dependency descriptions/counts only; no deleted text,
+        profiles, review/rating, media or Discord fields. Deadline exactly 30 days; expired at
+        server now >= purgeDueAt; expired remains listed until explicit purge.
+      examples:
+        - type: book
+          id: book-fiction-1
+          label: Registro ficticio
+          deletedAt: 2026-01-01T00:00:00Z
+          deletedByName: Persona ficticia
+          purgeDueAt: 2026-01-31T00:00:00Z
+          expired: false
+          dependencies: []
+    BinMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          const: meeting
+          type: string
+        id:
+          $ref: "#/components/schemas/Id"
+        label:
+          type: string
+        deletedAt:
+          $ref: "#/components/schemas/Instant"
+        deletedByName:
+          type: string
+        purgeDueAt:
+          $ref: "#/components/schemas/Instant"
+        expired:
+          type: boolean
+        dependencies:
+          type: array
+          items:
+            type: string
+      required:
+        - type
+        - id
+        - label
+        - deletedAt
+        - deletedByName
+        - purgeDueAt
+        - expired
+        - dependencies
+      description: Safe operational label and dependency descriptions/counts only; no deleted text,
+        profiles, review/rating, media or Discord fields. Deadline exactly 30 days; expired at
+        server now >= purgeDueAt; expired remains listed until explicit purge.
+      examples:
+        - type: meeting
+          id: meeting-fiction-1
+          label: Registro ficticio
+          deletedAt: 2026-01-01T00:00:00Z
+          deletedByName: Persona ficticia
+          purgeDueAt: 2026-01-31T00:00:00Z
+          expired: false
+          dependencies: []
+    BinQuote:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          const: quote
+          type: string
+        id:
+          $ref: "#/components/schemas/Id"
+        label:
+          type: string
+        deletedAt:
+          $ref: "#/components/schemas/Instant"
+        deletedByName:
+          type: string
+        purgeDueAt:
+          $ref: "#/components/schemas/Instant"
+        expired:
+          type: boolean
+        dependencies:
+          type: array
+          items:
+            type: string
+      required:
+        - type
+        - id
+        - label
+        - deletedAt
+        - deletedByName
+        - purgeDueAt
+        - expired
+        - dependencies
+      description: Safe operational label and dependency descriptions/counts only; no deleted text,
+        profiles, review/rating, media or Discord fields. Deadline exactly 30 days; expired at
+        server now >= purgeDueAt; expired remains listed until explicit purge.
+      examples:
+        - type: quote
+          id: quote-fiction-1
+          label: Cita literaria
+          deletedAt: 2026-01-01T00:00:00Z
+          deletedByName: Persona ficticia
+          purgeDueAt: 2026-01-31T00:00:00Z
+          expired: false
+          dependencies: []
+    BinWeek:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          const: week
+          type: string
+        id:
+          $ref: "#/components/schemas/Id"
+        label:
+          type: string
+        deletedAt:
+          $ref: "#/components/schemas/Instant"
+        deletedByName:
+          type: string
+        purgeDueAt:
+          $ref: "#/components/schemas/Instant"
+        expired:
+          type: boolean
+        dependencies:
+          type: array
+          items:
+            type: string
+      required:
+        - type
+        - id
+        - label
+        - deletedAt
+        - deletedByName
+        - purgeDueAt
+        - expired
+        - dependencies
+      description: Safe operational label and dependency descriptions/counts only; no deleted text,
+        profiles, review/rating, media or Discord fields. Deadline exactly 30 days; expired at
+        server now >= purgeDueAt; expired remains listed until explicit purge.
+      examples:
+        - type: week
+          id: week-fiction-1
+          label: Registro ficticio
+          deletedAt: 2026-01-01T00:00:00Z
+          deletedByName: Persona ficticia
+          purgeDueAt: 2026-01-31T00:00:00Z
+          expired: false
+          dependencies: []
+    BinHighlight:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          const: highlight
+          type: string
+        id:
+          $ref: "#/components/schemas/Id"
+        label:
+          type: string
+        deletedAt:
+          $ref: "#/components/schemas/Instant"
+        deletedByName:
+          type: string
+        purgeDueAt:
+          $ref: "#/components/schemas/Instant"
+        expired:
+          type: boolean
+        dependencies:
+          type: array
+          items:
+            type: string
+      required:
+        - type
+        - id
+        - label
+        - deletedAt
+        - deletedByName
+        - purgeDueAt
+        - expired
+        - dependencies
+      description: Safe operational label and dependency descriptions/counts only; no deleted text,
+        profiles, review/rating, media or Discord fields. Deadline exactly 30 days; expired at
+        server now >= purgeDueAt; expired remains listed until explicit purge.
+      examples:
+        - type: highlight
+          id: highlight-fiction-1
+          label: Intervención
+          deletedAt: 2026-01-01T00:00:00Z
+          deletedByName: Persona ficticia
+          purgeDueAt: 2026-01-31T00:00:00Z
+          expired: false
+          dependencies: []
+    RecycleBinEntry:
+      oneOf:
+        - $ref: "#/components/schemas/BinBook"
+        - $ref: "#/components/schemas/BinMeeting"
+        - $ref: "#/components/schemas/BinQuote"
+        - $ref: "#/components/schemas/BinWeek"
+        - $ref: "#/components/schemas/BinHighlight"
+      examples:
+        - type: book
+          id: book-fiction-1
+          label: Registro ficticio
+          deletedAt: 2026-01-01T00:00:00Z
+          deletedByName: Persona ficticia
+          purgeDueAt: 2026-01-31T00:00:00Z
+          expired: false
+          dependencies: []
+    DeletionPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+      required:
+        - label
+        - dependencies
+      description: Book title/meeting date may identify target; quote/highlight labels generic Spanish,
+        never substantive text. Dependencies safe counts/descriptions only, not ids or payload.
+        Preview is not permission to cascade destruction.
+      examples:
+        - label: Registro ficticio
+          dependencies: []
+    BackupInfo:
+      type: object
+      additionalProperties: false
+      properties:
+        policy:
+          type: string
+          const: pending
+        lastBackupAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+      required:
+        - policy
+        - lastBackupAt
+      description: "Policy pending #48; no invented cadence/storage/rotation/retention. Nullable last
+        successful timestamp; demo supplied timestamp is simulated."
+      examples:
+        - policy: pending
+          lastBackupAt: null
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        action:
+          type: string
+          enum:
+            - member_approved
+            - member_revoked
+            - member_restored
+            - curator_assigned
+            - curator_cleared
+            - book_status_changed
+            - summary_published
+            - summary_unpublished
+            - highlight_published
+            - highlight_unpublished
+            - soft_deleted
+            - restored
+            - purged
+            - vote_closed
+            - tie_resolved
+            - exported
+        target:
+          type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - member
+                - curator
+                - book
+                - meeting
+                - summary
+                - highlight
+                - week
+                - quote
+                - vote
+                - club
+            id:
+              $ref: "#/components/schemas/Id"
+            label:
+              type: string
+          required:
+            - type
+            - id
+            - label
+        actor:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              $ref: "#/components/schemas/Id"
+            displayName:
+              type: string
+          required:
+            - id
+            - displayName
+        occurredAt:
+          $ref: "#/components/schemas/Instant"
+      required:
+        - id
+        - action
+        - target
+        - actor
+        - occurredAt
+      description: "Whitelist id/action, target type/id/safe immutable label, actor id/displayName,
+        occurredAt only. Newest instant then descending event-id ties. Generic quote/highlight
+        labels. No raw payload/prose/ratings/profiles/Discord/tokens/media. Only successful critical
+        transitions, no reads/noops/refusals. Persistent audit #50."
+      examples:
+        - id: audit-fiction-1
+          action: exported
+          target:
+            type: club
+            id: club
+            label: Club de lectura
+          actor:
+            id: member-fiction-1
+            displayName: Persona ficticia
+          occurredAt: 2026-01-15T19:00:00Z
+    ReauthenticationError:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          const: reauthentication_required
+        message:
+          type: string
+      required:
+        - code
+        - message
+      description: 409 without data/download or session expiry; Spanish safe message. Five-minute
+        server-verified same-admin freshness, not confirmation/boolean.
+      examples:
+        - code: reauthentication_required
+          message: Vuelve a identificarte con Discord para exportar los datos.
+    ExportDeletion:
+      type: object
+      additionalProperties: false
+      properties:
+        deletedAt:
+          $ref: "#/components/schemas/Instant"
+        deletedBy:
+          $ref: "#/components/schemas/Id"
+        purgeDueAt:
+          $ref: "#/components/schemas/Instant"
+      required:
+        - deletedAt
+        - deletedBy
+        - purgeDueAt
+      examples:
+        - deletedAt: 2026-01-01T00:00:00Z
+          deletedBy: member-fiction-1
+          purgeDueAt: 2026-01-31T00:00:00Z
+    ExportMember:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        displayName:
+          type: string
+        role:
+          enum:
+            - member
+            - admin
+          type: string
+        status:
+          enum:
+            - active
+            - revoked
+          type: string
+        avatarMediaId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+      required:
+        - id
+        - displayName
+        - role
+        - status
+        - avatarMediaId
+      examples:
+        - id: member-fiction-1
+          displayName: Persona ficticia
+          role: member
+          status: revoked
+          avatarMediaId: null
+    ExportAllowlist:
+      type: object
+      additionalProperties: false
+      properties:
+        memberId:
+          $ref: "#/components/schemas/Id"
+        discordId:
+          type: string
+          pattern: ^[0-9]{17,20}$
+        addedAt:
+          $ref: "#/components/schemas/Instant"
+        revokedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+      required:
+        - memberId
+        - discordId
+        - addedAt
+        - revokedAt
+      examples:
+        - memberId: member-fiction-1
+          discordId: "12345678901234567"
+          addedAt: 2026-01-15T19:00:00Z
+          revokedAt: 2026-01-15T19:00:00Z
+    ExportProfile:
+      type: object
+      additionalProperties: false
+      properties:
+        memberId:
+          $ref: "#/components/schemas/Id"
+        bio:
+          anyOf:
+            - type: string
+            - type: "null"
+        favouriteQuote:
+          anyOf:
+            - type: string
+            - type: "null"
+        favouriteBookIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - memberId
+        - bio
+        - favouriteQuote
+        - favouriteBookIds
+      examples:
+        - memberId: member-fiction-1
+          bio: Biografía ficticia.
+          favouriteQuote: null
+          favouriteBookIds: []
+    ExportBook:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+          maxLength: 200
+          x-trimmedMaxLength: 200
+          minLength: 1
+          x-trimmedMinLength: 1
+        authors:
+          type: array
+          items:
+            type: string
+            maxLength: 120
+            x-trimmedMaxLength: 120
+            minLength: 1
+            x-trimmedMinLength: 1
+          maxItems: 20
+        status:
+          type: string
+          enum:
+            - propuesto
+            - elegido
+            - leyendo
+            - terminado
+            - archivado
+        readingStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        readingEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        datesApproximate:
+          type: boolean
+        plannedStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        plannedEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        description:
+          anyOf:
+            - type: string
+              maxLength: 5000
+              x-trimmedMaxLength: 5000
+            - type: "null"
+        publicationDate:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        publisher:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        isbn:
+          anyOf:
+            - type: string
+              maxLength: 100
+              x-trimmedMaxLength: 100
+            - type: "null"
+        pageCount:
+          anyOf:
+            - type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            - type: "null"
+        originVote:
+          anyOf:
+            - $ref: "#/components/schemas/OriginVote"
+            - type: "null"
+        coverMediaId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        deletion:
+          anyOf:
+            - $ref: "#/components/schemas/ExportDeletion"
+            - type: "null"
+      required:
+        - id
+        - title
+        - authors
+        - status
+        - readingStartDate
+        - readingEndDate
+        - datesApproximate
+        - plannedStartDate
+        - plannedEndDate
+        - description
+        - publicationDate
+        - publisher
+        - isbn
+        - pageCount
+        - originVote
+        - coverMediaId
+        - deletion
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          status: propuesto
+          readingStartDate: null
+          readingEndDate: null
+          datesApproximate: false
+          plannedStartDate: null
+          plannedEndDate: null
+          description: null
+          publicationDate: null
+          publisher: null
+          isbn: null
+          pageCount: null
+          originVote: null
+          deletion: null
+          coverMediaId: null
+    ExportWeek:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        bookId:
+          $ref: "#/components/schemas/Id"
+        weekNumber:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        percentStart:
+          type: number
+          minimum: 0
+        percentEnd:
+          type: number
+          minimum: 0
+        pageStart:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        pageEnd:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        dueDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        notes:
+          anyOf:
+            - type: string
+              maxLength: 1000
+              x-trimmedMaxLength: 1000
+            - type: "null"
+        meetingId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        deletion:
+          anyOf:
+            - $ref: "#/components/schemas/ExportDeletion"
+            - type: "null"
+      required:
+        - id
+        - bookId
+        - weekNumber
+        - percentStart
+        - percentEnd
+        - pageStart
+        - pageEnd
+        - dueDate
+        - notes
+        - meetingId
+        - deletion
+      examples:
+        - percentStart: 0
+          percentEnd: 25
+          pageStart: 1
+          pageEnd: 80
+          dueDate: null
+          notes: null
+          meetingId: null
+          id: week-fiction-1
+          bookId: book-fiction-1
+          weekNumber: 1
+          deletion:
+            deletedAt: 2026-01-01T00:00:00Z
+            deletedBy: member-fiction-1
+            purgeDueAt: 2026-01-31T00:00:00Z
+    ExportHighlight:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        text:
+          type: string
+          maxLength: 2000
+          x-trimmedMaxLength: 2000
+          minLength: 1
+          x-trimmedMinLength: 1
+          pattern: \S
+        published:
+          type: boolean
+        kind:
+          type: string
+          enum:
+            - quote
+            - paraphrase
+        speakerIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+        removedPosition:
+          anyOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
+        deletion:
+          anyOf:
+            - $ref: "#/components/schemas/ExportDeletion"
+            - type: "null"
+      required:
+        - id
+        - text
+        - published
+        - kind
+        - speakerIds
+        - removedPosition
+        - deletion
+      examples:
+        - text: IntervenciÃ³n ficticia
+          published: false
+          kind: paraphrase
+          speakerIds:
+            - member-fiction-1
+          id: highlight-fiction-1
+          removedPosition: null
+          deletion: null
+    ExportMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        bookId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        cancelled:
+          type: boolean
+        attendance:
+          anyOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/Id"
+              uniqueItems: true
+            - type: "null"
+        markedSafe:
+          type: boolean
+        summary:
+          anyOf:
+            - $ref: "#/components/schemas/MeetingSummaryInput"
+            - type: "null"
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportHighlight"
+        deletion:
+          anyOf:
+            - $ref: "#/components/schemas/ExportDeletion"
+            - type: "null"
+      required:
+        - id
+        - bookId
+        - startsAt
+        - cancelled
+        - attendance
+        - markedSafe
+        - summary
+        - highlights
+        - deletion
+      examples:
+        - id: meeting-fiction-1
+          bookId: book-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+          cancelled: false
+          attendance: []
+          markedSafe: false
+          summary:
+            text: Borrador ficticio.
+            published: false
+          highlights:
+            - text: IntervenciÃ³n ficticia
+              published: false
+              kind: paraphrase
+              speakerIds:
+                - member-fiction-1
+              id: highlight-fiction-1
+              removedPosition: null
+              deletion: null
+          deletion: null
+    ExportCompletions:
+      type: object
+      additionalProperties: false
+      properties:
+        weekId:
+          $ref: "#/components/schemas/Id"
+        memberIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - weekId
+        - memberIds
+      examples:
+        - weekId: week-fiction-1
+          memberIds:
+            - member-fiction-1
+    ExportFinished:
+      type: object
+      additionalProperties: false
+      properties:
+        bookId:
+          $ref: "#/components/schemas/Id"
+        memberIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - bookId
+        - memberIds
+      examples:
+        - bookId: book-fiction-1
+          memberIds:
+            - member-fiction-1
+    ExportReview:
+      type: object
+      additionalProperties: false
+      properties:
+        bookId:
+          $ref: "#/components/schemas/Id"
+        userId:
+          $ref: "#/components/schemas/Id"
+        scores:
+          $ref: "#/components/schemas/CriterionScores"
+        text:
+          anyOf:
+            - type: string
+            - type: "null"
+        submittedAt:
+          $ref: "#/components/schemas/Instant"
+        editedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+      required:
+        - bookId
+        - userId
+        - scores
+        - text
+        - submittedAt
+        - editedAt
+      examples:
+        - bookId: book-fiction-1
+          userId: member-fiction-1
+          scores:
+            disfrute: 5
+            estilo: 4.5
+            personajes: 3
+            trama: 4
+            huella: 2.5
+          text: Reseña privada ficticia.
+          submittedAt: 2026-01-15T19:00:00Z
+          editedAt: null
+    ExportVote:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        status:
+          enum:
+            - draft
+            - open
+            - closed
+          type: string
+        curatorId:
+          $ref: "#/components/schemas/Id"
+        openedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+        closedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              bookId:
+                $ref: "#/components/schemas/Id"
+              approverIds:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Id"
+                uniqueItems: true
+            required:
+              - bookId
+              - approverIds
+        outcome:
+          anyOf:
+            - oneOf:
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    winnerBookId:
+                      $ref: "#/components/schemas/Id"
+                    tieNote:
+                      anyOf:
+                        - type: string
+                        - type: "null"
+                  required:
+                    - winnerBookId
+                    - tieNote
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    tiedBookIds:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Id"
+                      uniqueItems: true
+                  required:
+                    - tiedBookIds
+            - type: "null"
+      required:
+        - id
+        - status
+        - curatorId
+        - openedAt
+        - closedAt
+        - candidates
+        - outcome
+      examples:
+        - id: vote-fiction-1
+          status: closed
+          curatorId: member-fiction-1
+          openedAt: 2026-01-15T19:00:00Z
+          closedAt: 2026-01-15T19:00:00Z
+          candidates:
+            - bookId: book-fiction-1
+              approverIds:
+                - member-fiction-1
+          outcome:
+            winnerBookId: book-fiction-1
+            tieNote: null
+    ExportQuote:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        text:
+          type: string
+          maxLength: 1000
+          x-trimmedMaxLength: 1000
+          minLength: 1
+          x-trimmedMinLength: 1
+          pattern: \S
+        author:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        source:
+          anyOf:
+            - type: string
+              maxLength: 200
+              x-trimmedMaxLength: 200
+            - type: "null"
+        active:
+          type: boolean
+        deletion:
+          anyOf:
+            - $ref: "#/components/schemas/ExportDeletion"
+            - type: "null"
+      required:
+        - id
+        - text
+        - author
+        - source
+        - active
+        - deletion
+      examples:
+        - id: quote-fiction-1
+          text: Texto literario ficticio.
+          author: null
+          source: null
+          active: true
+          deletion: null
+    ExportTombstone:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          $ref: "#/components/schemas/DeletedType"
+        id:
+          $ref: "#/components/schemas/Id"
+        purgedAt:
+          $ref: "#/components/schemas/Instant"
+        purgedBy:
+          $ref: "#/components/schemas/Id"
+      required:
+        - type
+        - id
+        - purgedAt
+        - purgedBy
+      examples:
+        - type: quote
+          id: purged-quote-fiction-1
+          purgedAt: 2026-01-15T19:00:00Z
+          purgedBy: member-fiction-1
+    ExportMedia:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        path:
+          anyOf:
+            - type: string
+              pattern: ^media/[A-Za-z0-9_-]+\.(jpg|png|webp)$
+            - type: "null"
+        contentType:
+          enum:
+            - image/jpeg
+            - image/png
+            - image/webp
+          type: string
+        available:
+          type: boolean
+      required:
+        - id
+        - path
+        - contentType
+        - available
+      description: Manifest stable media id referenced by avatarMediaId/coverMediaId. Available bytes in
+        ZIP under safe relative path; unavailable has path null, no external URL fetch/data URL. No
+        path traversal or credentials.
+      examples:
+        - id: media-fiction-1
+          path: media/media-fiction-1.webp
+          contentType: image/webp
+          available: true
+      allOf:
+        - if:
+            properties:
+              available:
+                const: true
+          then:
+            properties:
+              path:
+                type: string
+                pattern: ^media/[A-Za-z0-9_-]+\.(jpg|png|webp)$
+          else:
+            properties:
+              path:
+                type: "null"
+    ClubBusinessExport:
+      type: object
+      additionalProperties: false
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        curatorId:
+          anyOf:
+            - $ref: "#/components/schemas/Id"
+            - type: "null"
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportMedia"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportMember"
+        allowlist:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportAllowlist"
+        profiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportProfile"
+        books:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportBook"
+        weeks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportWeek"
+        meetings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportMeeting"
+        completions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportCompletions"
+        finished:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportFinished"
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportReview"
+        votes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportVote"
+        quotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportQuote"
+        tombstones:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportTombstone"
+        audit:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+        rubric:
+          $ref: "#/components/schemas/RatingRubric"
+      required:
+        - schemaVersion
+        - createdAt
+        - curatorId
+        - media
+        - members
+        - allowlist
+        - profiles
+        - books
+        - weeks
+        - meetings
+        - completions
+        - finished
+        - reviews
+        - votes
+        - quotes
+        - tombstones
+        - audit
+        - rubric
+      description: Privileged versioned UTF-8 club.json inside ZIP, not HTTP JSON. Includes private
+        reviews, drafts, revoked/recoverable records and safe audit; excludes sessions/OAuth
+        credentials/secrets/purged substantive data. Canonical ids/links preserved, deletion
+        separate nullable metadata; minimal tombstones auditable. No restoration/import guarantee.
+      examples:
+        - schemaVersion: 1
+          createdAt: 2026-01-15T19:00:00Z
+          curatorId: null
+          media: []
+          rubric:
+            disfrute:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            estilo:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            personajes:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            trama:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            huella:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+          members: []
+          allowlist: []
+          profiles: []
+          books: []
+          weeks: []
+          meetings: []
+          completions: []
+          finished: []
+          reviews: []
+          votes: []
+          quotes: []
+          tombstones: []
+          audit: []
+        - schemaVersion: 1
+          createdAt: 2026-01-15T19:00:00Z
+          curatorId: null
+          media:
+            - id: media-fiction-1
+              path: media/media-fiction-1.webp
+              contentType: image/webp
+              available: true
+          rubric:
+            disfrute:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            estilo:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            personajes:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            trama:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+            huella:
+              "1": null
+              "2": null
+              "3": null
+              "4": null
+              "5": null
+          members:
+            - id: member-fiction-1
+              displayName: Persona ficticia
+              role: member
+              status: revoked
+              avatarMediaId: null
+          allowlist:
+            - memberId: member-fiction-1
+              discordId: "12345678901234567"
+              addedAt: 2026-01-15T19:00:00Z
+              revokedAt: 2026-01-15T19:00:00Z
+          profiles:
+            - memberId: member-fiction-1
+              bio: Biografía ficticia.
+              favouriteQuote: null
+              favouriteBookIds: []
+          books:
+            - id: book-fiction-1
+              title: Texto ficticio
+              authors: []
+              status: propuesto
+              readingStartDate: null
+              readingEndDate: null
+              datesApproximate: false
+              plannedStartDate: null
+              plannedEndDate: null
+              description: null
+              publicationDate: null
+              publisher: null
+              isbn: null
+              pageCount: null
+              originVote: null
+              deletion: null
+              coverMediaId: null
+          weeks:
+            - percentStart: 0
+              percentEnd: 25
+              pageStart: 1
+              pageEnd: 80
+              dueDate: null
+              notes: null
+              meetingId: null
+              id: week-fiction-1
+              bookId: book-fiction-1
+              weekNumber: 1
+              deletion:
+                deletedAt: 2026-01-01T00:00:00Z
+                deletedBy: member-fiction-1
+                purgeDueAt: 2026-01-31T00:00:00Z
+          meetings:
+            - id: meeting-fiction-1
+              bookId: book-fiction-1
+              startsAt: 2026-01-15T19:00:00Z
+              cancelled: false
+              attendance: []
+              markedSafe: false
+              summary:
+                text: Borrador ficticio.
+                published: false
+              highlights:
+                - text: IntervenciÃ³n ficticia
+                  published: false
+                  kind: paraphrase
+                  speakerIds:
+                    - member-fiction-1
+                  id: highlight-fiction-1
+                  removedPosition: null
+                  deletion: null
+              deletion: null
+          completions:
+            - weekId: week-fiction-1
+              memberIds:
+                - member-fiction-1
+          finished:
+            - bookId: book-fiction-1
+              memberIds:
+                - member-fiction-1
+          reviews:
+            - bookId: book-fiction-1
+              userId: member-fiction-1
+              scores:
+                disfrute: 5
+                estilo: 4.5
+                personajes: 3
+                trama: 4
+                huella: 2.5
+              text: Reseña privada ficticia.
+              submittedAt: 2026-01-15T19:00:00Z
+              editedAt: null
+          votes:
+            - id: vote-fiction-1
+              status: closed
+              curatorId: member-fiction-1
+              openedAt: 2026-01-15T19:00:00Z
+              closedAt: 2026-01-15T19:00:00Z
+              candidates:
+                - bookId: book-fiction-1
+                  approverIds:
+                    - member-fiction-1
+              outcome:
+                winnerBookId: book-fiction-1
+                tieNote: null
+          quotes:
+            - id: quote-fiction-1
+              text: Texto literario ficticio.
+              author: null
+              source: null
+              active: true
+              deletion: null
+          tombstones:
+            - type: quote
+              id: purged-quote-fiction-1
+              purgedAt: 2026-01-15T19:00:00Z
+              purgedBy: member-fiction-1
+          audit:
+            - id: audit-fiction-1
+              action: exported
+              target:
+                type: club
+                id: club
+                label: Club de lectura
+              actor:
+                id: member-fiction-1
+                displayName: Persona ficticia
+              occurredAt: 2026-01-15T19:00:00Z
+    ExportManifest:
+      type: object
+      additionalProperties: false
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        recordsFile:
+          type: string
+          const: club.json
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExportMedia"
+      required:
+        - schemaVersion
+        - createdAt
+        - recordsFile
+        - media
+      description: "UTF-8 manifest.json; media list matches club.json media. Missing bytes explicitly
+        unavailable; available native website media included. Version change requires contract-first
+        migration before #49 implementation."
+      examples:
+        - schemaVersion: 1
+          createdAt: 2026-01-15T19:00:00Z
+          recordsFile: club.json
+          media: []
   responses:
     Error400:
       description: Datos no válidos.
