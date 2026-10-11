@@ -1,18 +1,29 @@
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import { ApiProvider } from './api/ApiContext'
-import { mockOptionsFromQuery } from './api/mock/devOptions'
-import { createMockClient } from './api/mock/mockClient'
+import { CONFIGURATION_ERROR, createApiClient } from './api/factory'
 import { routes } from './routes'
 
-// The mock client stands in for the backend until it exists (docs/decisions.md).
-// Its session can be chosen with ?mock-session=... (see frontend/README.md).
-const client = createMockClient(mockOptionsFromQuery(window.location.search))
-const router = createBrowserRouter(routes)
+// Configuration is decided before creating the router or requesting a session.
+function startup() {
+  try {
+    const client = createApiClient(import.meta.env.VITE_API_MODE, window.location.search)
+    return { client, router: createBrowserRouter(routes) }
+  } catch { return null }
+}
+const configured = startup()
 
 export default function App() {
+  if (!configured) return <ConfigurationError />
   return (
-    <ApiProvider client={client}>
-      <RouterProvider router={router} />
+    <ApiProvider client={configured.client}>
+      <RouterProvider router={configured.router} />
     </ApiProvider>
   )
+}
+
+export function ConfigurationError() {
+  return <main className="mx-auto max-w-md px-4 py-10">
+    <h1 className="font-serif text-2xl text-forest">No podemos iniciar el sitio</h1>
+    <p role="alert" className="mt-4 text-bark">{CONFIGURATION_ERROR}</p>
+  </main>
 }
