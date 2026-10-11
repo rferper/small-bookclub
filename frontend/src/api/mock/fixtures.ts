@@ -24,6 +24,11 @@ export interface MockWeek {
 export type MockBook = Omit<BookDetail, 'schedule' | 'meetings'>
 
 export interface MockHighlight {
+  deletedAt?: string
+  deletedBy?: string
+  purgeDueAt?: string
+  // Array order is canonical; saved removal position supports future restoration.
+  removedPosition?: number
   id: string
   text: string
   kind: 'quote' | 'paraphrase'

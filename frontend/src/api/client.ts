@@ -1,4 +1,5 @@
 import type {
+  AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
   AdminReadingPlan, ReadingWeekInput,
   AdminMeeting, AdminMeetingCalendar, MeetingInput,
   AdminMembers,
@@ -30,6 +31,13 @@ import type {
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
+  getAdminMeetingRecord(meetingId: string): Promise<AdminMeetingRecord>
+  saveMeetingSummary(meetingId: string, input: MeetingSummaryInput): Promise<AdminMeetingRecord>
+  createMeetingHighlight(meetingId: string, input: MeetingHighlightInput): Promise<AdminMeetingRecord>
+  updateMeetingHighlight(meetingId: string, highlightId: string, input: MeetingHighlightInput): Promise<AdminMeetingRecord>
+  reorderMeetingHighlights(meetingId: string, ids: string[]): Promise<AdminMeetingRecord>
+  removeMeetingHighlight(meetingId: string, highlightId: string): Promise<AdminMeetingRecord>
+  setMeetingRecordSafe(meetingId: string, safe: boolean): Promise<AdminMeetingRecord>
   getAdminReadingPlan(bookId: string): Promise<AdminReadingPlan>
   createReadingWeek(bookId: string, input: ReadingWeekInput, acknowledged: boolean): Promise<AdminReadingPlan>
   updateReadingWeek(bookId: string, weekId: string, input: ReadingWeekInput, acknowledged: boolean): Promise<AdminReadingPlan>
