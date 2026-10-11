@@ -572,27 +572,32 @@ No new dependency, account, service, UI or runtime change.
 
 ## 2026-10-11: Generated operation boundaries and local adapters (#103)
 
-**Decision:** Pin free MIT openapi-typescript 6.7.6 as a development dependency and
-commit deterministic generated.ts. Central JSON results derive from operations;
-public data aliases derive from components; scalar input arguments derive from
-request properties. Browser File metadata derives from generated schemas and explicit
-multipart helpers produce JSON plus Blob byte parts. OAuth navigation and illustrative
-mock JSON export remain separately declared adapters. Existing UI/mock rules stay intact.
+**Decision:** Pin free MIT openapi-typescript 7.13.0 and commit deterministic generated.ts.
+Central JSON results derive from operations, public data from components, scalar inputs
+from request properties. File metadata derives from generated schemas; explicit multipart
+helpers produce JSON plus Blob parts. OAuth navigation and illustrative mock JSON export
+are separate adapters. Existing UI/mock rules remain intact.
 
-**Why:** The contract must control real boundaries. Version 7.13.0 requires TS ^5,
-conflicting with existing TS6 clean installs; 6.7.6 has no such peer. Its documented
-[object API](https://openapi-ts.dev/6.x/node) works from validated memory offline.
-Redundant discriminator hints are removed on a clone to avoid incorrect parent names
-in nullable references; authoritative const/oneOf unions retain narrowing/omissions.
-Binary format maps to Blob. External refs are rejected before generation.
+**Compatibility:** Generator 7.13.0 advertises TypeScript ^5 as peer, while this app uses TS6.
+Targeted npm override `openapi-typescript.typescript=$typescript` selects existing TS6,
+without force/legacy-peer-deps or compiler downgrades. The actual AST API is verified by
+clean npm ci, deterministic generation, full build, actual conformance and regenerated
+request/response mutations at real mock boundaries. An older generator trial introduced
+six high dev audit findings; the final installation has zero audit findings. No old
+generator workaround remains in generation.
 
-**Evidence:** Byte freshness, schema validation, actual mock conformance, sensitive
-extra-field rejection and disposable schema mutations complement behavior tests.
-Mutations must fail at real client/mock compilation, without handwritten wire schemas
-or broad casts. Existing ApiError accepts an optional generated code and explicit
-error-envelope adapters preserve callers.
+**Why:** The contract must control actual boundaries. The documented
+[Node AST API](https://openapi-ts.dev/node) works from validated memory offline.
+Original discriminator/const/oneOf/null/required semantics are preserved. Binary format
+uses TypeScript factory Blob nodes. External refs are rejected before generation.
 
-**Consequence:** CI installs cleanly then validates/checks freshness before build.
-Dependency updates were installed in a disposable copy and reviewed manifests copied
-to preserve localhost 5173/native DLLs. Backend HTTP/auth/ZIP enforcement remains in
-its scoped issues; #72 must validate actual server responses.
+**Evidence:** Byte freshness, actual mock conformance and sensitive-field rejection
+complement behavior tests. Regenerated schema mutations must fail at actual mock/client
+compilation, without handwritten wire schemas or broad casts. Existing ApiError accepts
+optional generated code; explicit envelopes preserve callers. Generated LF is stable
+across Windows/Linux checkouts.
+
+**Consequence:** CI clean npm ci uses the recorded override then validates contract,
+freshness and boundaries before build. Dependencies were installed in a disposable copy;
+reviewed manifest/lock copied to preserve localhost 5173/native DLLs. Backend HTTP/auth/ZIP
+enforcement remains scoped; #72 must validate actual server responses.

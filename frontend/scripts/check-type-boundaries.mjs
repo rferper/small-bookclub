@@ -53,6 +53,11 @@ try {
   ]) {
     const changed = structuredClone(comparison)
     changed.components.schemas[mutation.schema].properties[mutation.property] = { type: mutation.type }
+    const mutatedContract = join(temporary, 'mutated-contract.json')
+    await writeFile(mutatedContract, JSON.stringify(changed))
+    const freshness = spawnSync(process.execPath, [join(frontend, 'scripts/generate-api-types.mjs'), '--check', '--contract', mutatedContract], { encoding: 'utf8' })
+    assert.notEqual(freshness.status, 0, 'Actual freshness CLI must fail without regenerating a changed used field')
+    assert.match(freshness.stderr, /Generated API types are stale/)
     const regenerated = await generate(changed)
     assert.notEqual(regenerated, comparisonArtifact, `Unregenerated artifact must be stale after ${mutation.schema}.${mutation.property} changes`)
     await writeFile(join(temporary, 'src/api/generated.ts'), regenerated)

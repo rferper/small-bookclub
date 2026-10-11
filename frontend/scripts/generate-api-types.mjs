@@ -6,28 +6,23 @@ import { readContract, validateContract } from './contract.mjs'
 // An optional disposable tooling directory preserves the running Vite installation.
 const require = createRequire(process.env.BOOKCLUB_TOOLING_DIR
   ? `${process.env.BOOKCLUB_TOOLING_DIR}/package.json` : import.meta.url)
-const { default: openapiTS } = await import(pathToFileURL(require.resolve('openapi-typescript')))
+const { default: openapiTS, astToString } = require('openapi-typescript')
+const ts = require('typescript')
 const outputPath = new URL('../src/api/generated.ts', import.meta.url)
 
 export async function generate(document) {
   await validateContract(document) // Reject external references before invoking the generator.
-  const input = structuredClone(document)
-  function visit(node) {
-    if (!node || typeof node !== 'object') return
-    // OAS discriminator is a lookup hint. The schema's const/oneOf remains authoritative.
-    // v6 otherwise injects a parent name into nullable references to a discriminated union.
-    delete node.discriminator
-    for (const value of Object.values(node)) visit(value)
-  }
-  visit(input)
-  return openapiTS(input, {
-    commentHeader: '/** Generated from root openapi.yaml. DO NOT EDIT. Run npm run generate:api. */\n',
-    transform(schema) { if (schema.format === 'binary') return 'Blob' },
+  const ast = await openapiTS(structuredClone(document), {
+    transform(schema) {
+      if (schema.format === 'binary') return ts.factory.createTypeReferenceNode('Blob')
+    },
   })
+  return '/** Generated from root openapi.yaml. DO NOT EDIT. Run npm run generate:api. */\n' + astToString(ast)
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
-  const output = await generate(await readContract())
+  const contractArgument = process.argv.indexOf('--contract')
+  const output = await generate(await readContract(contractArgument >= 0 ? process.argv[contractArgument + 1] : undefined))
   if (process.argv.includes('--check')) {
     if (await readFile(outputPath, 'utf8') !== output) throw new Error('Generated API types are stale; run npm run generate:api.')
     console.log('Generated API types are fresh.')

@@ -223,12 +223,13 @@ actual mock return-value conformance and forbidden-field mutation cases. CI runs
 these after clean `npm ci` and before build. After installation all checks are offline;
 remote references are refused before generation.
 
-Pinned MIT openapi-typescript 6.7.6 avoids the 7.x TypeScript-5-only peer constraint
-in this TS6 project. The documented object-input API generates from validated memory.
-Redundant OAS discriminator lookup hints are removed only from the cloned generation
-input because v6 incorrectly injects parent names into nullable union references.
-Authoritative const/oneOf branches, absent/required fields and nullability remain
-intact. Binary format generates Blob byte parts; no schema is widened afterward.
+Pinned MIT openapi-typescript 7.13.0 generates using its documented Node AST API.
+A targeted npm peer override uses the existing TypeScript 6 for this package instead
+of its advertised ^5 peer. Actual AST API/output compatibility is verified by clean
+installation, deterministic regeneration, full type build and real-boundary mutation
+tests. No app compiler changes. All discriminator, const/oneOf, absent and nullability
+semantics come directly from the unchanged schema. Binary format generates Blob byte
+parts through the documented AST transform.
 
 `adapters.ts` maps browser File actions to generated profile/cover multipart JSON
 metadata plus optional bytes and FormData without sending HTTP. OAuth 302 handoff is
