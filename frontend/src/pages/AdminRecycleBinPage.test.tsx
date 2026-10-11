@@ -50,6 +50,22 @@ describe('recycle bin routing and reads', () => {
 })
 
 describe('deletion confirmations and source updates', () => {
+  it('waits for a held dependency preview and focuses Cancel once the dialog is ready', async () => {
+    const user = userEvent.setup(), held = holdCalls(createMockClient(), 'getDeletionPreview'), tracked = trackCalls(held.client)
+    renderApp({ path: '/administracion/libros', client: tracked.client })
+    const trigger = (await screen.findAllByRole('button', { name: /^Eliminar libro/ }))[0]
+    await user.click(trigger)
+    expect(trigger).toBeDisabled()
+    expect(trigger).toHaveTextContent('Cargando confirmación')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    held.release()
+    const dialog = await screen.findByRole('dialog')
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toBeEnabled())
+    expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
+    expect(tracked.calls).not.toContain('deleteBook')
+  })
   it('names a book, previews retained dependencies, cancels via Escape with focus and no mutation, then removes it', async () => {
     const state = createClubState(), api = createMockClient({ state }), tracked = trackCalls(api), user = userEvent.setup()
     const before = JSON.stringify(state), expected = await api.getDeletionPreview('book', 'b1')

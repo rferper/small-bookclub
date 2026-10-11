@@ -37,8 +37,14 @@ export function ConfirmDialog({
   })
 
   useLayoutEffect(() => {
-    cancelRef.current?.focus()
-  }, [])
+    const dialog = dialogRef.current
+    if (dialog && (!dialog.contains(document.activeElement) || document.activeElement === dialog)) {
+      // A preview may mount before its pending state clears. Disabled controls
+      // cannot receive focus in the browser; keep focus in the modal meanwhile.
+      if (busy) dialog.focus()
+      else cancelRef.current?.focus()
+    }
+  }, [busy])
 
   // After a failure, focus returns to the confirm button next to the alert.
   useLayoutEffect(() => {
