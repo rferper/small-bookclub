@@ -81,7 +81,25 @@ uv run python -m config.contract
 
 Optional club timezone override: `$env:CLUB_TIMEZONE = 'Europe/Madrid'`. Production example: set `BOOKCLUB_ENV=production`, `DEBUG=false`, a generated private `SECRET_KEY`, `ALLOWED_HOSTS` to the deployed hostname and `DATABASE_PATH` to an intended absolute SQLite location. Settings consume environment variables directly; keep local databases and credentials out of Git.
 
-Do **not** run `migrate` for this bootstrap. It installs no auth, admin, contenttypes or session database applications and defines no club models; system checks, health and both test selections work without migrations or a database file. #2 must set `AUTH_USER_MODEL` and create its initial migration before enabling auth-dependent applications/migrations. The default Django user is never created here.
+The custom `users.User` is configured before auth/contenttypes migrations, with an independent website key, exact Discord string identity, native profile and deny-by-default membership. Its initial migration never creates `auth_user`. The only implemented HTTP operation remains health; no authentication/session workflow is available yet.
+
+Verify migrations against a disposable database, never by resetting or migrating the owner's existing development database. From `backend/` in PowerShell:
+
+```powershell
+$previousDatabase = $env:DATABASE_PATH
+$migrationDirectory = Join-Path $env:TEMP ('bookclub-migration-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $migrationDirectory | Out-Null
+try {
+  $env:DATABASE_PATH = Join-Path $migrationDirectory 'empty.sqlite3'
+  uv run python manage.py migrate --noinput
+  uv run python manage.py migrate --noinput # No migrations to apply.
+  uv run python manage.py makemigrations --check --dry-run
+} finally {
+  $env:DATABASE_PATH = $previousDatabase
+}
+```
+
+The integration suite reproduces this verification in pytest's temporary directory and checks the actual table, initial migration, uniqueness and SQL checks. Its test database is separate from development storage. On Unix, set `DATABASE_PATH` to a new temporary absolute path before running the same commands. The temporary verification database can be removed afterwards.
 
 The schema command compares every registered/generated implemented operation against its handwritten contract, reports the implemented subset and fails on missing/undocumented handlers or changed behavioural schemas/security/statuses/media. See [docs/api.md](docs/api.md). It does not pretend the 74 future club/provider operations are implemented. CI runs locked uv install, checks, Ruff, both real nonempty test selections and schema drift checking; frontend CI continues its complete existing suite.
 

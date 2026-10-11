@@ -642,3 +642,45 @@ integration and permissions/spoiler coverage.
 **Frontend:** getHealth is an explicit non-UI inventory exception alongside provider-owned
 discordCallback. Generated types are refreshed, but ApiClient/runtime/mock selection stays unchanged;
 #105 owns HTTP transport. Disposable frontend copies preserve the active workspace DLLs/port 5173.
+
+## 2026-10-11: Custom identity and native profile foundation (#2)
+
+**Decision:** Use Django's `AbstractBaseUser` and a migration-serialized `BaseUserManager`
+in the dedicated `users` app. Set `AUTH_USER_MODEL=users.User` with auth/contenttypes
+installed before their first migrations. `users.0001_initial` owns the custom table;
+the default `auth_user` table never exists. An independent BigAutoField identifies
+website records; `discord_user_id` is the unique login identifier, an exact string
+of 17–20 ASCII digits. Anchored validation and SQL checks reject Unicode digits,
+trailing newlines and malformed values; uniqueness continues across revocation.
+No username, email, permission mixin, staff/superuser flag or Django-admin UI is added.
+This follows the [Django custom-user guidance](https://docs.djangoproject.com/en/5.2/topics/auth/customizing/).
+
+**Membership:** Pending, approved and revoked allowlist rows share this identity.
+Default membership is unapproved with no revocation timestamp and member role;
+admin role alone cannot approve it. Only approved rows without revocation derive
+`is_active=True`, including on unsaved objects. There is no editable active column.
+Model validation and SQL reject approval with revocation, and roles other than
+member/admin. Curator remains a later assignment. Aware created/updated timestamps
+and inherited `last_login` preserve future allowlist/authentication needs.
+
+**Native profile:** Required display names trim to 1–40 characters and reject control
+characters, Unicode formatting controls and line separators. Optional bio/quote trim
+to null when absent/empty, with explicit validators for the 500/300 character limits
+(TextField's max_length alone is insufficient for model validation). Plain text is
+preserved; HTML escaping belongs to rendering, with no Discord profile import.
+Avatar storage is an empty path by default. No upload or favourite-book relation exists.
+
+**Supported writes:** `create_user` validates before saving, never supplies approval
+or elevated role defaults, and rejects every non-null password argument. New model
+instances default to an unusable password; sync/async password setters reject local
+passwords. `full_clean` also rejects usable password storage and naive revocation.
+Raw ORM/bulk writes intentionally bypass Django validation and must not be used by
+future profile/account workflows without validation; identity/role/membership SQL
+constraints still apply. Local `create_superuser` always rejects, reserving first-admin
+authorization for #6. No provisioning, session or HTTP authorization is claimed.
+
+**Evidence:** Pure validation/eligibility tests use no database. Persistence, queryset
+constraint bypass, identity uniqueness after revocation, timestamp updates and fresh
+subprocess migration checks are integration tests. README documents disposable SQLite
+verification; it never migrates/resets the owner's development database. No dependency,
+endpoint, contract, frontend selection or localhost behavior changes.

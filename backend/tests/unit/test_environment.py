@@ -70,8 +70,17 @@ def test_memory_database_and_defaults_do_not_depend_on_machine_timezone():
     assert settings["DATABASES"]["default"]["NAME"] == ":memory:"
 
 
-def test_no_auth_models_or_migrations_are_installed(settings):
+def test_custom_identity_precedes_auth_without_session_or_admin_apps(settings):
     from django.apps import apps
+    from django.contrib.auth import get_user_model
 
-    assert settings.INSTALLED_APPS == []
-    assert list(apps.get_models()) == []
+    assert settings.INSTALLED_APPS == [
+        "users",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+    ]
+    assert settings.AUTH_USER_MODEL == "users.User"
+    assert get_user_model() is apps.get_model("users", "User")
+    assert apps.get_model("auth", "User")._meta.swapped == "users.User"
+    assert not apps.is_installed("django.contrib.sessions")
+    assert not apps.is_installed("django.contrib.admin")

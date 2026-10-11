@@ -20,6 +20,7 @@ The course grades integration tests separately, so keep the two kinds apart:
 
 - **Unit tests** (`backend/tests/unit/`, `frontend/src/**/*.test.ts(x)`): pure functions and single components, no database or network. Rating maths, statistics, gating decisions given plain inputs, API client helpers.
 - **Integration tests** (`backend/tests/integration/`, marked `@pytest.mark.integration`): go through the real HTTP API with the test database, as a signed-in user of a given role, and check status codes, JSON bodies and the OpenAPI contract. One test per key workflow step (sign in, complete a week, vote, rate, see unlocked content).
+- Model persistence, manager creation, migration and SQL constraint tests also belong to integration tests, even without an HTTP endpoint. Use pytest's test database or a disposable temporary database for fresh migration subprocesses; never migrate/reset the owner's development database. Constraint tests must bypass validation using queryset/bulk writes and assert real database rejection.
 - Run them separately: `uv run pytest -m "not integration"` and `uv run pytest -m integration`.
 
 ## What must always be tested
