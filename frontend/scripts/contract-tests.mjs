@@ -1,11 +1,56 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
+import ts from 'typescript'
 import { readContract, schemaValidators, validateContract } from './contract.mjs'
+
+function checkInventory(clientSource, documentation, document) {
+  const source = ts.createSourceFile('client.ts', clientSource, ts.ScriptTarget.Latest, true)
+  const client = source.statements.find((statement) => ts.isInterfaceDeclaration(statement) && statement.name.text === 'ApiClient')
+  assert.ok(client, 'ApiClient interface exists')
+  const methods = client.members.filter(ts.isMethodSignature).map((method) => method.name.getText(source))
+  const rows = documentation.split(/\r?\n/).filter((line) => /^\| `\w+` \|/.test(line))
+  const inventory = new Map()
+  for (const row of rows) {
+    const name = /^\| `(\w+)` \|/.exec(row)[1]
+    assert.equal(inventory.has(name), false, `Duplicate inventory entry: ${name}`)
+    inventory.set(name, row)
+  }
+  assert.deepEqual([...inventory.keys()].sort(), [...methods].sort(), 'Every client method appears exactly once in inventory')
+  const operations = new Map()
+  for (const [path, item] of Object.entries(document.paths)) {
+    for (const [method, operation] of Object.entries(item)) {
+      if (operation.operationId) operations.set(operation.operationId, `${method.toUpperCase()} ${path}`)
+    }
+  }
+  for (const [name, row] of inventory) {
+    const route = /`((?:GET|POST|PUT|PATCH|DELETE) \/api[^`]+)`/.exec(row)
+    if (route) assert.equal(operations.get(name), route[1], `Documented route matches ${name}`)
+    else {
+      assert.ok(row.includes('#102'), `Deferred admin method ${name} assigned to #102`)
+      assert.equal(operations.has(name), false, `Deferred admin method ${name} has no completed operation`)
+    }
+  }
+  const callback = documentation.split(/\r?\n/).find((line) => line.startsWith('| provider callback'))
+  assert.ok(callback?.includes('discordCallback') && callback.includes('no client method'), 'Callback explicitly has no client method')
+  const callbackRoute = /`(GET \/api[^`]+)`/.exec(callback)
+  assert.equal(operations.get('discordCallback'), callbackRoute?.[1])
+  assert.deepEqual([...operations.keys()].sort(), [...methods.filter((name) => !inventory.get(name).includes('#102')), 'discordCallback'].sort(), 'No undocumented contract operations')
+}
+
+test('client inventory documents every method, exact implemented routes and deferred administration', async () => {
+  const client = await readFile(new URL('../src/api/client.ts', import.meta.url), 'utf8')
+  const documentation = await readFile(new URL('../../docs/api.md', import.meta.url), 'utf8')
+  const document = await readContract()
+  checkInventory(client, documentation, document)
+  assert.throws(() => checkInventory(client.replace('export interface ApiClient {', 'export interface ApiClient {\n  undocumented(): Promise<void>'), documentation, document))
+  assert.throws(() => checkInventory(client, documentation.replace('GET /api/session` |', 'GET /api/wrong-session` |'), document))
+  assert.throws(() => checkInventory(client, documentation.replace('| `getBackupInfo`', '| `missingBackupInfo`'), document))
+})
 
 function minimalContract() {
   return {

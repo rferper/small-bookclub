@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate:contract": "node scripts/validate-contract.mjs",
-    "test:contract": "node --test scripts/contract.test.mjs"
+    "test:contract": "node --test scripts/contract-tests.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
