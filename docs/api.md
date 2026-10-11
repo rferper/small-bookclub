@@ -250,6 +250,57 @@ Complete #71 -> #104 -> #102 -> #103 before backend work. Backend scaffold #1 an
 feature/auth issues implement the contract; #72 verifies actual server responses.
 Full club workflow integration and Compose checks remain deferred; the health bootstrap is now verified by real Django HTTP tests.
 
+## Central HTTP transport and client selection (#105)
+
+Startup calls `createApiClient(mode, search)`. Omitted mode or `mock` preserves
+fictional preview/query controls. Only exact `http` selects HTTP; empty/invalid
+configuration visibly refuses startup before requests. HTTP ignores mock controls.
+Every existing ApiClient method, including four session methods, explicitly rejects
+safe 503 without HTTP/navigation. The typed object and runtime inventory comparison
+require an HTTP behavior decision when adding a method. There is no hybrid/fallback.
+Health remains infrastructure test harness use, never an ApiClient/UI method.
+
+Later feature issues replace only their entries in `httpClient.ts` and use the
+reusable `createTransport()` inside `src/api/`. Adapters supply explicit method,
+path, declared success status and generated path/query/body parameters:
+
+```ts
+request<'getBook'>({ method: 'GET', path: '/api/books/{bookId}',
+  pathParams: { bookId }, successStatus: 200 })
+```
+
+This example is not enabled today. No runtime route generator exists. JSON is parsed
+as the declared ApiResult without full runtime success-schema validation. Protocol
+checks reject wrong media, invalid/empty JSON, unexpected statuses and redirects;
+204 is void without parsing. Compile-time tests reject wrong body/result/path/query/
+status usage and JSON use of OAuth/ZIP operations.
+
+Requests stay under same-origin /api/, with same-origin credentials and redirect
+error. Absolute/external/traversal/backslash/encoded-separator URLs fail before fetch.
+Opaque path values are encoded; slash/backslash/percent/control/dot-segment values
+are refused. Query scalars use URLSearchParams. Unsafe methods read csrftoken for
+each request and send X-CSRFToken only for a single valid 32/64 alphanumeric token.
+Absent/malformed cookies cause no hidden bootstrap request. Safe methods send no
+CSRF. JSON bodies and FormData fields are snapshotted per request; existing multipart
+helpers retain browser boundary and Blob/File handling. Headers/signals/results
+stay independent; cancellation has no automatic retry.
+
+Only closed `{code,message}` JSON error envelopes with a generated known code and
+nonblank plain text message are trusted. Extra fields, HTML, malformed JSON and
+unknown codes use safe fixed Spanish status-based messages, retaining HTTP status.
+Reversible mapping: network/abort => 503 service_unavailable; malformed successes,
+redirects and unsafe URL construction => 500 internal_error. Raw response bodies,
+URLs, data, exceptions and traces never become fallback UI text. The existing
+unauthorized wrapper works with either client: only 401 club calls refresh session;
+session methods, 403/503/protocol/network errors are exempt.
+
+#5 enables only getSession/startSignIn/signOut after backend implementation. Session
+GET bootstraps CSRF. OAuth start/callback require top-level navigation rather than
+JSON fetch. Demo remains #75 and ZIP download #49. Optional development proxy setup
+is in frontend/README.md; it is not a browser cross-origin base or OAuth return URL.
+No backend endpoint/authentication/permission is implemented here; actual backend
+subset remains public health and membership/CSRF middleware foundation.
+
 ## Implemented backend subset (#1)
 
 `cd backend && uv run python -m config.contract` generates the schema from actual Ninja routes. The registered-route inventory must equal generated path/method keys, including schema-hidden handlers, and every generated operation must exist in the handwritten contract. Health must exist in both. It compares operationId, effective security, statuses, media types, resolved structural response/request schemas, request requiredness and parameters. Local refs are resolved offline; annotations (description/title/examples) are omitted, while required/closedness/types/const and other behavioural constraints remain. Property names and enum/const/default values are preserved. Cyclic/remote refs fail clearly. The locked Ninja registry adapter is covered by tests. The command reports the implemented subset explicitly; it does not demand future contract operations or claim full parity.

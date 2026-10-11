@@ -716,3 +716,27 @@ backend data only; Vite and the current mock client remain unchanged.
 cover approval, admin ineligibility, next-request revocation/deletion, cookie replay,
 unknown/private paths, exact public exceptions and CSRF. The fresh disposable
 migration test includes the sessions table. No new dependency is required.
+
+## 2026-10-11: Explicit HTTP adoption boundary (#105)
+
+**Decision:** Startup selects exact mock/http, defaulting only omitted mode to mock.
+Invalid/empty explicit configuration fails visibly before requests. Every HTTP
+ApiClient entry explicitly refuses 503 until its feature issue enables an adapter;
+HTTP ignores mock query controls. #5 enables only its session/OAuth/logout entries,
+#75 demo, #49 ZIP. No endpoint or dependency is added.
+
+**Transport:** Native fetch/Headers/URLSearchParams/FormData with generated operation
+path/query/body/results and explicit adapter method/path/status. Fixed same-origin
+/api/ boundary, redirect:error, same-origin credentials, current per-request CSRF
+and isolated JSON/multipart snapshots. Dot segments/separators/percent/control path
+values fail closed against ambiguous decoding. A shell-only development-only exact
+backend origin can proxy /api/ without altering browser URLs.
+
+**Errors:** Trust only closed generated error envelopes with nonblank plain text;
+otherwise retain HTTP status with fixed Spanish fallback. Network/abort => 503
+service_unavailable; malformed successes/protocol/unsafe URL construction => 500
+internal_error. No retry or session expiration for these failures. 204 returns void;
+JSON success types derive from the contract without a new runtime schema validator.
+Transport fake HTTP proves construction/handling, never backend OAuth or gating.
+Disposable browser copies/servers use strict separate ports and existing disposable
+dependencies, preserving localhost:5173/native DLLs/the owner's development DB.

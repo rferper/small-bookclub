@@ -42,5 +42,5 @@ These are the critical rules from `product-spec.md` §10. Write their tests firs
 - Name tests after behaviour: `test_member_cannot_see_reviews_before_submitting_own`.
 - Freeze time for anything date-dependent (purge, "this week", next meeting); use the club timezone setting, never the machine's.
 - Mock external HTTP (Open Library, Discord). Tests must pass offline.
-- In frontend tests, mock the API client module, not `fetch`.
+- In frontend component tests, inject the API client, not `fetch`. Central transport unit tests alone may inject fake fetch (or install a scoped fake fetch to prove every unavailable HTTP adapter sends zero requests). These tests prove request construction/response handling, not backend authentication, permissions or spoiler enforcement.
 - Keep calculations in pure functions and unit-test them without the database.
