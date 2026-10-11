@@ -189,6 +189,17 @@ export interface MeetingList {
 
 export type HighlightKind = 'quote' | 'paraphrase'
 
+// Admin operations preserve independent summary/highlight publication.
+export interface MeetingSummaryInput { text: string; published: boolean }
+export interface MeetingHighlightInput extends MeetingSummaryInput { kind: 'quote' | 'paraphrase'; speakerIds: string[] }
+export interface AdminMeetingHighlight extends MeetingHighlightInput { id: string; speakers: MemberSummary[] }
+export interface AdminMeetingRecord {
+  id: string; startsAt: string; cancelled: boolean; book: BookSummary | null
+  week: { id: string; weekNumber: number; removed: boolean } | null
+  markedSafe: boolean; summary: MeetingSummaryInput | null
+  highlights: AdminMeetingHighlight[]; speakerOptions: MemberSummary[]
+}
+
 // A published highlight. Plain text, never HTML.
 export interface MeetingHighlight {
   id: string

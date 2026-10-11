@@ -283,3 +283,36 @@ Recovery/purge UI and conflict handling remain #100; no restore action is added.
 remain the draft contract for #71; backend enforcement remains #21/#22/#29.
 Successful writes return the canonical updated plan; member pages read it on
 their next navigation, using the existing next-meeting current-week rule.
+
+## 2026-10-11: Manual meeting records and independent publication (#98)
+
+**Decision:** Seven admin-only typed mock operations read records, save summaries,
+append/edit/reorder/remove highlights and explicitly toggle safe unlinked records.
+Authorization precedes lookup and validation; each write validates before committing
+and returns a fresh explicit editor projection. Member reads use the existing central
+weekly gate and expose only independently published, nonremoved items. Admin member
+views use the same gate; draft previews belong to Administration only.
+
+**Reversible assumptions:** Summary text trims outer whitespace and allows 10,000
+characters; an empty unpublished summary is null and a blank published summary is
+invalid. Highlights trim outer whitespace, allow 2,000 characters, keep stable ids,
+quote/paraphrase kind, distinct speaker ids and their own publication flag. Internal
+line breaks and HTML/Markdown-like text remain literal in editor and member views.
+New attribution permits active members only; unchanged revoked attribution can be
+retained or removed and restoration makes the member selectable again.
+
+**Ordering and removal:** The stored highlight array is canonical order. Reordering
+requires every active id exactly once and preserves removed array slots. Soft removal
+retains all content, attribution, publication and original position (`removedPosition`)
+with actor/time and a purge deadline exactly 30 days after the mock clock. Confirmation
+names the text and recovery period. Restoration and purge actions remain #100.
+
+**Visibility:** Safe controls exist only when no retained assignment links the meeting.
+Both safe states reject active or removed links with 409. Removed weeks and cancelled
+meetings suppress substantive member records without destroying drafts or publication
+flags. Successful mutations refresh from returned canonical data; subsequent member
+navigation sees those writes without reloading. No polling or reload persistence.
+
+**Consequence:** No dependency, backend, HTTP endpoint or OpenAPI change. TypeScript
+mock shapes remain the draft contract until #71, and backend record enforcement stays
+in #28/#29. No AI controls, word counts, highlight categories or count limits.

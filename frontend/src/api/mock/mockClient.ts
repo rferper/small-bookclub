@@ -1,5 +1,6 @@
 import { ApiError, type ApiClient } from '../client'
 import type {
+  AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
   AdminReadingPlan, ReadingWeekInput,
   AdminMeeting, AdminMeetingCalendar, MeetingInput,
   AdminMember,
@@ -191,7 +192,7 @@ export function createMockClient({
       status: 'visible',
       summary: meeting.summary?.published ? meeting.summary.text : null,
       highlights: meeting.highlights
-        .filter((h) => h.published)
+        .filter((h) => h.published && !h.deletedAt)
         .map((h) => ({ id: h.id, text: h.text, kind: h.kind, speakers: toMemberSummaries(h.speakerIds) })),
     }
   }
@@ -617,7 +618,62 @@ export function createMockClient({
     return toPlan(bookId)
   }
 
+  const toAdminRecord = (meeting: MockMeeting): AdminMeetingRecord => {
+    const week = state.weeks.find((w) => w.meetingId === meeting.id)
+    return { id: meeting.id, startsAt: meeting.startsAt, cancelled: meeting.cancelled, book: toBookSummary(meeting.bookId),
+      week: week ? { id: week.id, weekNumber: week.weekNumber, removed: Boolean(week.deletedAt) } : null,
+      markedSafe: meeting.markedSafe, summary: meeting.summary ? { text: meeting.summary.text, published: meeting.summary.published } : null,
+      highlights: meeting.highlights.filter((h) => !h.deletedAt).map((h) => ({ id: h.id, text: h.text, kind: h.kind, speakerIds: [...h.speakerIds], published: h.published, speakers: toMemberSummaries(h.speakerIds) })),
+      speakerOptions: toMemberSummaries(state.members.map((m) => m.id)) }
+  }
+  const cleanSummary = (input: MeetingSummaryInput) => {
+    if (!input || typeof input.text !== 'string' || typeof input.published !== 'boolean' || input.text.trim().length > 10000) throw new ApiError(400, 'Introduce un texto de hasta 10.000 caracteres y un estado de publicación válido.')
+    const text = input.text.trim()
+    if (!text && input.published) throw new ApiError(400, 'No se puede publicar un resumen vacío.')
+    return { text, published: input.published }
+  }
+  const findHighlight = (meeting: MockMeeting, id: string) => {
+    const highlight = meeting.highlights.find((h) => h.id === id && !h.deletedAt)
+    if (!highlight) throw new ApiError(404, 'No existe ese momento destacado.')
+    return highlight
+  }
+  const cleanHighlight = (input: MeetingHighlightInput, previous: string[] = []): MeetingHighlightInput => {
+    if (!input || typeof input.text !== 'string' || !input.text.trim() || input.text.trim().length > 2000 || typeof input.published !== 'boolean' || !['quote', 'paraphrase'].includes(input.kind) || !Array.isArray(input.speakerIds) || new Set(input.speakerIds).size !== input.speakerIds.length || input.speakerIds.some((id) => !state.members.some((m) => m.id === id) && !(previous.includes(id) && state.revokedMembers.some((m) => m.id === id)))) throw new ApiError(400, 'Revisa el texto (1–2.000 caracteres), el tipo, la publicación y los miembros seleccionados.')
+    return { text: input.text.trim(), kind: input.kind, speakerIds: [...input.speakerIds], published: input.published }
+  }
+
   return {
+    async getAdminMeetingRecord(id) { meetingAccess('getAdminMeetingRecord'); return toAdminRecord(findMeeting(id)) },
+    async saveMeetingSummary(id, input) {
+      meetingAccess('saveMeetingSummary'); const meeting = findMeeting(id), clean = cleanSummary(input)
+      meeting.summary = clean.text ? clean : null; return toAdminRecord(meeting)
+    },
+    async createMeetingHighlight(id, input) {
+      meetingAccess('createMeetingHighlight'); const meeting = findMeeting(id), clean = cleanHighlight(input)
+      let newId = 'highlight-1'
+      for (let n = 2; state.meetings.some((m) => m.highlights.some((h) => h.id === newId)); n++) newId = `highlight-${n}`
+      meeting.highlights.push({ id: newId, ...clean }); return toAdminRecord(meeting)
+    },
+    async updateMeetingHighlight(id, highlightId, input) {
+      meetingAccess('updateMeetingHighlight'); const meeting = findMeeting(id), highlight = findHighlight(meeting, highlightId), clean = cleanHighlight(input, highlight.speakerIds)
+      Object.assign(highlight, clean); return toAdminRecord(meeting)
+    },
+    async reorderMeetingHighlights(id, ids) {
+      meetingAccess('reorderMeetingHighlights'); const meeting = findMeeting(id), active = meeting.highlights.filter((h) => !h.deletedAt)
+      if (!Array.isArray(ids) || ids.length !== active.length || new Set(ids).size !== ids.length || ids.some((key) => !active.some((h) => h.id === key))) throw new ApiError(400, 'Incluye cada momento destacado activo una sola vez en el orden.')
+      const ordered = ids.map((key) => findHighlight(meeting, key)); let index = 0
+      meeting.highlights = meeting.highlights.map((h) => h.deletedAt ? h : ordered[index++]); return toAdminRecord(meeting)
+    },
+    async removeMeetingHighlight(id, highlightId) {
+      meetingAccess('removeMeetingHighlight'); const meeting = findMeeting(id), highlight = findHighlight(meeting, highlightId)
+      Object.assign(highlight, { removedPosition: meeting.highlights.indexOf(highlight), deletedAt: state.now, deletedBy: state.currentUserId, purgeDueAt: new Date(Date.parse(state.now) + 30 * 86400000).toISOString() }); return toAdminRecord(meeting)
+    },
+    async setMeetingRecordSafe(id, safe) {
+      meetingAccess('setMeetingRecordSafe'); const meeting = findMeeting(id)
+      if (state.weeks.some((w) => w.meetingId === id)) throw new ApiError(409, 'Esta reunión conserva una semana vinculada; no se puede marcar como segura.')
+      if (typeof safe !== 'boolean') throw new ApiError(400, 'Selecciona un estado de visibilidad válido.')
+      meeting.markedSafe = safe; return toAdminRecord(meeting)
+    },
     async getAdminReadingPlan(bookId) { planAccess('getAdminReadingPlan'); return toPlan(bookId) },
     async createReadingWeek(bookId, input, acknowledged) { planAccess('createReadingWeek'); return saveWeek(bookId, input, acknowledged) },
     async updateReadingWeek(bookId, id, input, acknowledged) { planAccess('updateReadingWeek'); return saveWeek(bookId, input, acknowledged, id) },

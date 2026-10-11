@@ -67,9 +67,10 @@ describe('Meeting page', () => {
     ])
 
     const paragraphs = within(region('Resumen')).getAllByText(/./, { selector: 'p' })
-    expect(paragraphs).toHaveLength(3)
+    expect(paragraphs).toHaveLength(1)
     expect(paragraphs[0]).toHaveTextContent(/^Empezamos «La Regenta»/)
-    expect(paragraphs[2]).toHaveTextContent(/^Para la próxima semana/)
+    expect(paragraphs[0].textContent).toBe(createClubState().meetings.find((m) => m.id === 'mt1')!.summary!.text)
+    expect(paragraphs[0]).toHaveClass('whitespace-pre-wrap')
 
     const highlights = within(region('Momentos destacados')).getAllByRole('listitem')
     expect(highlights).toHaveLength(3)
