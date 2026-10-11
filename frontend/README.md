@@ -208,7 +208,8 @@ A photo must be JPEG, PNG or WebP of at most 2 MB; it is previewed and sent only
 
 Administration links to `/administracion/copias` (fictional JSON export and pending
 backup policy) and `/administracion/registro` (read-only safe audit metadata).
-`?mock-operations=retry` fails the first backup-info, audit and export call once;
+`?mock-operations=retry` fails the initial development backup-info and audit read
+(two calls for React StrictMode) and the first export call;
 `?mock-export=reauthorisation` consistently refuses export with the distinct 409,
 without signing out or offering a fake authentication flow. These combine with
 existing session/empty-state options. Programmatic `MockOptions.state.lastBackupAt`

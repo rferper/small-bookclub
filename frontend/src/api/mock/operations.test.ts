@@ -79,7 +79,9 @@ describe('safe critical-action audit', () => {
     expect(state.audit!.slice(before!.length).map((e) => e.action)).toEqual(['curator_assigned'])
   })
   it('logs status/publication changes only and safe text-free targets survive removal/restore/purge', async () => {
-    const state = createClubState(), client = createMockClient({ state }), n = state.audit!.length
+    const state = createClubState()
+    state.meetings.find((m) => m.id === 'mt1')!.summary!.published = false
+    const client = createMockClient({ state }), n = state.audit!.length
     const book = await client.getAdminBook('b1'), input = { ...blankBookInput(), ...book, status: 'archivado' as const, cover: { action: 'keep' as const } }
     await client.updateBook('b1', input); await client.updateBook('b1', input)
     await client.saveMeetingSummary('mt1', { text: 'secret-summary', published: true })
@@ -90,7 +92,12 @@ describe('safe critical-action audit', () => {
     await client.updateMeetingHighlight('mt1', id, { text: 'secret-highlight', kind: 'quote', speakerIds: [], published: false })
     await client.removeMeetingHighlight('mt1', id); await client.restoreDeleted('highlight', id); await client.removeMeetingHighlight('mt1', id); await client.purgeDeleted('highlight', id)
     const events = state.audit!.slice(n)
-    expect(events.map((e) => e.action)).toEqual(['book_status_changed', 'summary_unpublished', 'highlight_published', 'highlight_unpublished', 'soft_deleted', 'restored', 'soft_deleted', 'purged'])
+    expect(events.map((e) => e.action)).toEqual(['book_status_changed', 'summary_published', 'summary_unpublished', 'highlight_published', 'highlight_unpublished', 'soft_deleted', 'restored', 'soft_deleted', 'purged'])
+    for (const event of await client.getAuditLog()) {
+      expect(Object.keys(event).sort()).toEqual(['action', 'actor', 'id', 'occurredAt', 'target'])
+      expect(Object.keys(event.target).sort()).toEqual(['id', 'label', 'type'])
+      expect(Object.keys(event.actor).sort()).toEqual(['displayName', 'id'])
+    }
     expect(events.filter((e) => e.target.id === id).every((e) => e.target.label === 'Momento destacado')).toBe(true)
     expect(JSON.stringify(await client.getAuditLog())).not.toMatch(/secret-|changed-private|discordId|scores|summary"|bio"|tieNote|speakerIds|avatarUrl/)
     const read = await client.getAuditLog(); read[0].actor.displayName = 'Mutated'; read[0].target.label = 'Mutated'

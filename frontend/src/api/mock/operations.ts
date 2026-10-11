@@ -60,23 +60,23 @@ export function auditedClient(client: ApiClient, state: MockState, exportAccess:
     if (!watched.includes(method)) return original
     return (...args: unknown[]) => {
       const run = async () => {
-      if (method === 'exportClubData') exportAccess()
-      const before = new Map(facts(state).map((f) => [f.key, f]))
-      const member = state.members.find((m) => m.id === state.currentUserId)
-      const actor = member ? { id: member.id, displayName: member.displayName } : undefined
-      const value = await original(...args)
-      for (const fact of facts(state)) {
-        const old = before.get(fact.key)
-        if (old?.value === fact.value) continue
-        if (fact.key.startsWith('status:') && !old) continue
-        if (fact.key.startsWith('deletion:') && !old && fact.value === 'active') continue
-        if ((fact.key.startsWith('summary:') || fact.key.startsWith('highlight:')) && !old && fact.value === 'false') continue
-        if (fact.key.startsWith('vote:') && fact.value !== 'closed') continue
-        if (fact.key.startsWith('tie:') && method !== 'recordTieWinner') continue
-        const action = fact.key.startsWith('member:') && old?.value === 'revoked' && fact.value === 'active' ? 'member_restored' : fact.action
-        addAudit(state, action, old && (fact.value === 'purged' || (fact.key === 'curator' && !fact.value)) ? old.target : fact.target, actor)
-      }
-      return value
+        if (method === 'exportClubData') exportAccess()
+        const before = new Map(facts(state).map((f) => [f.key, f]))
+        const member = state.members.find((m) => m.id === state.currentUserId)
+        const actor = member ? { id: member.id, displayName: member.displayName } : undefined
+        const value = await original(...args)
+        for (const fact of facts(state)) {
+          const old = before.get(fact.key)
+          if (old?.value === fact.value) continue
+          if (fact.key.startsWith('status:') && !old) continue
+          if (fact.key.startsWith('deletion:') && !old && fact.value === 'active') continue
+          if ((fact.key.startsWith('summary:') || fact.key.startsWith('highlight:')) && !old && fact.value === 'false') continue
+          if (fact.key.startsWith('vote:') && fact.value !== 'closed') continue
+          if (fact.key.startsWith('tie:') && method !== 'recordTieWinner') continue
+          const action = fact.key.startsWith('member:') && old?.value === 'revoked' && fact.value === 'active' ? 'member_restored' : fact.action
+          addAudit(state, action, old && (fact.value === 'purged' || (fact.key === 'curator' && !fact.value)) ? old.target : fact.target, actor)
+        }
+        return value
       }
       const result = queue.then(run, run)
       queue = result.catch(() => undefined)
