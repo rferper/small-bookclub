@@ -36,7 +36,7 @@ export function HomePage() {
       {data.quote && (
         <Card title="Una cita para hoy" headingClassName="mb-2 text-sm tracking-wide text-bark uppercase">
           <figure className="border-l-4 border-soft-green pl-4">
-            <blockquote className="font-serif text-lg whitespace-pre-line text-forest">
+            <blockquote className="font-serif text-lg whitespace-pre-wrap wrap-anywhere text-forest">
               «{data.quote.text}»
             </blockquote>
             {(data.quote.author || data.quote.source) && <figcaption className="mt-2 text-sm whitespace-pre-wrap wrap-anywhere text-bark">— {[data.quote.author, data.quote.source].filter(Boolean).join(', ')}</figcaption>}

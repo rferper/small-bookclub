@@ -316,3 +316,34 @@ navigation sees those writes without reloading. No polling or reload persistence
 **Consequence:** No dependency, backend, HTTP endpoint or OpenAPI change. TypeScript
 mock shapes remain the draft contract until #71, and backend record enforcement stays
 in #28/#29. No AI controls, word counts, highlight categories or count limits.
+
+## 2026-10-11: Literary quotes and whole rating rubric (#99)
+
+**Decision:** Four central admin-only mock operations list quotes, add/edit a
+quote and save the complete five-criterion rubric. Readable rubric descriptions
+reuse `getRatingRubric`; neither read carries ratings or reviews. All admin calls
+check session, configured failure and role before lookup/duplicate/validation.
+New guarded Administration routes provide labelled plain-text editors without
+deletion or automatic rights verification.
+
+**Reversible assumptions:** Quote text trims outer whitespace and permits 1–1,000
+characters; author/source permit 200 each and blank becomes null. Duplicate keys
+collapse whitespace and use Spanish lowercase regardless of attribution or active
+state, excluding the edited id. Stable ids and array insertion order survive edits.
+The form defaults new quotes to active. Rubric saves require exactly the five
+criteria and 1–5 whole-star anchors, each nullable or trimmed text of at most 500
+characters. Validation finishes before any of the 25 anchors changes.
+
+**Visibility:** Inicio chooses only active quotes on each new page load and projects
+text/author/source, never admin ids or flags. Existing fictional corpus attribution
+is preserved. Member rating descriptions retain line breaks and literal markup,
+and half stars keep the existing neighboring-anchor behavior. Subsequent navigation
+in the same mounted client sees saved changes; reload/cross-tab persistence is absent.
+Default rubric fixtures stay null; existing explicitly marked example fixtures stay
+unchanged. Missing descriptions remain blank.
+
+**Consequence:** No new dependency, backend, HTTP endpoint or OpenAPI change. Draft
+client operations remain planning input to #71; backend management/enforcement stays
+in #35/#43/#11 and quote recovery/deletion stays in #100. Failed saves retain input,
+announce actionable Spanish errors and never update saved views. Immediate submit
+locks protect one whole transaction per form.
