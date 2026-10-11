@@ -51,6 +51,7 @@ import {
 } from '../../lib/profile'
 import { discordIdProblem } from '../../lib/admin'
 import { meetingInstant } from '../../lib/meetingTime'
+import { normalizeQuote, normalizeRubric, quoteKey } from '../../lib/literary'
 import { readingErrors, readingWarnings } from '../../lib/readingPlan'
 import { bookErrors, CATALOGUE_LIMITS, DATE_FIELDS } from '../../lib/catalogue'
 import { ratingStatistics, STATISTICS_THRESHOLDS } from '../../lib/statistics'
@@ -642,7 +643,35 @@ export function createMockClient({
     return { text: input.text.trim(), kind: input.kind, speakerIds: [...input.speakerIds], published: input.published }
   }
 
+  const literaryAccess = (method: Method) => { requireSignedIn(); failIfConfigured(method); requireAdmin() }
+  const saveQuote: ApiClient['addLiteraryQuote'] = async (input) => {
+    if (typeof input?.text === 'string' && state.quotes.some((quote) => quoteKey(quote.text) === quoteKey(input.text))) throw new ApiError(409, 'Ya existe una cita con este texto. Edita la cita existente.')
+    const clean = normalizeQuote(input)
+    if (!clean) throw new ApiError(400, 'Revisa el texto (1–1.000 caracteres) y la atribución (hasta 200 caracteres).')
+    let id = 'quote-1'
+    for (let n = 2; state.quotes.some((quote) => quote.id === id); n++) id = `quote-${n}`
+    const quote = { id, ...clean }; state.quotes.push(quote); return { ...quote }
+  }
+
   return {
+    async listAdminQuotes() { literaryAccess('listAdminQuotes'); return state.quotes.map((quote) => ({ ...quote })) },
+    async addLiteraryQuote(input) { literaryAccess('addLiteraryQuote'); return saveQuote(input) },
+    async updateLiteraryQuote(id, input) {
+      literaryAccess('updateLiteraryQuote')
+      const quote = state.quotes.find((quote) => quote.id === id)
+      if (!quote) throw new ApiError(404, 'Esta cita ya no está disponible. Vuelve a cargar la lista.')
+      if (typeof input?.text === 'string' && state.quotes.some((other) => other.id !== id && quoteKey(other.text) === quoteKey(input.text))) throw new ApiError(409, 'Ya existe una cita con este texto. Edita la cita existente.')
+      const clean = normalizeQuote(input)
+      if (!clean) throw new ApiError(400, 'Revisa el texto (1–1.000 caracteres) y la atribución (hasta 200 caracteres).')
+      Object.assign(quote, clean); return { ...quote }
+    },
+    async saveRatingRubric(input) {
+      literaryAccess('saveRatingRubric')
+      const clean = normalizeRubric(input)
+      if (!clean) throw new ApiError(400, 'Incluye los cinco criterios con sus cinco anclajes, de hasta 500 caracteres cada uno.')
+      state.rubric = clean
+      return Object.fromEntries(CRITERIA.map((criterion) => [criterion, { ...clean[criterion] }])) as RatingRubric
+    },
     async getAdminMeetingRecord(id) { meetingAccess('getAdminMeetingRecord'); return toAdminRecord(findMeeting(id)) },
     async saveMeetingSummary(id, input) {
       meetingAccess('saveMeetingSummary'); const meeting = findMeeting(id), clean = cleanSummary(input)
@@ -811,7 +840,11 @@ export function createMockClient({
           reviews: state.reviewCount,
           members: state.members.length,
         },
-        quote: state.quotes.length ? state.quotes[Math.floor(random() * state.quotes.length)] : null,
+        quote: (() => {
+          const active = state.quotes.filter((quote) => quote.active)
+          const quote = active[Math.floor(random() * active.length)]
+          return quote ? { text: quote.text, author: quote.author, source: quote.source } : null
+        })(),
       }
     },
 
