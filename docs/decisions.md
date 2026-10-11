@@ -787,3 +787,23 @@ the same native row invalidates and removes freshness while preserving an eligib
 session. Older records without provider identity fail closed. No wire/API/model change.
 Mounted allauth regression reproduces replacement after actual login/export exchange;
 pure tests cover exact identity and missing binding independently of age/role checks.
+
+## 2026-10-11: Finite explicit native owner bootstrap (#6)
+
+**Decision:** Only the local `bootstrap_admin` management command consumes
+`INITIAL_ADMIN_DISCORD_ID`, using the existing exact ASCII string validator. It runs
+atomically on an already migrated intended database and creates the native placeholder
+`Administrador` or promotes/reapproves an existing target without changing its profile,
+password, identity or creation/login history. An already configured rerun performs no
+write. Stored malformed or unnormalized rows fail rather than being repaired.
+
+**Owner assumption:** Any different admin-role row blocks provisioning, including
+pending/revoked admins. This implements the spec's one owner and deliberately refuses
+implicit rotation or a second admin; owner recovery/rotation needs separately scoped
+work. Reapproving this exact target requires explicit command execution.
+
+**Boundary:** No startup/post-migrate hook, HTTP operation, schema migration, frontend
+change, provider/account provisioning or new dependency. Spanish command output reports
+only the outcome and suppresses identity/profile/storage errors. Test subprocesses use
+new disposable SQLite databases; mounted allauth tests mock only provider HTTP and
+prove deny-before/approved-admin-after execution and inert browser/environment claims.
