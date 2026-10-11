@@ -3,6 +3,11 @@
 
 import type { AdminLiteraryQuote, BookDetail, BookMetadataResult, CriterionScores, CurrentUser, MemberSummary, RatingRubric } from '../types'
 
+export interface DeletionMetadata {
+  deletedAt?: string
+  deletedBy?: string
+  purgeDueAt?: string
+}
 export interface MockWeek {
   deletedAt?: string
   deletedBy?: string
@@ -21,7 +26,7 @@ export interface MockWeek {
 
 // A book as the backend stores it: catalogue fields and metadata. The
 // schedule and meetings are separate lists, linked by bookId.
-export type MockBook = Omit<BookDetail, 'schedule' | 'meetings'>
+export type MockBook = Omit<BookDetail, 'schedule' | 'meetings'> & DeletionMetadata
 
 export interface MockHighlight {
   deletedAt?: string
@@ -37,7 +42,7 @@ export interface MockHighlight {
   published: boolean
 }
 
-export interface MockMeeting {
+export interface MockMeeting extends DeletionMetadata {
   id: string
   // null for a meeting that is not about a book.
   bookId: string | null
@@ -53,6 +58,9 @@ export interface MockMeeting {
 }
 
 export interface MockActivity {
+  bookId?: string
+  meetingId?: string
+  voteId?: string
   id: string
   type:
     | 'book_selected'
@@ -148,7 +156,8 @@ export interface MockState {
   reviews: MockReview[]
   // Written by the admin (#70); every anchor is null until then.
   rubric: RatingRubric
-  quotes: AdminLiteraryQuote[]
+  quotes: (AdminLiteraryQuote & DeletionMetadata)[]
+  tombstones?: { type: import('../types').DeletedType; id: string; purgedAt: string; purgedBy: string }[]
   // Fixed "now" so the mock picks the same current week every time.
   now: string
 }
@@ -467,11 +476,11 @@ export function createClubState(): MockState {
       w3: ['m3', 'm6'],
     },
     activity: [
-      { id: 'a1', type: 'summary_published', occurredAt: '2026-10-02T10:00:00+02:00', text: 'Se ha publicado el resumen de la reunión de la semana 2.' },
-      { id: 'a2', type: 'book_selected', occurredAt: '2026-09-15T18:00:00+02:00', text: '«La Regenta» es el nuevo libro del club.' },
-      { id: 'a3', type: 'vote_closed', occurredAt: '2026-09-14T21:00:00+02:00', text: 'Se ha cerrado la votación de Carmen.' },
-      { id: 'a4', type: 'review_available', occurredAt: '2026-09-10T12:00:00+02:00', text: 'Hay una nueva valoración de «Cumbres borrascosas».' },
-      { id: 'a5', type: 'vote_opened', occurredAt: '2026-09-30T20:00:00+02:00', text: 'Se ha abierto la votación de Jordi.' },
+      { id: 'a1', meetingId: 'mt2', type: 'summary_published', occurredAt: '2026-10-02T10:00:00+02:00', text: 'Se ha publicado el resumen de la reunión de la semana 2.' },
+      { id: 'a2', bookId: 'b3', type: 'book_selected', occurredAt: '2026-09-15T18:00:00+02:00', text: '«La Regenta» es el nuevo libro del club.' },
+      { id: 'a3', voteId: 'v1', type: 'vote_closed', occurredAt: '2026-09-14T21:00:00+02:00', text: 'Se ha cerrado la votación de Carmen.' },
+      { id: 'a4', bookId: 'b2', type: 'review_available', occurredAt: '2026-09-10T12:00:00+02:00', text: 'Hay una nueva valoración de «Cumbres borrascosas».' },
+      { id: 'a5', voteId: 'v2', type: 'vote_opened', occurredAt: '2026-09-30T20:00:00+02:00', text: 'Se ha abierto la votación de Jordi.' },
     ],
     curatorId: 'm6',
     votes: [
@@ -739,7 +748,7 @@ export function applyVoteScenario(state: MockState, scenario: VoteScenario): Moc
     vote.candidates.find((c) => c.bookId === 'b5')!.approverIds = ['m1', 'm2', 'm3', 'm4', 'm5']
     vote.outcome = { tiedBookIds: ['b7', 'b5'] }
     state.activity.push({
-      id: 'a6',
+      id: 'a6', voteId: 'v2',
       type: 'vote_closed',
       occurredAt: '2026-10-07T21:00:00+02:00',
       text: 'Se ha cerrado la votación de Jordi con un empate.',
