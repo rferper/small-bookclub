@@ -393,3 +393,51 @@ navigation in the mounted client sees their effects through existing permission 
 spoiler gates. No polling, reload persistence, new dependency, HTTP/OpenAPI change
 or automatic status/date transition. Types remain the draft contract for #71;
 backend archival/erasure/jobs and backups stay in #12/#46/#47/#48.
+
+
+## 2026-10-11: Fictional export, pending backups and safe operational audit (#101)
+
+**Decision:** Three central admin-only mock calls expose backup information,
+a fictional full-club JSON export and read-only audit metadata. Session and role
+checks precede reads and injected failures for all three. The guarded routes are
+`/administracion/copias` and `/administracion/registro`. The confirmation simulates
+admin authorisation only; an explicit mock option returns the distinct 409 without
+expiring the session or claiming real reauthentication.
+
+**Export projection:** Schema version 1 and fixed mock creation time accompany
+active/revoked members, allowlist, profiles, curator assignment, books, weeks,
+meetings and their draft/published records, completions, finished flags, reviews,
+votes/approvals/outcomes, all five rubric criteria, quotes, deletion metadata,
+minimal purge tombstones and safe audit events. Each object boundary whitelists
+its fields. The projection reads canonical current state, includes recoverable
+removed data and excludes purged substantive records, session/current-user control
+state, failure options and credentials/tokens. Existing media references (including
+in-memory mock upload data URLs) are copied; no media files are fetched or bundled.
+The stable UTF-8 filename is `club-de-lectura-demostracion.json`; this illustrative
+JSON is not a restorable database/media backup. Empty business collections remain
+valid. The export success event is committed after projection serialization succeeds
+and is included in that download.
+
+**Audit:** A small shared helper observes only safe scalar transitions around
+successful critical writes; it never snapshots raw requests or substantive payloads.
+It serializes those mock writes (including export) so overlapping promises cannot
+duplicate events or attribute another transaction's changes. It records actual
+member access/curator/status/publication/recovery/vote changes, not ordinary edits,
+reads, no-ops or refused/failed operations. Metadata contains event id/action,
+target type/id/safe label, actor id/display name and fixed timestamp. Quote and
+highlight targets use generic Spanish labels; book/member/date labels are immutable
+safe snapshots, surviving purge. Reads/export copy each metadata field explicitly,
+newest instant first, with descending event-id ties. Curator vote closure retains
+the curator actor without granting audit access. This in-memory log is neither
+persistent nor tamper resistant.
+
+**Policy:** The default is pending, with no invented frequency/destination/rotation,
+retention or last successful backup. An explicitly supplied last-backup timestamp
+is labelled simulated. UI separates the 30-day recycle bin and explains bounded
+rotation, backup expiry and tested consistent DB/media recovery at deployment.
+
+**Consequence:** No new dependency, backend, HTTP endpoint or OpenAPI change.
+Draft #71 routes: admin-only `GET /api/admin/backups`, `POST /api/admin/export`,
+`GET /api/admin/audit-log`; #71 settles real response/download/auth details before
+backend work. Real export/recent authorisation is #49; backup policy/restoration
+is #48; persistent audit is #50. No reload persistence or import controls.

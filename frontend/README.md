@@ -202,3 +202,23 @@ Mi perfil (`/mi-perfil`, #94) edits the signed-in user's own profile and lists t
 | `?mock-data=empty` (admin) | Only her name; no favourites and no books to choose («El club aún no ha terminado ningún libro…»). | Empty: «Aquí aparecerán tus valoraciones de los libros del club.» |
 
 A photo must be JPEG, PNG or WebP of at most 2 MB; it is previewed and sent only with «Guardar cambios». The mock keeps the saved name, texts, favourites and photo (as a data URL) in memory, so Miembros, the profiles, Inicio, «Valoraciones», Votaciones, Reuniones and Estadísticas show them until the next full page load.
+
+
+## Mock operations (#101)
+
+Administration links to `/administracion/copias` (fictional JSON export and pending
+backup policy) and `/administracion/registro` (read-only safe audit metadata).
+`?mock-operations=retry` fails the first backup-info, audit and export call once;
+`?mock-export=reauthorisation` consistently refuses export with the distinct 409,
+without signing out or offering a fake authentication flow. These combine with
+existing session/empty-state options. Programmatic `MockOptions.state.lastBackupAt`
+shows an explicitly supplied simulated backup timestamp; none is seeded.
+
+The client shapes are `BackupInfo`, `ClubExport` and `AuditEvent`. Future draft #71
+routes are admin-only `GET /api/admin/backups`, `POST /api/admin/export` and
+`GET /api/admin/audit-log`; production format/authentication are deliberately deferred.
+The explicit export projection and audit rules are documented in `docs/decisions.md`
+under #101. The download is UTF-8 JSON named `club-de-lectura-demostracion.json`.
+It includes fictional private/recoverable data and safe audit events, excludes session
+control state, credentials/options and purged payloads, and copies existing media
+references only. It cannot restore a real database or media directory.
