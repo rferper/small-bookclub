@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Small Bookclub API
-  version: 1.1.0
+  version: 1.2.0
   description: "Private Spanish book club member (#71) and administration (#102) contract. Future
-    same-site cookie API; no HTTP implementation/security enforcement. Approved access rechecked on
+    same-site cookie club API; only public health is implemented, without club security enforcement. Approved access rechecked on
     every request. Generated adoption #103, backend response validation #72. See docs/api.md."
 servers:
   - url: /
@@ -18,6 +18,27 @@ tags:
 security:
   - sessionCookie: []
 paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      summary: Public process liveness
+      description: Implemented bootstrap; does not query the database or external providers.
+      security: []
+      responses:
+        "200":
+          description: The API process is responding.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+              example:
+                status: ok
   /api/session:
     get:
       operationId: getSession

@@ -1,0 +1,31 @@
+[project]
+name = "backend"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=5.2.8,<5.3",
+    "django-ninja>=1.7.1",
+    "jsonschema>=4.26.0",
+    "pydantic>=2.14.0",
+    "pyyaml>=6.0.3",
+    "tzdata>=2026.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "ruff>=0.17.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["integration: requests through the actual Django HTTP URL stack"]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

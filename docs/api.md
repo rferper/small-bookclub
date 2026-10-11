@@ -1,12 +1,12 @@
 # API contract
 
-`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend uses generated types and the fictional in-memory mock. There is no backend yet, and schema tests do not prove HTTP authentication, database transactions or server spoiler enforcement. Generated central types/mock adoption is #103; backend integration response validation remains #72.
+`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend uses generated types and the fictional in-memory mock. The backend implements only public `GET /api/health` (#1); the 74 club/provider operations remain unimplemented, and schema tests do not prove HTTP authentication, database transactions or server spoiler enforcement. Generated central types/mock adoption is #103; backend integration response validation remains #72.
 
 The Home projection correction and regression coverage landed in #104. Finish #71 → #104 → #102 → #103 before backend work. #102 preserves the runtime and its current 1,102-test baseline.
 
 ## Naming and representation
 
-Stable unique operationIds match `ApiClient` method names; `discordCallback` is provider navigation with no client method. Paths use `/api`, opaque nonempty website string IDs and camelCase JSON fields. No member projection serializes internal mock state, Discord IDs, credentials, session control options or unrestricted dictionaries. Profiles use website-native identity; `CurrentUser.role` is only `member` or `admin` (curator is an assignment).
+Stable unique operationIds match `ApiClient` method names; `discordCallback` is provider navigation and `getHealth` is non-UI infrastructure, both with no client method. Paths use `/api`, opaque nonempty website string IDs and camelCase JSON fields. No member projection serializes internal mock state, Discord IDs, credentials, session control options or unrestricted dictionaries. Profiles use website-native identity; `CurrentUser.role` is only `member` or `admin` (curator is an assignment).
 
 All objects are closed. Discriminated `oneOf` variants preserve **absent** keys: locked club ratings have only `status`, lockedNoWeek records only `status`, lockedWeekNotRead only `status/weekNumber`, and empty/insufficient rating/taste branches only `status`. A visible branch requires its fields, including explicit nulls. `null` means a known missing optional value (avatar, summary, date, text, current vote), not a locked value; a hidden count is absent, never zero/null. Empty collections are arrays, not null. Each schema and JSON operation includes fictional examples.
 
@@ -104,6 +104,7 @@ All listed routes below are complete #71 operations. Path IDs are required opaqu
 | `updateMyProfile` | `PUT /api/me/profile` | `ProfileMultipart` | `MyProfile` | 200 | 400,401,403,500,503 |
 | `listMyReviews` | `GET /api/me/reviews` | `—` | `MyReviewEntry[]` | 200 | 401,500,503 |
 | `startSignIn` | Navigation: `GET /api/auth/discord/start` | Optional query `purpose=login|export`; default login | 302 Location; local Promise<void> adapter | 302 | 500,503 |
+| infrastructure health (`getHealth`, no client method) | Infrastructure: `GET /api/health` | Public process liveness; no database/provider probe | Closed `{status: "ok"}` JSON | 200 | None declared |
 | provider callback (`discordCallback`, no client method) | Navigation: `GET /api/auth/discord/callback` | Provider query `code`, `state`, `error`; valid state required server-side | 302 same-origin Location; no JSON | 302 | 500,503 |
 
 Admin operations (all path parameters are required opaque ids; type is restricted to DeletedType, preview to book/meeting/quote; metadata search alone requires query):
@@ -245,4 +246,10 @@ provenance. No label adapter is implemented in #103; backend HTTP projections an
 
 Complete #71 -> #104 -> #102 -> #103 before backend work. Backend scaffold #1 and
 feature/auth issues implement the contract; #72 verifies actual server responses.
-Backend/integration/Compose checks remain deferred until those systems exist.
+Full club workflow integration and Compose checks remain deferred; the health bootstrap is now verified by real Django HTTP tests.
+
+## Implemented backend subset (#1)
+
+`cd backend && uv run python -m config.contract` generates the schema from actual Ninja routes. The registered-route inventory must equal generated path/method keys, including schema-hidden handlers, and every generated operation must exist in the handwritten contract. Health must exist in both. It compares operationId, effective security, statuses, media types, resolved structural response/request schemas, request requiredness and parameters. Local refs are resolved offline; annotations (description/title/examples) are omitted, while required/closedness/types/const and other behavioural constraints remain. Property names and enum/const/default values are preserved. Cyclic/remote refs fail clearly. The locked Ninja registry adapter is covered by tests. The command reports the implemented subset explicitly; it does not demand future contract operations or claim full parity.
+
+Public `GET /api/health` returns exactly `{ "status": "ok" }`, without session, cookies, user data, database access or provider calls. Django integration tests validate the actual HTTP response against the root schema without running migrations. Future routes automatically enter the registered/generated subset; #72 still owns complete permission/spoiler/workflow validation. No HTTP ApiClient or runtime selection is introduced here (#105).
