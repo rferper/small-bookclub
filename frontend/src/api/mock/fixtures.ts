@@ -125,6 +125,8 @@ export interface MockAccount {
 }
 
 export interface MockState {
+  audit?: import('../types').AuditEvent[]
+  lastBackupAt?: string
   // Whether someone is signed in. When 'signedIn', currentUserId says who.
   // Tests may change it after rendering to simulate an expired session.
   session: 'signedIn' | 'anonymous' | 'denied'
@@ -166,6 +168,10 @@ export function createClubState(): MockState {
   return {
     session: 'signedIn',
     currentUserId: 'm1',
+    audit: [
+      { id: 'audit-seed-1', action: 'member_approved', target: { type: 'member', id: 'm2', label: 'Mateo' }, actor: { id: 'm1', displayName: 'Lucía' }, occurredAt: '2025-09-02T19:30:00+02:00' },
+      { id: 'audit-seed-2', action: 'vote_closed', target: { type: 'vote', id: 'v1', label: 'Votación' }, actor: { id: 'm6', displayName: 'Jordi' }, occurredAt: '2026-09-01T19:30:00+02:00' },
+    ],
     members: [
       { id: 'm1', displayName: 'Lucía', avatarUrl: null, role: 'admin' },
       { id: 'm2', displayName: 'Mateo', avatarUrl: null, role: 'member' },
@@ -701,6 +707,7 @@ export function createEmptyState(): MockState {
   const club = createClubState()
   return {
     ...club,
+    audit: [],
     members: club.members.slice(0, 1),
     revokedMembers: [],
     accounts: { m1: club.accounts.m1 },

@@ -1,4 +1,5 @@
 import type {
+  BackupInfo, ClubExport, AuditEvent,
   DeletedType, RecycleBinEntry,
   AdminLiteraryQuote, LiteraryQuoteInput,
   AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
@@ -33,6 +34,11 @@ import type {
 // implementation; an HTTP implementation will replace it once the backend
 // exists, without changing any component.
 export interface ApiClient {
+  // Draft #71: admin-only GET /api/admin/backups, POST /api/admin/export,
+  // GET /api/admin/audit-log. Mock confirmation only; production auth is #49.
+  getBackupInfo(): Promise<BackupInfo>
+  exportClubData(): Promise<ClubExport>
+  getAuditLog(): Promise<AuditEvent[]>
   getRecycleBin(): Promise<RecycleBinEntry[]>
   getDeletionPreview(type: 'book' | 'meeting' | 'quote', id: string): Promise<{ label: string; dependencies: string[] }>
   deleteBook(id: string): Promise<RecycleBinEntry[]>

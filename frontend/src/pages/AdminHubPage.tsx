@@ -3,6 +3,8 @@ import { Link } from 'react-router'
 // The admin sections that exist. Each later Administración issue adds its
 // own entry here (#95–#101); there are no placeholders for the others.
 const SECTIONS = [
+  { to: '/administracion/copias', title: 'Copias y exportación', description: 'Descarga los datos ficticios y consulta la política de copias pendiente.' },
+  { to: '/administracion/registro', title: 'Registro de actividad', description: 'Consulta las acciones administrativas simuladas y sus responsables.' },
   { to: '/administracion/papelera', title: 'Papelera', description: 'Recupera contenido retirado durante 30 días y revisa sus dependencias.' },
   { to: '/administracion/citas', title: 'Citas literarias', description: 'Cuida los textos y su atribución y elige cuáles aparecen en Inicio.' },
   { to: '/administracion/rubrica', title: 'Rúbrica de valoración', description: 'Define las descripciones de las cinco estrellas de cada criterio.' },

@@ -291,7 +291,10 @@ describe('atomic conflicts, exact expiry, ordering and safe purge', () => {
     await clean.deleteMeeting(m.id); await clean.purgeDeleted('meeting', m.id)
     await clean.deleteBook(book.id); await clean.purgeDeleted('book', book.id)
     expect(empty.books).toEqual([]); expect(empty.weeks).toEqual([]); expect(empty.meetings).toEqual([])
-    expect(JSON.stringify(empty)).not.toMatch(/Libro vacío|Resumen que se elimina/)
+    // #101 retains safe title metadata in audit events after purge, never content.
+    expect(JSON.stringify({ ...empty, audit: undefined })).not.toMatch(/Libro vacío|Resumen que se elimina/)
+    expect(JSON.stringify(empty.audit)).not.toContain('Resumen que se elimina')
+    expect(empty.audit?.some((e) => e.action === 'purged' && e.target.id === book.id && e.target.label === 'Libro vacío')).toBe(true)
     await expect(clean.getBook(book.id)).rejects.toBeInstanceOf(ApiError)
   })
 })

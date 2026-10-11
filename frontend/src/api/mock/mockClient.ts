@@ -61,6 +61,7 @@ import { ratingGate } from './ratingGate'
 import { countedReviews } from './statisticsGate'
 import { bookVisible, hasVisibleBook, meetingVisible, weekVisible, voteVisible } from './visibility'
 import { recycleBin } from './recycleBin'
+import { addAudit, auditedClient, exportProjection, safeEvents } from './operations'
 
 type Method = keyof ApiClient
 
@@ -69,6 +70,7 @@ type Method = keyof ApiClient
 export type MockSession = 'anonymous' | 'member' | 'admin' | 'curator' | 'denied'
 
 export interface MockOptions {
+  exportReauthorisationRequired?: boolean
   state?: MockState
   // Starting session. Omitted, the mock is signed in as state.currentUserId
   // (the fixture admin by default).
@@ -93,6 +95,7 @@ export function createMockClient({
   demoSignInAvailable = false,
   random = Math.random,
   failures = {},
+  exportReauthorisationRequired = false,
 }: MockOptions = {}): ApiClient {
   const remainingFailures: Partial<Record<Method, number>> = { ...failures }
   const failIfConfigured = (method: Method) => {
@@ -664,7 +667,22 @@ export function createMockClient({
   }
 
   const binAccess = (method: Method) => { requireSignedIn(); requireAdmin(); failIfConfigured(method) }
-  return {
+  const client: ApiClient = {
+    async getBackupInfo() {
+      binAccess('getBackupInfo')
+      return { policy: 'pending', lastBackupAt: state.lastBackupAt ?? null }
+    },
+    async getAuditLog() { binAccess('getAuditLog'); return safeEvents(state) },
+    async exportClubData() {
+      binAccess('exportClubData')
+      if (exportReauthorisationRequired) throw new ApiError(409, 'Se necesita volver a autorizar la exportación. En esta demostración no se realiza una reautenticación real.')
+      // Serialize before committing a success event; a failed projection is atomic.
+      const projection = exportProjection(state)
+      JSON.stringify(projection)
+      addAudit(state, 'exported', { type: 'club', id: 'club', label: 'Club de demostración' })
+      projection.audit = safeEvents(state)
+      return { filename: 'club-de-lectura-demostracion.json', json: JSON.stringify(projection, null, 2) }
+    },
     async getRecycleBin() { binAccess('getRecycleBin'); return bin.list() },
     async getDeletionPreview(type, id) { binAccess('getDeletionPreview'); return bin.preview(type, id) },
     async deleteBook(id) { binAccess('deleteBook'); return bin.remove('book', id) },
@@ -1349,4 +1367,5 @@ export function createMockClient({
       return toAdminMembers()
     },
   }
+  return auditedClient(client, state, () => { requireSignedIn(); requireAdmin() })
 }

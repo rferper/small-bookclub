@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { mockOptionsFromQuery } from './devOptions'
 
 describe('mock options from the query string', () => {
+  it('provides deterministic operation retry and reauthorisation scenarios', () => {
+    expect(mockOptionsFromQuery('?mock-export=reauthorisation&mock-operations=retry')).toEqual({ exportReauthorisationRequired: true, failures: { getBackupInfo: 2, getAuditLog: 2, exportClubData: 1 } })
+    expect(mockOptionsFromQuery('?mock-export=unknown&mock-operations=unknown')).toEqual({})
+  })
   it('reads the session, sign-in result and demo flag', () => {
     expect(mockOptionsFromQuery('?mock-session=denied&mock-sign-in=admin&mock-demo=1')).toEqual({
       session: 'denied',

@@ -19,6 +19,9 @@ const isSession = (value: string | null): value is MockSession => SESSIONS.inclu
 export function mockOptionsFromQuery(search: string): MockOptions {
   const params = new URLSearchParams(search)
   const options: MockOptions = {}
+  if (params.get('mock-export') === 'reauthorisation') options.exportReauthorisationRequired = true
+  // React development StrictMode runs initial read effects twice.
+  if (params.get('mock-operations') === 'retry') options.failures = { getBackupInfo: 2, getAuditLog: 2, exportClubData: 1 }
   const session = params.get('mock-session')
   if (isSession(session)) options.session = session
   const signIn = params.get('mock-sign-in')

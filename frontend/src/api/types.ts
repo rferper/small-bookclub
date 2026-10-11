@@ -3,6 +3,17 @@
 
 export type Role = 'admin' | 'member'
 
+export interface BackupInfo { policy: 'pending'; lastBackupAt: string | null }
+export type AuditAction = 'member_approved' | 'member_revoked' | 'member_restored' | 'curator_assigned' | 'curator_cleared' | 'book_status_changed' | 'summary_published' | 'summary_unpublished' | 'highlight_published' | 'highlight_unpublished' | 'soft_deleted' | 'restored' | 'purged' | 'vote_closed' | 'tie_resolved' | 'exported'
+export interface AuditEvent {
+  id: string; action: AuditAction
+  target: { type: string; id: string; label: string }
+  actor: { id: string; displayName: string }
+  occurredAt: string
+}
+// Illustrative mock JSON, not a database/media recovery format. #71 settles HTTP details.
+export interface ClubExport { filename: string; json: string }
+
 export interface CurrentUser {
   id: string
   displayName: string
