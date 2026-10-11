@@ -500,3 +500,25 @@ running port 5173 app and existing workspace node_modules.
 **Consequence:** No central client/type/mock output change in #71. Contract tests
 validate declared shapes/examples, not live HTTP/server security. Backend response
 validation is #72; backend/Compose checks are deferred until those systems exist.
+
+## 2026-10-11: Home spoiler privacy correction (#104)
+
+**Decision:** Inicio counts actual retained reviews on visible books through the
+same central `countedReviews` predicate as statistics: the viewer must have
+finished and submitted a rating for each counted book. The fictional global
+counter is not used. Revoked historical contributions still count only on those
+unlocked books; admin, member and curator follow the same rule. The Spanish label
+is now «valoraciones visibles».
+
+**Activity:** Existing deletion filters compose with canonical spoiler access
+before projecting any event id/type/time/text. Review events require a visible
+book unlocked by that same predicate. Summary events require a visible meeting,
+an actually published summary and the existing member `toMeetingRecord` gate,
+which handles cancellation, linked-week completion/removal and explicitly safe
+unlinked meetings. Missing or unknown subjects are omitted rather than inferred
+from text. Current publication/access state governs retained history; no new
+events are produced. Ordinary activity, public progress and approvals are unchanged.
+
+**Consequence:** No dependency or wire shape change; #71 already declares these
+predicates. The mock and documentation now agree. Backend Home/activity enforcement
+remains #44/#45, and no frontend filtering is claimed as server enforcement.
