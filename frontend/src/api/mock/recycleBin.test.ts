@@ -78,6 +78,7 @@ describe('central deletion visibility and retained facts', () => {
       await expect(reader.setApproval('v2', 'b5', true)).rejects.toMatchObject({ status: 409 })
     }
     state.currentUserId = 'm1'
+    await expect(api.createVote()).rejects.toMatchObject({ status: 409, message: expect.stringContaining('Restaura el libro') })
     expect(JSON.stringify(await api.listAdminBooks())).not.toMatch(/La Regenta|Cumbres borrascosas|Marianela/)
     expect(JSON.stringify(await api.listAdminMeetings())).not.toMatch(/"b2"|"b3"|"mt1"/)
     for (const call of [() => api.getAdminReadingPlan('b3'), () => api.getAdminMeetingRecord('mt1'), () => api.updateBook('b3', {} as never), () => api.saveMeetingSummary('mt1', { text: 'Refused', published: true })]) await expect(call()).rejects.toMatchObject({ status: 404 })

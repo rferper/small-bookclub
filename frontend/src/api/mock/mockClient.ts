@@ -994,7 +994,9 @@ export function createMockClient({
       failIfConfigured('createVote')
       if (!mayManageVotes()) throw new ApiError(403, 'Solo la curaduría o la administración pueden preparar una votación.')
       if (state.curatorId === null) throw new ApiError(409, 'Primero hay que asignar la curaduría.')
-      if (currentVote()) throw new ApiError(409, 'Ya hay una votación en preparación o abierta.')
+      const retainedCurrent = currentVote()
+      if (retainedCurrent && !voteVisible(state, retainedCurrent)) throw new ApiError(409, 'La votación actual contiene un libro retirado. Restaura el libro para recuperar la votación sin cambiar sus votos.')
+      if (retainedCurrent) throw new ApiError(409, 'Ya hay una votación en preparación o abierta.')
       let n = state.votes.length
       while (state.votes.some((v) => v.id === `v${n}`)) n++
       // The vote belongs to the current curator, even when the admin creates it.
