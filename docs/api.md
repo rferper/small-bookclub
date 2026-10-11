@@ -1,6 +1,6 @@
 # API contract
 
-`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend still uses the handwritten types and fictional in-memory mock. There is no backend yet, and schema tests do not prove HTTP authentication, database transactions or server spoiler enforcement. Generated central types/mock adoption is #103, and backend integration response validation is #72.
+`openapi.yaml` is the OpenAPI 3.1 source of truth for the session/member (#71) and administrative (#102) API. It describes future HTTP behaviour; the running frontend uses generated types and the fictional in-memory mock. There is no backend yet, and schema tests do not prove HTTP authentication, database transactions or server spoiler enforcement. Generated central types/mock adoption is #103; backend integration response validation remains #72.
 
 The Home projection correction and regression coverage landed in #104. Finish #71 → #104 → #102 → #103 before backend work. #102 preserves the runtime and its current 1,102-test baseline.
 
@@ -159,7 +159,7 @@ No client method is omitted; helpers such as `ApiError`, `SESSION_METHODS`, file
 
 All 42 admin operations require the same effective approved admin: 401 first, then admin 403 (including current curator), before resource lookup or payload validation. Unsafe requests also require CSRF before action. Allowlist actions resolve member 404, state 409, then input 400. Catalogue validates whole metadata/image before rechecking the single retained `leyendo` invariant immediately before commit; missing book 404, invalid/imported-cover input 400, second active book 409. No vote/date automatically changes status. Stable ids and server-owned origin links cannot be edited. Collection reads are unpaginated for this small club: catalogue unsorted, quotes insertion order, active allowlist before revoked in Spanish name order, weeks contiguous canonical order, highlights canonical order with removed slots retained, calendar upcoming ascending/past descending instants. Recycle bin is deletion instant descending, then type/id ascending; audit is instant descending then event id descending.
 
-Catalogue/calendar responses carry operational metadata only, never ratings/reviews/counts or meeting text. Only allowlist views expose Discord identity/access status. Editor endpoints expressly expose draft summaries/highlights; member endpoints and own profile keep the same #71 identity/spoiler gates for the admin. Bin/preview/audit are separate strict safe metadata boundaries: generic Spanish quote/highlight labels, book titles/meeting dates or member names where permitted, and operational dependency descriptions/counts without substantive text. Existing local bin labels may contain quote/highlight text; #103 must explicitly adapt these to the safe production projection rather than serialize internal mock state. Allowlist/media/profile fields are forbidden in safe audit/bin schemas. Schema closure rejects additional sensitive keys; it cannot prove that a permitted label string was safely composed. Backend integration tests must test provenance.
+Catalogue/calendar responses carry operational metadata only, never ratings/reviews/counts or meeting text. Only allowlist views expose Discord identity/access status. Editor endpoints expressly expose draft summaries/highlights; member endpoints and own profile keep the same #71 identity/spoiler gates for the admin. Bin/preview/audit are separate strict safe metadata boundaries: generic Spanish quote/highlight labels, book titles/meeting dates or member names where permitted, and operational dependency descriptions/counts without substantive text. The fictional mock deliberately retains the #100 baseline: quote bin labels contain the quote text and highlight labels contain an excerpt of up to 160 characters. #103 adopts generated shapes while preserving those local strings; it does not implement a production label adapter. Future backend HTTP bin/preview projections in #46/#47 must compose the generic safe labels required by this contract and must never serialize internal mock state. Allowlist/media/profile fields are forbidden in safe audit/bin schemas. Schema closure rejects additional sensitive keys; it cannot prove that a permitted label string was safely composed. Backend integration tests must test provenance.
 
 Book create/update use `BookMultipart`: required application/json `metadata` part and `cover` bytes only for `coverAction=replace`. Actions keep/remove omit bytes and metadataResultId; metadata requires a known search result id and omits bytes. Nonempty JPEG/PNG/WebP, at most 2,097,152 bytes inclusive; backend sniffs/re-encodes content and applies metadata/image in one atomic transaction. Blank optional metadata normalizes null, blank author lines are omitted. Limits and independent planned/actual calendar date pairs are in the input schema; no arbitrary remote cover URL, browser File or blob/data URL is production input. Metadata search has one required trimmed query (1..200); selecting results is local, fills blank fields, and makes no write. #15 supplies actual lookup.
 
@@ -204,3 +204,45 @@ npm run build
 Validation checks OpenAPI 3.1 structure, unique operationIds, local references and every declared schema/media/parameter example against JSON Schema 2020-12 (including date/time formats). No remote references or network resolution are allowed. Focused tests cover fictional session/gated/available/empty/outcome/input examples and negative privacy/input mutations; disposable malformed-document, unresolved-reference and invalid-example mutations must fail the validator. It does not call nonexistent HTTP endpoints. CI performs clean `npm ci` before these contract checks and frontend regression checks. Preserve the active workspace/dev server/native DLLs: dependency changes for #71 are installed in a disposable clean copy; never workspace `npm ci`.
 
 Backend unit/integration and Docker Compose tests are deferred because no backend exists; permission, state/lifecycle predicates, transactionality, OAuth/image validation and response-contract checks need backend implementation/testing. #104 corrected Home privacy; #102 defines administrative contract/export semantics; #103 generates types and adapts central mock/client without losing this contract; #72 validates actual backend responses. There are no paid services or accounts required for this contract tooling.
+
+## Generated frontend ownership (#103)
+
+Root `openapi.yaml` owns wire shapes; committed `frontend/src/api/generated.ts` must
+never be edited by hand. `types.ts` keeps readable generated component aliases,
+`client.ts` derives JSON success bodies from actual operation/status declarations
+and scalar inputs from generated request schemas. Type-level coverage includes all
+client methods and excludes only the provider callback. Internal mock state may
+retain private facts, but public projections compile against generated boundaries.
+
+From `frontend/`, run `npm run generate:api` after contract-first changes and commit
+both files. `npm run check:api` compares deterministic regeneration bytes;
+`npm run validate:contract` and `npm run test:contract` validate declarations/examples;
+`npm run test:type-boundaries` mutates used request/response schemas in disposable
+copies and requires errors at actual TypeScript boundaries. `npm test` includes
+actual mock return-value conformance and forbidden-field mutation cases. CI runs
+these after clean `npm ci` and before build. After installation all checks are offline;
+remote references are refused before generation.
+
+Pinned MIT openapi-typescript 7.13.0 generates using its documented Node AST API.
+A targeted npm peer override uses the existing TypeScript 6 for this package instead
+of its advertised ^5 peer. Actual AST API/output compatibility is verified by clean
+installation, deterministic regeneration, full type build and real-boundary mutation
+tests. No app compiler changes. All discriminator, const/oneOf, absent and nullability
+semantics come directly from the unchanged schema. Binary format generates Blob byte
+parts through the documented AST transform.
+
+`adapters.ts` maps browser File actions to generated profile/cover multipart JSON
+metadata plus optional bytes and FormData without sending HTTP. OAuth 302 handoff is
+separate from JSON results. Local `ClubExport {filename,json}` uses illustrative mock
+JSON and fictional data URLs; authenticated production ZIP/native media remain #102,
+implemented by #49 with fresh authorisation. ApiError(status,message,code?) preserves
+existing callers; explicit envelopes use generated {code,message} conventions.
+
+Local bin quote/highlight labels retain the #100 fictional text/excerpt behavior.
+They satisfy the generated string shape but are not evidence of production safe-label
+provenance. No label adapter is implemented in #103; backend HTTP projections and
+#72 integration checks must enforce the generic labels described above.
+
+Complete #71 -> #104 -> #102 -> #103 before backend work. Backend scaffold #1 and
+feature/auth issues implement the contract; #72 verifies actual server responses.
+Backend/integration/Compose checks remain deferred until those systems exist.

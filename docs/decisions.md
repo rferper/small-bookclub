@@ -569,3 +569,35 @@ download/fresh authorisation UI; #50 owns persistent audit; #72 validates backen
 responses. Existing OSS validator/CI checks the whole extension and sensitive-field
 mutations offline; these are schema/declaration tests, not HTTP security evidence.
 No new dependency, account, service, UI or runtime change.
+
+## 2026-10-11: Generated operation boundaries and local adapters (#103)
+
+**Decision:** Pin free MIT openapi-typescript 7.13.0 and commit deterministic generated.ts.
+Central JSON results derive from operations, public data from components, scalar inputs
+from request properties. File metadata derives from generated schemas; explicit multipart
+helpers produce JSON plus Blob parts. OAuth navigation and illustrative mock JSON export
+are separate adapters. Existing UI/mock rules remain intact.
+
+**Compatibility:** Generator 7.13.0 advertises TypeScript ^5 as peer, while this app uses TS6.
+Targeted npm override `openapi-typescript.typescript=$typescript` selects existing TS6,
+without force/legacy-peer-deps or compiler downgrades. The actual AST API is verified by
+clean npm ci, deterministic generation, full build, actual conformance and regenerated
+request/response mutations at real mock boundaries. An older generator trial introduced
+six high dev audit findings; the final installation has zero audit findings. No old
+generator workaround remains in generation.
+
+**Why:** The contract must control actual boundaries. The documented
+[Node AST API](https://openapi-ts.dev/node) works from validated memory offline.
+Original discriminator/const/oneOf/null/required semantics are preserved. Binary format
+uses TypeScript factory Blob nodes. External refs are rejected before generation.
+
+**Evidence:** Byte freshness, actual mock conformance and sensitive-field rejection
+complement behavior tests. Regenerated schema mutations must fail at actual mock/client
+compilation, without handwritten wire schemas or broad casts. Existing ApiError accepts
+optional generated code; explicit envelopes preserve callers. Generated LF is stable
+across Windows/Linux checkouts.
+
+**Consequence:** CI clean npm ci uses the recorded override then validates contract,
+freshness and boundaries before build. Dependencies were installed in a disposable copy;
+reviewed manifest/lock copied to preserve localhost 5173/native DLLs. Backend HTTP/auth/ZIP
+enforcement remains scoped; #72 must validate actual server responses.

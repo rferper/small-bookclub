@@ -21,12 +21,12 @@ export function addAudit(state: MockState, action: AuditAction, target: AuditEve
 interface Fact { key: string; value: string; target: AuditEvent['target']; action: AuditAction }
 function facts(state: MockState): Fact[] {
   const result: Fact[] = []
-  const put = (key: string, value: string, type: string, id: string, label: string, action: AuditAction) => result.push({ key, value, target: { type, id, label }, action })
+  const put = (key: string, value: string, type: AuditEvent['target']['type'], id: string, label: string, action: AuditAction) => result.push({ key, value, target: { type, id, label }, action })
   for (const m of state.members) put(`member:${m.id}`, 'active', 'member', m.id, m.displayName, 'member_approved')
   for (const m of state.revokedMembers) put(`member:${m.id}`, 'revoked', 'member', m.id, m.displayName, 'member_revoked')
   const curator = state.members.find((m) => m.id === state.curatorId)
   put('curator', state.curatorId ?? '', 'member', state.curatorId ?? 'club', curator?.displayName ?? 'Curaduría', curator ? 'curator_assigned' : 'curator_cleared')
-  const deletion = (type: string, id: string, label: string, deletedAt?: string) => put(`deletion:${type}:${id}`, deletedAt ? 'deleted' : 'active', type, id, label, deletedAt ? 'soft_deleted' : 'restored')
+  const deletion = (type: AuditEvent['target']['type'], id: string, label: string, deletedAt?: string) => put(`deletion:${type}:${id}`, deletedAt ? 'deleted' : 'active', type, id, label, deletedAt ? 'soft_deleted' : 'restored')
   for (const b of state.books) {
     put(`status:${b.id}`, b.status, 'book', b.id, b.title, 'book_status_changed')
     deletion('book', b.id, b.title, b.deletedAt)
