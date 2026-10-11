@@ -38,7 +38,11 @@ function checkInventory(clientSource, documentation, document) {
   assert.ok(callback?.includes('discordCallback') && callback.includes('no client method'), 'Callback explicitly has no client method')
   const callbackRoute = /`(GET \/api[^`]+)`/.exec(callback)
   assert.equal(operations.get('discordCallback'), callbackRoute?.[1])
-  assert.deepEqual([...operations.keys()].sort(), [...methods, 'discordCallback'].sort(), 'No undocumented contract operations')
+  const health = documentation.split(/\r?\n/).find((line) => line.startsWith('| infrastructure health'))
+  assert.ok(health?.includes('getHealth') && health.includes('no client method'), 'Health explicitly has no client method')
+  const healthRoute = /`(GET \/api[^`]+)`/.exec(health)
+  assert.equal(operations.get('getHealth'), healthRoute?.[1])
+  assert.deepEqual([...operations.keys()].sort(), [...methods, 'discordCallback', 'getHealth'].sort(), 'No undocumented contract operations')
 }
 
 test('complete client inventory documents every method and exact member/admin route', async () => {
@@ -49,6 +53,10 @@ test('complete client inventory documents every method and exact member/admin ro
   assert.throws(() => checkInventory(client.replace('export interface ApiClient {', 'export interface ApiClient {\n  undocumented(): Promise<void>'), documentation, document))
   assert.throws(() => checkInventory(client, documentation.replace('GET /api/session` |', 'GET /api/wrong-session` |'), document))
   assert.throws(() => checkInventory(client, documentation.replace('| `getBackupInfo`', '| `missingBackupInfo`'), document))
+  const unexplained = structuredClone(document)
+  unexplained.paths['/api/unexplained'] = { get: { operationId: 'unexplained' } }
+  assert.throws(() => checkInventory(client, documentation, unexplained))
+  assert.throws(() => checkInventory(client, documentation.replace('| infrastructure health', '| unexplained health'), document))
 })
 
 function minimalContract() {

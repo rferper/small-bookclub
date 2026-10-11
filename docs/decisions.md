@@ -601,3 +601,44 @@ across Windows/Linux checkouts.
 freshness and boundaries before build. Dependencies were installed in a disposable copy;
 reviewed manifest/lock copied to preserve localhost 5173/native DLLs. Backend HTTP/auth/ZIP
 enforcement remains scoped; #72 must validate actual server responses.
+
+
+## 2026-10-11: Migration-free health backend foundation (#1)
+
+**Decision:** Python 3.13 and Django 5.2 LTS are a supported pair per the
+[official Django 5.2 compatibility documentation](https://docs.djangoproject.com/en/5.2/releases/5.2/).
+uv records direct dependencies and exact transitive resolutions. No auth/admin/contenttypes/session
+applications or club models are installed; #2 sets the custom user before their initial migrations.
+Health is a real Ninja route with an independent closed `Literal["ok"]` response schema, public security
+and no DB/provider probes. Interactive docs/schema HTTP routes are disabled; local generation remains
+available for drift checking. No private club operations or server gating are claimed.
+
+**Free OSS dependencies:** `django` (BSD, framework), `django-ninja` (MIT, typed JSON API/schema),
+`pydantic` (MIT, explicit closed schema configuration), `pyyaml` (MIT, offline root contract parsing),
+`jsonschema` (MIT, actual HTTP response validation in tests), `tzdata` (Apache/BSD, consistent IANA data
+on Windows and clean CI). Dev: `pytest` (MIT, test runner), `pytest-django` (BSD, real Django HTTP stack
+without production database access), `ruff` (MIT, lint/format). Installed through `uv add`; lockfile
+commits reproducible versions. No account, service, payment or credentials needed.
+
+**Environment:** Explicit development/test/demo/production selector, strict true/false DEBUG,
+SQLite path, Spanish and aware datetimes; default club timezone UTC, never machine-derived.
+Production refuses missing explicit secret/hosts and DEBUG=true, and sets secure session/CSRF
+cookies. Local development fallback key is deliberately public, not a credential. Demo config alone
+provides no authentication. Shell variables are read directly; .env.example is documentation,
+not a hidden dotenv loader. Relative DB paths resolve inside backend, memory supported. Secrets and
+all SQLite artifacts are ignored. Full deployment security remains the relevant deployment issues.
+
+**Drift boundary:** The executable checker generates actual Ninja OpenAPI and inventories every
+registered route, including accidentally hidden routes, using a small tested adapter to the locked
+Ninja registry. All registered/generated operations must match path/method and handwritten operationId,
+effective security, response statuses/media/headers, request requiredness/media/schema and parameters.
+Every future real route automatically enters the subset. Health is mandatory; future contract operations
+are not demanded, copied into implementation or claimed as implemented. Local refs resolve offline;
+cyclic/remote refs are refused. Schema annotations may be omitted, but property names and behavioural
+constraints (including required, closedness, literal values and request encoding) remain. Independent
+negative mutations test both schema sides and registered/generated inventory. #72 retains full workflow
+integration and permissions/spoiler coverage.
+
+**Frontend:** getHealth is an explicit non-UI inventory exception alongside provider-owned
+discordCallback. Generated types are refreshed, but ApiClient/runtime/mock selection stays unchanged;
+#105 owns HTTP transport. Disposable frontend copies preserve the active workspace DLLs/port 5173.

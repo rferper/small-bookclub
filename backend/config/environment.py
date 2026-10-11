@@ -1,0 +1,61 @@
+"""Explicit environment configuration, independently testable without Django."""
+
+from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from django.core.exceptions import ImproperlyConfigured
+
+
+def configure(environ, base_dir):
+    environment = environ.get("BOOKCLUB_ENV", "development")
+    if environment not in {"development", "test", "demo", "production"}:
+        raise ImproperlyConfigured(
+            "BOOKCLUB_ENV must be development, test, demo or production"
+        )
+    production = environment == "production"
+    debug_text = environ.get(
+        "DEBUG", "true" if environment == "development" else "false"
+    )
+    if debug_text.lower() not in {"true", "false"}:
+        raise ImproperlyConfigured("DEBUG must be true or false")
+    debug = debug_text.lower() == "true"
+    if production and debug:
+        raise ImproperlyConfigured("DEBUG must be false in production")
+    secret = environ.get("SECRET_KEY", "").strip()
+    hosts = [
+        host.strip()
+        for host in environ.get("ALLOWED_HOSTS", "").split(",")
+        if host.strip()
+    ]
+    if production and (not secret or not hosts):
+        raise ImproperlyConfigured(
+            "Production requires explicit SECRET_KEY and ALLOWED_HOSTS"
+        )
+    timezone = environ.get("CLUB_TIMEZONE", "UTC")
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise ImproperlyConfigured(
+            "CLUB_TIMEZONE must be a valid IANA timezone"
+        ) from error
+    database = environ.get("DATABASE_PATH", str(base_dir / f"{environment}.sqlite3"))
+    if not database.strip():
+        raise ImproperlyConfigured("DATABASE_PATH must not be blank")
+    if database != ":memory:" and not Path(database).is_absolute():
+        database = str(base_dir / database)
+    return {
+        "ENVIRONMENT": environment,
+        "SECRET_KEY": secret or "public-development-only-key-never-use-in-production",
+        "DEBUG": debug,
+        "ALLOWED_HOSTS": hosts or ["localhost", "127.0.0.1", "[::1]", "testserver"],
+        "LANGUAGE_CODE": "es",
+        "TIME_ZONE": timezone,
+        "USE_TZ": True,
+        "DATABASES": {
+            "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": database}
+        },
+        "SESSION_COOKIE_SECURE": production,
+        "CSRF_COOKIE_SECURE": production,
+        "SESSION_COOKIE_HTTPONLY": True,
+        "SESSION_COOKIE_SAMESITE": "Lax",
+    }

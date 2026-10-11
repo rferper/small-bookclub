@@ -33,7 +33,7 @@ Only approved members can sign in (Discord login plus an admin-managed allowlist
 
 ## Running it
 
-The frontend currently runs on its own with fictional mock data (the backend comes next):
+The frontend runs with fictional mock data by default. The backend currently implements only public process liveness:
 
 ```sh
 cd frontend
@@ -41,7 +41,49 @@ npm ci
 npm run dev   # http://localhost:5173
 ```
 
-Backend and Docker Compose instructions: *(to do)*
+The backend uses Python 3.13 and Django 5.2 LTS. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+
+```sh
+cd backend
+uv sync --locked
+uv run python manage.py check
+uv run python manage.py runserver 127.0.0.1:8000
+# In another terminal:
+curl http://localhost:8000/api/health
+# {"status":"ok"}
+```
+
+Health is public process liveness, without database readiness probes, session or provider access. The club HTTP API is unimplemented; all frontend pages continue to use their mock client. HTTP client selection is #105. Containers/Compose remain #73.
+
+`backend/.env.example` documents shell variables; it is a reference, not automatically loaded. Defaults are `BOOKCLUB_ENV=development`, `DEBUG=true`, local allowed hosts, `DATABASE_PATH=development.sqlite3` and `CLUB_TIMEZONE=UTC`. Relative database paths resolve inside backend; `:memory:` is supported for tests. Timezone never follows the machine. `LANGUAGE_CODE=es` and `USE_TZ=True` always apply.
+
+| Selector | Debug default | Secret/hosts | Secure session/CSRF cookies |
+|---|---|---|---|
+| development | true | Public development fallback/local hosts | false |
+| test | false | Public development fallback/local hosts | false |
+| demo | false | Set private key and actual hosts before deployment | false (local bootstrap only) |
+| production | false (true is refused) | Explicit `SECRET_KEY` and comma-separated `ALLOWED_HOSTS` required | true |
+
+Invalid selector, boolean (`true`/`false` only), IANA timezone or blank database path fails clearly. These settings are a bootstrap, not deployed authentication/TLS security. Production configuration requires a private generated secret and actual deployment host; never commit either. Demo configuration alone does not create demo users or sign-in (#75).
+
+PowerShell test example (POSIX: prefix commands with `BOOKCLUB_ENV=test DATABASE_PATH=:memory:`):
+
+```powershell
+$env:BOOKCLUB_ENV = 'test'
+$env:DATABASE_PATH = ':memory:'
+uv run python manage.py check
+uv run pytest -m "not integration"
+uv run pytest -m integration
+uv run ruff check .
+uv run ruff format --check .
+uv run python -m config.contract
+```
+
+Optional club timezone override: `$env:CLUB_TIMEZONE = 'Europe/Madrid'`. Production example: set `BOOKCLUB_ENV=production`, `DEBUG=false`, a generated private `SECRET_KEY`, `ALLOWED_HOSTS` to the deployed hostname and `DATABASE_PATH` to an intended absolute SQLite location. Settings consume environment variables directly; keep local databases and credentials out of Git.
+
+Do **not** run `migrate` for this bootstrap. It installs no auth, admin, contenttypes or session database applications and defines no club models; system checks, health and both test selections work without migrations or a database file. #2 must set `AUTH_USER_MODEL` and create its initial migration before enabling auth-dependent applications/migrations. The default Django user is never created here.
+
+The schema command compares every registered/generated implemented operation against its handwritten contract, reports the implemented subset and fails on missing/undocumented handlers or changed behavioural schemas/security/statuses/media. See [docs/api.md](docs/api.md). It does not pretend the 74 future club/provider operations are implemented. CI runs locked uv install, checks, Ruff, both real nonempty test selections and schema drift checking; frontend CI continues its complete existing suite.
 
 The mock admin can maintain independent page/percentage targets at
 `/administracion/lecturas`: add, edit, reorder and confirm recoverable removal.
