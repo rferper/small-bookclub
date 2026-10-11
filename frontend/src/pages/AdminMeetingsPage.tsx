@@ -6,6 +6,7 @@ import type { AdminMeeting, AdminMeetingCalendar } from '../api/types'
 import { useAdminAccess } from '../admin/context'
 import { Card, EmptyState } from '../components/Card'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { DeleteContentButton } from '../components/DeleteContentButton'
 import { LoadError, Loading } from '../components/Status'
 import { CLUB_TIMEZONE, formatMeetingDateWithYear } from '../lib/format'
 import { meetingInstant, meetingLocalValues } from '../lib/meetingTime'
@@ -32,6 +33,7 @@ export function AdminMeetingsPage() {
         {meeting.removedWeekNumber !== undefined && <p>Semana retirada ({meeting.removedWeekNumber})</p>}
         {meeting.cancelled && <p className="font-semibold">Cancelada</p>}
         <Link className={linkClass} to={`${base}/${encodeURIComponent(meeting.id)}/resumen`}>Editar resumen y momentos destacados</Link>
+        <DeleteContentButton type="meeting" id={meeting.id} label={`reunión del ${formatMeetingDateWithYear(meeting.startsAt)}`} onDeleted={calendar.reload} />
       </li>)}</ul> : <EmptyState>{group === 'upcoming' ? 'No hay próximas reuniones. Puedes crear una cuando quieras.' : 'Todavía no hay reuniones pasadas.'}</EmptyState>}
     </Card>)}
   </div>
@@ -92,6 +94,7 @@ function MeetingEditor({ calendar, meeting, reload }: { calendar: AdminMeetingCa
     <h1 className="text-3xl">{meeting ? 'Editar reunión' : 'Crear reunión'}</h1>
     {meeting?.cancelled && <p className="font-semibold">Cancelada</p>}
     {meeting && <Link className={linkClass} to={`${base}/${encodeURIComponent(meeting.id)}/resumen`}>Editar resumen y momentos destacados</Link>}
+    {meeting && <DeleteContentButton type="meeting" id={meeting.id} label={`reunión del ${formatMeetingDateWithYear(meeting.startsAt)}`} disabled={busy} onDeleted={() => navigate(base)} />}
     <Card title="Fecha y lectura">
       <p className="mb-4 break-words text-bark">Zona horaria del club: {CLUB_TIMEZONE}</p>
       <form onSubmit={save} noValidate className="grid min-w-0 gap-4">

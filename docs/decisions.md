@@ -347,3 +347,49 @@ client operations remain planning input to #71; backend management/enforcement s
 in #35/#43/#11 and quote recovery/deletion stays in #100. Failed saves retain input,
 announce actionable Spanish errors and never update saved views. Immediate submit
 locks protect one whole transaction per form.
+
+## 2026-10-11: Canonical mock recovery and conservative purge (#100)
+
+**Decision:** The central typed client exposes deletion previews, book/meeting/quote
+removal and an admin-only recovery list with restore/purge operations. Existing
+week/highlight removal feeds that same list. Canonical arrays and optional deletion
+metadata own recoverable state; no parallel content snapshots are introduced.
+Central visibility filters suppress removed items and descendants before projection,
+including activity events whose fixtures now carry canonical subject references.
+The admin preview projects identifying labels and dependency counts without reading
+reviews or unrelated editor payloads. The guarded Papelera reuses ConfirmDialog
+for terminal purge and active editors reuse it for recoverable removal.
+
+**Reversible assumptions:** Bin order is newest deletion first with deterministic
+type/id ties. Recovery expires exactly 30 days after the mock clock; expired entries
+stay listed until an explicit purge, without a browser timer or background job.
+Restoration clears only the selected target's removal metadata. Required parents
+must be restored first, while independently removed descendants stay removed.
+Week ordering reinserts the retained ordinal clamped to active length and renumbers;
+highlights retain canonical array slots and surviving relative order. Current
+deliberate week/meeting link edits prevail over old removal facts. A removed meeting
+reservation remains a read-only Spanish association during unrelated week edits,
+and explicit unlink/relink releases it. Restoring a meeting whose linked week remains
+removed is allowed so recovery cannot deadlock; the existing lockedNoWeek gate
+continues to suppress its records.
+
+Votes containing a removed book are hidden whole and their actions are frozen with
+409, preserving candidates, approvals and closed outcomes unchanged for recovery.
+Restore conflicts are atomic, including the single Leyendo invariant, required
+parents, canonical same-book/one-to-one links and normalized quote uniqueness.
+Recoverable quotes retain their original active flag, insertion position and text
+uniqueness reservation until purge.
+
+**Purge:** Confirmation explicitly ends recovery without deleting dependent history
+in cascade. Books with retained weeks, meetings, reviews, finished/favourite marks
+or vote references refuse purge; meetings with week reservations, attendance or
+highlights refuse; weeks with completions or a retained meeting link refuse. An
+independent quote/highlight or empty eligible container loses its substantive
+payload, leaving at most type/id and purge actor/time in a minimal tombstone.
+This is simulated in-memory removal, not real disk or backup erasure.
+
+**Consequence:** Successful writes refresh canonical admin data and subsequent
+navigation in the mounted client sees their effects through existing permission and
+spoiler gates. No polling, reload persistence, new dependency, HTTP/OpenAPI change
+or automatic status/date transition. Types remain the draft contract for #71;
+backend archival/erasure/jobs and backups stay in #12/#46/#47/#48.
