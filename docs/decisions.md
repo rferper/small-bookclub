@@ -441,3 +441,62 @@ Draft #71 routes: admin-only `GET /api/admin/backups`, `POST /api/admin/export`,
 `GET /api/admin/audit-log`; #71 settles real response/download/auth details before
 backend work. Real export/recent authorisation is #49; backup policy/restoration
 is #48; persistent audit is #50. No reload persistence or import controls.
+
+## 2026-10-11: Member contract foundation and offline validation (#71)
+
+**Decision:** Root `openapi.yaml` defines OpenAPI 3.1 session/member operations
+with method-name operationIds, opaque string IDs, closed JSON Schema objects and
+discriminated absent/null variants. `docs/api.md` inventories every central client
+method; admin-only HTTP schemas are #102 and type generation/adoption is #103.
+Member reads/result-returning writes use 200, createVote 201, void completion,
+logout and demo 204 without bodies. Own flags/approval/review/profile replacements
+use PUT; action/create calls use POST; candidate removal DELETE. Lists remain
+unpaginated with the established ordering. No new product permission is granted.
+
+**Reversible flow assumptions:** Same-site `sessionid` HttpOnly/SameSite=Lax cookie,
+Secure under HTTPS deployment (local HTTP does not assert Secure-cookie support).
+GET session bootstraps `csrftoken`; unsafe JSON/multipart/logout/demo send
+`X-CSRFToken` (not an auth credential). Backend #5 may refine names/flow through
+the contract first. Discord entry/callback are 302 navigation with identify-only
+scope, exact allowlist/state checks and same-origin return. Optional `purpose=export`
+reserves #102 reauthentication on those same routes; no arbitrary redirect input.
+JSON errors are exactly required `{code,message}` with safe Spanish text and
+documented status codes, not the local ApiError adapter.
+
+**Multipart:** Profile metadata is an application/json part with avatarAction;
+replacement alone requires the binary JPEG/PNG/WebP avatar part <=2 MiB. Browser
+File/local AvatarChange are adapters, not JSON. Normalized text limits are after
+trim (`x-trimmed*Length` documents server obligations), retaining acceptance of
+leading/trailing whitespace. Optional blank text becomes null. Server content
+sniffing, canonical eligibility, atomicity and permission/gate predicates remain
+backend work, not claims made by schema tests. Output means/differences use distinct
+continuous schemas rather than half-star score constraints.
+
+**Home clarification:** PM confirmed the current global fixture review counter
+and ungated activity filter disagree with spec privacy. The contract requires
+actual retained viewer-unlocked review counts and canonical gated/published
+activity, omitting unverifiable subjects. #71 leaves runtime unchanged; #104
+corrects/tests this focused discrepancy before #102/#103. Order is #71 → #104 →
+#102 → #103 → backend. No privacy exception or change hidden in type generation.
+
+**Free OSS dev dependencies, pinned:** `@apidevtools/swagger-parser` 13.1.0
+checks the bundled OpenAPI 3.1 structural schema and resolves local references;
+`ajv` 8.20.0 validates JSON Schema 2020-12 examples; `ajv-formats` 3.0.1 checks
+dates/instants; `yaml` 2.8.3 parses YAML and rejects duplicate keys. The validator
+explicitly refuses remote refs so it runs offline after dependency installation.
+Its structural OAS3.1 support is verified against the actual bundled validator,
+since the public parser API documentation still describes earlier OAS versions.
+See [parser validator source](https://github.com/APIDevTools/swagger-parser/blob/main/lib/validators/schema.js)
+and [Ajv JSON Schema support](https://ajv.js.org/json-schema.html).
+
+**Why:** Separate structural validation/reference resolution from executable
+schema/example assertions; no backend scaffold or runtime dependency is needed.
+Node's built-in test runner exercises disposable malformed/ref/example mutations
+without interacting with Vite's native DLLs. The existing frontend CI retains
+clean npm ci, then runs `validate:contract` and `test:contract`. Tooling was installed
+in a disposable clean copy and only manifest/lock changes copied, preserving the
+running port 5173 app and existing workspace node_modules.
+
+**Consequence:** No central client/type/mock output change in #71. Contract tests
+validate declared shapes/examples, not live HTTP/server security. Backend response
+validation is #72; backend/Compose checks are deferred until those systems exist.

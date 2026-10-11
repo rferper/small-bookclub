@@ -8,7 +8,15 @@ npm run dev     # run at http://localhost:5173
 npm test        # unit and component tests (Vitest)
 npm run lint    # oxlint
 npm run build   # type-check and production build
+npm run validate:contract # offline OpenAPI 3.1 and declared-example validation
+npm run test:contract # focused contract/privacy/input tests
 ```
+
+The [API contract and complete client inventory](../docs/api.md) describe the
+session/member operations in root `openapi.yaml`, server privacy obligations,
+multipart/CSRF adapters and the remaining #104/#102/#103 work. The current
+handwritten client/types/mock stay in place; schema validation does not implement
+an HTTP backend or prove server enforcement.
 
 ## Structure
 
