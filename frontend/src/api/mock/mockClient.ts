@@ -1,4 +1,5 @@
 import { ApiError, type ApiClient } from '../client'
+import { mockDownload } from '../adapters'
 import type {
   AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
   AdminReadingPlan, ReadingWeekInput,
@@ -681,7 +682,7 @@ export function createMockClient({
       JSON.stringify(projection)
       addAudit(state, 'exported', { type: 'club', id: 'club', label: 'Club de demostración' })
       projection.audit = safeEvents(state)
-      return { filename: 'club-de-lectura-demostracion.json', json: JSON.stringify(projection, null, 2) }
+      return mockDownload('club-de-lectura-demostracion.json', JSON.stringify(projection, null, 2))
     },
     async getRecycleBin() { binAccess('getRecycleBin'); return bin.list() },
     async getDeletionPreview(type, id) { binAccess('getDeletionPreview'); return bin.preview(type, id) },
@@ -1383,3 +1384,4 @@ export function createMockClient({
   }
   return auditedClient(client, state, () => { requireSignedIn(); requireAdmin() })
 }
+

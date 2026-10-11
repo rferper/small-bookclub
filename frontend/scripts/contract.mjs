@@ -5,11 +5,10 @@ import Ajv2020 from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
 import { parseDocument } from 'yaml'
 
-export const contractPath = fileURLToPath(new URL('../../openapi.yaml', import.meta.url))
 const schemaId = 'urn:small-bookclub:contract'
 const methods = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'])
 
-export async function readContract(path = contractPath) {
+export async function readContract(path = fileURLToPath(new URL('../../openapi.yaml', import.meta.url))) {
   const yaml = parseDocument(await readFile(path, 'utf8'), { uniqueKeys: true })
   if (yaml.errors.length) throw new Error(yaml.errors.map((error) => error.message).join('\n'))
   return yaml.toJS()

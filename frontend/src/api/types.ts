@@ -1,659 +1,96 @@
-// Shapes returned by the API client. These are the draft contract that
-// openapi.yaml will be written from, so keep them close to what screens need.
+// Contract-owned data: change root openapi.yaml first, then npm run generate:api.
+import type { components } from './generated'
 
-export type Role = 'admin' | 'member'
+export type BackupInfo = components['schemas']['BackupInfo']
+export type AuditEvent = components['schemas']['AuditEvent']
+export type CurrentUser = components['schemas']['CurrentUser']
+export type Session = components['schemas']['Session']
+export type MemberSummary = components['schemas']['MemberSummary']
+export type BookSummary = components['schemas']['BookSummary']
+export type ReadingWeek = components['schemas']['ReadingWeek']
+export type MeetingAssignment = components['schemas']['MeetingAssignment']
+export type NextMeeting = components['schemas']['NextMeeting']
+export type MemberProgress = components['schemas']['MemberProgress']
+export type ActivityEvent = components['schemas']['ActivityEvent']
+export type ClubStats = components['schemas']['ClubStats']
+export type LiteraryQuote = components['schemas']['LiteraryQuote']
+export type LiteraryQuoteInput = components['schemas']['LiteraryQuoteInput']
+export type AdminLiteraryQuote = components['schemas']['AdminLiteraryQuote']
+export type HomeData = components['schemas']['HomeData']
+export type LibraryBook = components['schemas']['LibraryBook']
+export type ScheduleWeek = components['schemas']['ScheduleWeek']
+export type BookMeeting = components['schemas']['BookMeeting']
+export type OriginVote = components['schemas']['OriginVote']
+export type BookDetail = components['schemas']['BookDetail']
+export type MeetingListItem = components['schemas']['MeetingListItem']
+export type MeetingList = components['schemas']['MeetingList']
+export type MeetingSummaryInput = components['schemas']['MeetingSummaryInput']
+export type MeetingHighlightInput = components['schemas']['MeetingHighlightInput']
+export type AdminMeetingHighlight = components['schemas']['AdminMeetingHighlight']
+export type AdminMeetingRecord = components['schemas']['AdminMeetingRecord']
+export type MeetingHighlight = components['schemas']['MeetingHighlight']
+export type MeetingRecord = components['schemas']['MeetingRecord']
+export type MeetingDetail = components['schemas']['MeetingDetail']
+export type MeetingInput = components['schemas']['MeetingInput']
+export type AdminMeeting = components['schemas']['AdminMeeting']
+export type ReadingWeekInput = components['schemas']['ReadingWeekInput']
+export type AdminReadingWeek = components['schemas']['AdminReadingWeek']
+export type AdminReadingPlan = components['schemas']['AdminReadingPlan']
+export type AdminMeetingCalendar = components['schemas']['AdminMeetingCalendar']
+export type VoteCandidateBook = components['schemas']['VoteCandidateBook']
+export type VoteCandidate = components['schemas']['VoteCandidate']
+export type VoteOutcome = components['schemas']['VoteOutcome']
+export type Vote = components['schemas']['Vote']
+export type VoteHistoryItem = components['schemas']['VoteHistoryItem']
+export type VotesOverview = components['schemas']['VotesOverview']
+export type CriterionScores = components['schemas']['CriterionScores']
+export type MyReview = components['schemas']['MyReview']
+export type ClubReview = components['schemas']['ClubReview']
+export type ClubRatings = components['schemas']['ClubRatings']
+export type BookRatings = components['schemas']['BookRatings']
+export type RubricAnchors = components['schemas']['RubricAnchors']
+export type RatingRubric = components['schemas']['RatingRubric']
+export type ReviewInput = components['schemas']['ReviewInput']
+export type StatisticsThresholds = components['schemas']['StatisticsThresholds']
+export type BookStatistics = components['schemas']['BookStatistics']
+export type MemberStatistics = components['schemas']['MemberStatistics']
+export type StatisticsHighlights = components['schemas']['StatisticsHighlights']
+export type RatingStatistics = components['schemas']['RatingStatistics']
+export type Statistics = components['schemas']['Statistics']
+export type SharedBook = components['schemas']['SharedBook']
+export type TasteComparison = components['schemas']['TasteComparison']
+export type MemberCompatibility = components['schemas']['MemberCompatibility']
+export type TasteCompatibility = components['schemas']['TasteCompatibility']
+export type MemberDirectoryEntry = components['schemas']['MemberDirectoryEntry']
+export type MemberDirectory = components['schemas']['MemberDirectory']
+export type MemberWeekStatus = components['schemas']['MemberWeekStatus']
+export type MemberProfile = components['schemas']['MemberProfile']
+export type MyProfile = components['schemas']['MyProfile']
+export type MyReviewEntry = components['schemas']['MyReviewEntry']
+export type AdminMember = components['schemas']['AdminMember']
+export type AdminMembers = components['schemas']['AdminMembers']
+export type NewMember = components['schemas']['NewMember']
+export type AdminBook = components['schemas']['AdminBook']
+export type BookMetadataResult = components['schemas']['BookMetadataResult']
+export type DeletedType = components['schemas']['DeletedType']
+export type RecycleBinEntry = components['schemas']['RecycleBinEntry']
 
-export interface BackupInfo { policy: 'pending'; lastBackupAt: string | null }
-export type AuditAction = 'member_approved' | 'member_revoked' | 'member_restored' | 'curator_assigned' | 'curator_cleared' | 'book_status_changed' | 'summary_published' | 'summary_unpublished' | 'highlight_published' | 'highlight_unpublished' | 'soft_deleted' | 'restored' | 'purged' | 'vote_closed' | 'tie_resolved' | 'exported'
-export interface AuditEvent {
-  id: string; action: AuditAction
-  target: { type: string; id: string; label: string }
-  actor: { id: string; displayName: string }
-  occurredAt: string
-}
-// Illustrative mock JSON, not a database/media recovery format. #71 settles HTTP details.
-export interface ClubExport { filename: string; json: string }
+// Derived names never repeat wire schemas.
+export type Role = CurrentUser['role']
+export type AuditAction = AuditEvent['action']
+export type ActivityType = ActivityEvent['type']
+export type BookStatus = LibraryBook['status']
+export type HighlightKind = MeetingHighlight['kind']
+export type VoteStatus = Vote['status']
+export type Criterion = keyof CriterionScores
+export type MemberAccess = AdminMember['status']
+export type BookMetadata = Omit<BookMetadataResult, 'id'>
 
-export interface CurrentUser {
-  id: string
-  displayName: string
-  role: Role
-  avatarUrl: string | null
-}
-
-// Who is using the site. The signed-in user comes only from here, so the
-// app cannot hold two versions of it.
-export type Session =
-  // Nobody is signed in.
-  | { status: 'anonymous'; demoSignInAvailable: boolean }
-  // The last sign-in was refused: the Discord account is not on the
-  // allowlist or was revoked. There is no user and no club data.
-  | { status: 'denied'; demoSignInAvailable: boolean }
-  | { status: 'signedIn'; user: CurrentUser }
-
-export interface MemberSummary {
-  id: string
-  displayName: string
-  avatarUrl: string | null
-}
-
-export interface BookSummary {
-  id: string
-  title: string
-  authors: string[]
-  coverUrl: string | null
-}
-
-export interface ReadingWeek {
-  id: string
-  weekNumber: number
-  percentStart: number
-  percentEnd: number
-  pageStart: number
-  pageEnd: number
-  // ISO 8601 date-time of the linked meeting, if any.
-  meetingStartsAt: string | null
-  completedByMe: boolean
-}
-
-// The reading assigned for a meeting. Percent and pages are independent
-// facts set by the curator; the frontend shows them as returned.
-export interface MeetingAssignment {
-  weekNumber: number
-  percentStart: number
-  percentEnd: number
-  pageStart: number
-  pageEnd: number
-}
-
-export interface NextMeeting {
-  id: string
-  startsAt: string
-  book: BookSummary | null
-  assignment: MeetingAssignment | null
-}
-
-export interface MemberProgress {
-  member: MemberSummary
-  completed: boolean
-}
-
-export type ActivityType =
-  | 'book_selected'
-  | 'vote_opened'
-  | 'vote_closed'
-  | 'nomination_added'
-  | 'summary_published'
-  | 'review_available'
-
-export interface ActivityEvent {
-  id: string
-  type: ActivityType
-  occurredAt: string
-  // Ready-to-display Spanish text. The API composes it after applying
-  // spoiler rules, so the frontend never sees gated details.
-  text: string
-}
-
-export interface ClubStats {
-  booksCompleted: number
-  // Retained reviews on visible books the viewer has finished and rated,
-  // using the statistics gate; never a global club total.
-  reviews: number
-  members: number
-}
-
-export interface LiteraryQuote {
-  text: string
-  author: string | null
-  source: string | null
-}
-
-export interface LiteraryQuoteInput extends LiteraryQuote { active: boolean }
-export interface AdminLiteraryQuote extends LiteraryQuoteInput { id: string }
-
-export interface HomeData {
-  currentBook: BookSummary | null
-  currentWeek: ReadingWeek | null
-  nextMeeting: NextMeeting | null
-  memberProgress: MemberProgress[]
-  recentActivity: ActivityEvent[]
-  stats: ClubStats
-  quote: LiteraryQuote | null
-}
-
-// Club status of a book, set by an admin (#13). «Elegido» is a book chosen
-// but not started yet.
-export type BookStatus = 'propuesto' | 'elegido' | 'leyendo' | 'terminado' | 'archivado'
-
-// A book in Biblioteca. Dates are calendar dates (YYYY-MM-DD) without a
-// timezone; either may be unknown. Ratings, reviews and their counts are
-// gated (§5.5) and never part of these shapes.
-export interface LibraryBook extends BookSummary {
-  status: BookStatus
-  readingStartDate: string | null
-  readingEndDate: string | null
-  // The dates are the club's best guess (e.g. books read before the site).
-  datesApproximate: boolean
-}
-
-// One week of the reading plan. Percent and pages are independent facts set
-// by the curator; the frontend shows them as returned (§5.2).
-export interface ScheduleWeek {
-  id: string
-  // Own-user flag, from the same state as Inicio and meeting spoiler gating.
-  completedByMe: boolean
-  weekNumber: number
-  percentStart: number
-  percentEnd: number
-  pageStart: number
-  pageEnd: number
-  // Calendar date (YYYY-MM-DD) when there is no linked meeting to read for.
-  dueDate: string | null
-  meeting: { id: string; startsAt: string } | null
-  notes: string | null
-}
-
-// A meeting about the book. Its summary and highlights are gated and live
-// on the meeting page (#65), not here.
-export interface BookMeeting {
-  id: string
-  // ISO 8601 date-time.
-  startsAt: string
-  cancelled: boolean
-  weekNumber: number | null
-}
-
-// The vote the book came from, with a short ready-to-display Spanish label.
-export interface OriginVote {
-  id: string
-  label: string
-}
-
-export interface BookDetail extends LibraryBook {
-  plannedStartDate: string | null
-  plannedEndDate: string | null
-  // Plain text, never HTML.
-  description: string | null
-  // Free text as entered, e.g. "1884–1885".
-  publicationDate: string | null
-  publisher: string | null
-  isbn: string | null
-  pageCount: number | null
-  schedule: ScheduleWeek[]
-  meetings: BookMeeting[]
-  originVote: OriginVote | null
-}
-
-// A meeting in Reuniones. The server decides whether it is upcoming or past
-// with its own clock; the frontend never compares dates itself.
-export interface MeetingListItem {
-  id: string
-  // ISO 8601 date-time.
-  startsAt: string
-  cancelled: boolean
-  // null for a meeting that is not about a book.
-  book: BookSummary | null
-  assignment: MeetingAssignment | null
-}
-
-// Upcoming meetings soonest first, past meetings most recent first.
-// Summaries and highlights are never part of the list.
-export interface MeetingList {
-  upcoming: MeetingListItem[]
-  past: MeetingListItem[]
-}
-
-export type HighlightKind = 'quote' | 'paraphrase'
-
-// Admin operations preserve independent summary/highlight publication.
-export interface MeetingSummaryInput { text: string; published: boolean }
-export interface MeetingHighlightInput extends MeetingSummaryInput { kind: 'quote' | 'paraphrase'; speakerIds: string[] }
-export interface AdminMeetingHighlight extends MeetingHighlightInput { id: string; speakers: MemberSummary[] }
-export interface AdminMeetingRecord {
-  id: string; startsAt: string; cancelled: boolean; book: BookSummary | null
-  week: { id: string; weekNumber: number; removed: boolean } | null
-  markedSafe: boolean; summary: MeetingSummaryInput | null
-  highlights: AdminMeetingHighlight[]; speakerOptions: MemberSummary[]
-}
-
-// A published highlight. Plain text, never HTML.
-export interface MeetingHighlight {
-  id: string
-  text: string
-  kind: HighlightKind
-  speakers: MemberSummary[]
-}
-
-// What the signed-in user may see of the meeting's summary and highlights,
-// decided by the server (§5.3). The locked shapes carry no summary or
-// highlights at all, not even empty ones, so nothing gated reaches the browser.
-export type MeetingRecord =
-  // Plain-text summary, or null when none is published; published highlights
-  // in display order. Drafts are never returned.
-  | { status: 'visible'; summary: string | null; highlights: MeetingHighlight[] }
-  // The meeting's linked week, which the user has not marked as read.
-  | { status: 'lockedWeekNotRead'; weekNumber: number }
-  // No linked week, and the admin has not marked the meeting safe.
-  | { status: 'lockedNoWeek' }
-
-export interface MeetingDetail extends MeetingListItem {
-  upcoming: boolean
-  // Who attended, or null while the admin has not recorded it.
-  attendance: MemberSummary[] | null
-  record: MeetingRecord
-}
-
-// Operational admin calendar only: never substantive meeting records.
-export interface MeetingInput { startsAt: string; bookId: string | null; weekId: string | null }
-export interface AdminMeeting extends MeetingInput {
-  removedWeekNumber?: number
-  id: string
-  cancelled: boolean
-  upcoming: boolean
-  attendance: MemberSummary[] | null
-  attendanceEligible: boolean
-}
-export interface ReadingWeekInput {
-  percentStart: number; percentEnd: number; pageStart: number; pageEnd: number
-  dueDate: string | null; notes: string | null; meetingId: string | null
-}
-export interface AdminReadingWeek extends ReadingWeekInput { id: string; weekNumber: number; completionCount: number; removedMeeting?: boolean }
-export interface AdminReadingPlan {
-  book: { id: string; title: string; pageCount: number | null }
-  weeks: AdminReadingWeek[]
-  meetings: { id: string; startsAt: string; cancelled: boolean }[]
-}
-export interface AdminMeetingCalendar {
-  upcoming: AdminMeeting[]
-  past: AdminMeeting[]
-  books: { id: string; title: string }[]
-  weeks: { id: string; bookId: string; weekNumber: number; meetingId: string | null }[]
-  activeMembers: MemberSummary[]
-}
-
-// Votes (§5.4). Approval voting: a member approves any number of candidates,
-// one vote each. Votes are public, so every member gets the same data; only
-// `approvedByMe` depends on who is signed in.
-export type VoteStatus = 'draft' | 'open' | 'closed'
-
-// A candidate book with the brief metadata shown on the ballot.
-export interface VoteCandidateBook extends BookSummary {
-  // Free text as entered, e.g. "1884–1885".
-  publicationDate: string | null
-  pageCount: number | null
-}
-
-export interface VoteCandidate {
-  book: VoteCandidateBook
-  // Everyone who approved this candidate. Empty while the vote is a draft.
-  approvals: MemberSummary[]
-  approvedByMe: boolean
-}
-
-// How a closed vote ended, decided by the server; the frontend never
-// computes a winner. A tie is resolved by hand (no automatic tie-break), so
-// a closed vote may still be waiting for the club's decision.
-export type VoteOutcome =
-  // `tieNote` is plain text, or null when there was no tie.
-  | { status: 'winner'; winner: BookSummary; tieNote: string | null }
-  // The book ids of the tied candidates; there is no winner yet.
-  | { status: 'tiePending'; tiedBookIds: string[] }
-
-export interface Vote {
-  id: string
-  status: VoteStatus
-  curator: MemberSummary
-  // ISO 8601 date-times: null while a draft, and until it is closed.
-  openedAt: string | null
-  closedAt: string | null
-  // In shortlist order, in every status.
-  candidates: VoteCandidate[]
-  // null unless the vote is closed.
-  outcome: VoteOutcome | null
-  // What the signed-in user may do with this vote, decided by the server
-  // (#91). The frontend shows controls from these flags only; the backend
-  // enforces every rule.
-  // Edit the shortlist, open and close: the current curator or the admin,
-  // while the vote is a draft or open.
-  canManage: boolean
-  // Record the book the club chose: the admin only, while a tie is pending.
-  canRecordTieWinner: boolean
-  // Whether the signed-in user is this vote's curator.
-  curatedByMe: boolean
-}
-
-// A closed vote in the history list.
-export interface VoteHistoryItem {
-  id: string
-  curator: MemberSummary
-  openedAt: string
-  closedAt: string
-  outcome: VoteOutcome
-  candidateCount: number
-}
-
-export interface VotesOverview {
-  // The member currently assigned as curator, or null if none is.
-  curator: MemberSummary | null
-  // The draft or open vote, if any. There is at most one.
-  current: Vote | null
-  // Every closed vote, most recently closed first.
-  history: VoteHistoryItem[]
-  // Whether the signed-in user may start a draft vote: the current curator
-  // or the admin, when a curator is assigned and no vote is draft or open.
-  canCreateVote: boolean
-}
-
-// Ratings and reviews (§5.5). The five mandatory criteria, always in this order.
-export type Criterion = 'disfrute' | 'estilo' | 'personajes' | 'trama' | 'huella'
-
-// One score per criterion: 1 to 5 in steps of 0.5.
-export type CriterionScores = Record<Criterion, number>
-
-// The signed-in user's own review. They always get it, whatever the gate says.
-export interface MyReview {
-  scores: CriterionScores
-  // Unweighted mean of the five scores, not rounded.
-  overall: number
-  // Plain text, never HTML; null when there is none.
-  text: string | null
-  // ISO 8601 date-times; editedAt is null until the first edit.
-  submittedAt: string
-  editedAt: string | null
-}
-
-// A member's review, only sent once the gate is passed.
-export interface ClubReview {
-  member: MemberSummary
-  scores: CriterionScores
-  overall: number
-  // Plain text, never HTML; null when there is none.
-  text: string | null
-  isMine: boolean
-}
-
-// What the signed-in user may see of the club's ratings, decided by the
-// server (§5.5). The locked shape carries nothing else at all: no count,
-// mean, name, score or text, not even empty ones.
-export type ClubRatings =
-  | { status: 'locked' }
-  | {
-      status: 'visible'
-      // `n`: the number of submitted reviews.
-      reviewCount: number
-      // Mean of every review's overall, each member weighted equally.
-      overallMean: number
-      criterionMeans: CriterionScores
-      // The user's own review first, then the others by display name.
-      // Never ordered by score.
-      reviews: ClubReview[]
-    }
-
-export interface BookRatings {
-  book: BookSummary
-  // Whether the book is an official club read that can be rated.
-  ratable: boolean
-  // The user's «He terminado el libro» flag, separate from weekly reading.
-  finishedByMe: boolean
-  myReview: MyReview | null
-  club: ClubRatings
-}
-
-// The admin-written meaning of each whole-star anchor (§5.5), or null where
-// there is none. Not gated: the same for everyone.
-export type RubricAnchors = Record<1 | 2 | 3 | 4 | 5, string | null>
-export type RatingRubric = Record<Criterion, RubricAnchors>
-
-export interface ReviewInput {
-  scores: CriterionScores
-  // Plain text; trimmed by the server, and a blank text is saved as null.
-  text: string | null
-}
-
-// Statistics (§5.6, #68). How many counted ratings a book or member needs
-// to appear in a highlight.
-export interface StatisticsThresholds {
-  bookRatings: number
-  memberRatings: number
-}
-
-// A book's figures over the ratings the viewer may see. Values are never
-// rounded; only the display rounds.
-export interface BookStatistics {
-  book: BookSummary
-  reviewCount: number
-  // Mean of its reviews' overalls (the #67 club mean).
-  overallMean: number
-  // Population standard deviation of its reviews' overalls; 0 with one review.
-  dispersion: number
-}
-
-export interface MemberStatistics {
-  member: MemberSummary
-  isMe: boolean
-  reviewCount: number
-  // Mean of the member's counted overalls, each rating weighted equally.
-  overallMean: number
-}
-
-// Each list is empty when there is not enough data, and otherwise holds
-// every tied entry, by title or name with Spanish collation.
-export interface StatisticsHighlights {
-  topRated: BookStatistics[]
-  lowestRated: BookStatistics[]
-  mostDivisive: BookStatistics[]
-  mostGenerous: MemberStatistics[]
-  harshest: MemberStatistics[]
-}
-
-// Figures over the ratings of the books the viewer has unlocked (finished
-// and rated), decided by the server. Books the viewer has not unlocked are
-// absent, and nothing says how many there are. The empty shape carries no
-// other key at all.
-export type RatingStatistics =
-  | { status: 'empty' }
-  | {
-      status: 'available'
-      // Books with at least one counted rating.
-      bookCount: number
-      // Ratings counted.
-      reviewCount: number
-      // Means over all counted ratings, each rating weighted equally.
-      overallMean: number
-      criterionMeans: CriterionScores
-      // By overallMean, highest first; ties by title.
-      books: BookStatistics[]
-      // The viewer first, then by display name; never by score.
-      members: MemberStatistics[]
-      highlights: StatisticsHighlights
-    }
-
-export interface Statistics {
-  // Catalogue books with status «terminado» or «archivado». Not gated.
-  booksRead: number
-  // Meetings not cancelled that started before the server's now. Not gated.
-  meetingsHeld: number
-  thresholds: StatisticsThresholds
-  ratings: RatingStatistics
-}
-
-// Taste compatibility (§5.6, #93): the viewer against each other member.
-// One book both have rated, with each member's overall and the absolute
-// difference between them. Values are never rounded.
-export interface SharedBook {
-  book: BookSummary
-  myOverall: number
-  theirOverall: number
-  // |myOverall − theirOverall|, between 0 and 4.
-  difference: number
-}
-
-// Decided by the server. Below the threshold it carries no other key at all:
-// no difference, book or score.
-export type TasteComparison =
-  | { status: 'insufficient' }
-  | {
-      status: 'available'
-      // Mean over the shared books of the overall differences (0–4).
-      overallDifference: number
-      // Mean over the same books of the absolute difference per criterion.
-      criterionDifferences: CriterionScores
-      // By title with Spanish collation.
-      books: SharedBook[]
-    }
-
-export interface MemberCompatibility {
-  member: MemberSummary
-  // Books the viewer has unlocked (finished and rated) that this member has
-  // rated too; 0 when there are none.
-  sharedBookCount: number
-  comparison: TasteComparison
-}
-
-export interface TasteCompatibility {
-  // Shared books needed before any difference is computed or sent.
-  minSharedBooks: number
-  // Every other member of the club, by display name; never by score. The
-  // viewer is not listed.
-  members: MemberCompatibility[]
-}
-
-// Miembros (#69). Profiles are website-native (§3) and carry no rating,
-// review or taste data at all: comparing tastes lives in Estadísticas (#93),
-// so nothing gated can reach a profile. Revoked members are absent.
-
-// One active member in the directory. `completedCurrentWeek` is the public
-// weekly status (§12 decision 55), from the same state as Inicio's progress;
-// null exactly when there is no current reading week.
-export interface MemberDirectoryEntry {
-  member: MemberSummary
-  isMe: boolean
-  completedCurrentWeek: boolean | null
-}
-
-export interface MemberDirectory {
-  // The week number of the club's current reading week, or null.
-  currentWeekNumber: number | null
-  // Every active member, the viewer included, by display name with Spanish
-  // collation; never by progress.
-  members: MemberDirectoryEntry[]
-}
-
-export interface MemberWeekStatus {
-  weekNumber: number
-  completed: boolean
-}
-
-export interface MemberProfile {
-  member: MemberSummary
-  isMe: boolean
-  // Plain text, never HTML; null when there is none.
-  bio: string | null
-  favouriteQuote: string | null
-  // Club books the member chose (read by the club, at most 5), in their
-  // order. A public profile choice: no score, status or date.
-  favouriteBooks: BookSummary[]
-  // This week's reading status, or null when there is no current week.
-  currentWeek: MemberWeekStatus | null
-}
-
-// Mi perfil (#94). Every call acts for the signed-in user only and takes no
-// member id: the server takes the member from the session (§9).
-
-// The signed-in user's own profile, as the edit form needs it.
-export interface MyProfile {
-  member: MemberSummary
-  // Plain text, never HTML; null when there is none.
-  bio: string | null
-  favouriteQuote: string | null
-  // In the member's order, at most 5.
-  favouriteBooks: BookSummary[]
-  // Every book that may be a favourite (status «terminado» or «archivado»),
-  // by title with Spanish collation. The server decides it, so the rule
-  // lives in one place.
-  favouriteOptions: BookSummary[]
-}
-
-// What happens to the avatar on save: nothing, removed, or replaced by a new
-// image (JPEG, PNG or WebP, at most 2 MB).
+// Local browser actions are converted to generated multipart metadata by adapters.ts.
 export type AvatarChange = { action: 'keep' } | { action: 'remove' } | { action: 'replace'; file: File }
-
-// The whole profile, saved at once. There is no member id: an id smuggled in
-// is refused (403), and the backend ignores it and uses the session.
-export interface ProfileUpdate {
-  // One line, 1–40 characters after trimming. Not unique.
-  displayName: string
-  // Plain text, trimmed by the server; a blank value is saved as null.
-  // At most 500 and 300 characters after trimming.
-  bio: string | null
-  favouriteQuote: string | null
-  // At most 5 distinct ids of books in `favouriteOptions`, in order.
-  favouriteBookIds: string[]
-  avatar: AvatarChange
-}
-
-// One of the signed-in user's own reviews, with the same meanings as
-// `MyReview`. Never gated (§5.5) and never carries club data.
-export interface MyReviewEntry {
-  book: BookSummary
-  scores: CriterionScores
-  overall: number
-  text: string | null
-  submittedAt: string
-  editedAt: string | null
-}
-
-// Administración (#70): the member allowlist, for the admin only. These are
-// the only shapes that carry a Discord user id, a role or an access status;
-// no member-facing call ever does. No rating, review, profile text or
-// favourite either.
-export type MemberAccess = 'active' | 'revoked'
-
-export interface AdminMember {
-  member: MemberSummary
-  // The exact Discord user id on the allowlist: 17–20 ASCII digits.
-  discordId: string
-  role: Role
-  status: MemberAccess
-  addedAt: string
-  // Set only when the member is revoked, otherwise null.
-  revokedAt: string | null
-  isMe: boolean
-  isCurator: boolean
-}
-
-export interface AdminMembers {
-  // Active members first, then revoked ones; each group by display name with
-  // Spanish collation.
-  members: AdminMember[]
-  // The current curator, or null when nobody is assigned.
-  curator: MemberSummary | null
-}
-
-// A new allowlist entry. The server trims both values; adding approves the
-// member at once, with the `member` role and an empty profile.
-export interface NewMember {
-  discordId: string
-  displayName: string
-}
-
-// Admin catalogue (#95): metadata only; related records stay in their own APIs.
-export type AdminBook = Omit<BookDetail, 'schedule' | 'meetings'>
-export type BookMetadata = Pick<AdminBook, 'title' | 'authors' | 'description' | 'publicationDate' | 'publisher' | 'isbn' | 'pageCount' | 'coverUrl'>
+export type ProfileUpdate = Omit<components['schemas']['ProfileMetadata'], 'avatarAction'> & { avatar: AvatarChange }
 export type BookCoverChange = AvatarChange | { action: 'metadata'; resultId: string }
-// A whole catalogue edit, atomically saved. id and originVote cannot be edited.
-export type BookInput = Omit<AdminBook, 'id' | 'originVote' | 'coverUrl'> & { cover: BookCoverChange }
-export type BookMetadataResult = BookMetadata & { id: string }
-// Admin-only recovery projection: no catalogue, review or profile payload.
-export type DeletedType = 'book' | 'meeting' | 'quote' | 'week' | 'highlight'
-export interface RecycleBinEntry {
-  type: DeletedType
-  id: string
-  label: string
-  deletedAt: string
-  deletedByName: string
-  purgeDueAt: string
-  expired: boolean
-  dependencies: string[]
-}
+export type BookInput = Omit<components['schemas']['BookMetadataInput'], 'coverAction' | 'metadataResultId'> & { cover: BookCoverChange }
+
+// Deliberately local illustrative download; production export is authenticated ZIP.
+export interface ClubExport { filename: string; json: string }

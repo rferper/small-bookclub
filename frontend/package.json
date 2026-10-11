@@ -11,7 +11,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate:contract": "node scripts/validate-contract.mjs",
-    "test:contract": "node --test scripts/contract-tests.mjs"
+    "test:contract": "node --test scripts/contract-tests.mjs",
+    "generate:api": "node scripts/generate-api-types.mjs",
+    "check:api": "node scripts/generate-api-types.mjs --check",
+    "test:type-boundaries": "node scripts/check-type-boundaries.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -31,6 +34,7 @@
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "jsdom": "^30.1.2",
+    "openapi-typescript": "6.7.6",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
