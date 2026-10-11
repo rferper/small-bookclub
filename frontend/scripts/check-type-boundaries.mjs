@@ -32,6 +32,7 @@ try {
   await cp(join(frontend, 'scripts'), join(temporary, 'scripts'), { recursive: true })
   await cp(join(frontend, 'tsconfig.app.json'), join(temporary, 'tsconfig.app.json'))
   await cp(join(frontend, 'package.json'), join(temporary, 'package.json'))
+  await cp(join(frontend, 'proxy.ts'), join(temporary, 'proxy.ts'))
   // Read-only dependency reuse: generated files and compiler caches live in the disposable copy.
   await symlink(join(frontend, 'node_modules'), join(temporary, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
   const parsed = ts.parseConfigFileTextToJson('tsconfig.app.json', await readFile(join(temporary, 'tsconfig.app.json'), 'utf8'))

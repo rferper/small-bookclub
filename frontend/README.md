@@ -33,6 +33,18 @@ an HTTP backend or prove server enforcement.
 ## Configuration
 
 - `VITE_CLUB_TIMEZONE`: timezone used to show dates (default `Europe/Madrid`).
+- `VITE_API_MODE`: omitted or `mock` selects the fictional preview. `http` selects the explicit HTTP client; all feature/session methods currently refuse safe 503 until their backend issues enable adapters. Empty/invalid values show a Spanish configuration error before session requests. HTTP ignores all mock query controls.
+- Optional `API_DEV_PROXY_TARGET`: shell-only development setting, an exact HTTP(S) origin (e.g. `http://127.0.0.1:8000`) without credentials/path/query/fragment/wildcards. Only the dev server proxies `/api/`; browser URLs remain same-origin. Invalid explicit values clearly fail the dev server. Builds do not use this setting.
+
+For HTTP verification, use a disposable frontend copy and existing disposable dependencies. Preserve the owner's port 5173/native DLLs and never run workspace `npm ci`. In PowerShell, from that copy:
+
+```powershell
+$env:VITE_API_MODE = 'http'
+$env:API_DEV_PROXY_TARGET = 'http://127.0.0.1:8000'
+npm run dev -- --host 127.0.0.1 --port 18052 --strictPort
+```
+
+`http://127.0.0.1:18052/` currently shows unavailable/retry. An isolated test harness may exercise public health directly through the transport; health is not an ApiClient/UI method. Stop only the temporary server created for this check and clear those shell variables afterwards. This smoke check implements no OAuth/club workflow.
 
 ## Mock session in development
 
