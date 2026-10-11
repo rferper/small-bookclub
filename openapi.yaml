@@ -1,0 +1,3777 @@
+openapi: 3.1.0
+info:
+  title: Small Bookclub member API
+  version: 1.0.0
+  description: "Private Spanish book club; contract foundation/member operations (#71). Administration
+    #102; generated types/mock adoption #103; backend response validation #72. This document
+    implements no HTTP/security enforcement. Same-site cookie session; approved allowlist and
+    revocation rechecked on every club request. See docs/api.md."
+servers:
+  - url: /
+    description: Same origin; local HTTP development permitted. HTTPS deployment required for Secure cookies.
+tags:
+  - name: Session
+    description: Session and same-site OAuth navigation.
+  - name: Member
+    description: Approved member data; admin follows same spoiler gates in member views.
+security:
+  - sessionCookie: []
+paths:
+  /api/session:
+    get:
+      operationId: getSession
+      summary: getSession
+      description: Always 200 anonymous/denied/signedIn; bootstraps csrftoken cookie. Recheck
+        allowlist/revocation server-side. No second current-user endpoint.
+      tags:
+        - Session
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+              example:
+                status: anonymous
+                demoSignInAvailable: false
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security: []
+  /api/auth/logout:
+    post:
+      operationId: signOut
+      summary: signOut
+      description: Idempotent logout even without authenticated membership. CSRF required; invalidate
+        session cookie.
+      tags:
+        - Session
+      responses:
+        "204":
+          description: Successful; no response body.
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - csrfHeader: []
+  /api/auth/demo:
+    post:
+      operationId: startDemoSignIn
+      summary: startDemoSignIn
+      description: CSRF required. DEMO_MODE only, establishes fictional session; otherwise generic 404.
+        Never available on real club instance.
+      tags:
+        - Session
+      responses:
+        "204":
+          description: Successful; no response body.
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - csrfHeader: []
+  /api/home:
+    get:
+      operationId: getHome
+      summary: getHome
+      description: Home is gated server-side before activity text and review totals are composed;
+        ratings/records cannot leak via card/feed counts.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeData"
+              example:
+                currentBook: null
+                currentWeek: null
+                nextMeeting: null
+                memberProgress: []
+                recentActivity: []
+                stats:
+                  booksCompleted: 0
+                  reviews: 0
+                  members: 0
+                quote: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/weeks/{weekId}/completion:
+    put:
+      operationId: setWeekCompleted
+      summary: setWeekCompleted
+      description: Own session identity only; 403 smuggled ownership, 401 before lookup, unknown/removed
+        week 404 before invalid input. Independent from finished flag; idempotent.
+      tags:
+        - Member
+      responses:
+        "204":
+          description: Successful; no response body.
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque weekId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeekCompletionInput"
+            example:
+              completed: false
+  /api/books:
+    get:
+      operationId: listBooks
+      summary: listBooks
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibraryBook"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/books/{bookId}:
+    get:
+      operationId: getBook
+      summary: getBook
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookDetail"
+              example:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+                status: propuesto
+                readingStartDate: null
+                readingEndDate: null
+                datesApproximate: false
+                plannedStartDate: null
+                plannedEndDate: null
+                description: null
+                publicationDate: null
+                publisher: null
+                isbn: null
+                pageCount: null
+                schedule: []
+                meetings: []
+                originVote: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque bookId.
+  /api/meetings:
+    get:
+      operationId: listMeetings
+      summary: listMeetings
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingList"
+              example:
+                upcoming: []
+                past: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/meetings/{meetingId}:
+    get:
+      operationId: getMeeting
+      summary: getMeeting
+      description: Central MeetingRecord gate includes admin member views; published content only;
+        cancelled/removed linked week suppress substantive records.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingDetail"
+              example:
+                id: book-fiction-1
+                startsAt: 2026-01-15T19:00:00Z
+                cancelled: false
+                book: null
+                assignment: null
+                upcoming: false
+                attendance: null
+                record:
+                  status: visible
+                  summary: null
+                  highlights: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque meetingId.
+  /api/votes:
+    get:
+      operationId: getVotes
+      summary: getVotes
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VotesOverview"
+              example:
+                curator: null
+                current: null
+                history: []
+                canCreateVote: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+    post:
+      operationId: createVote
+      summary: createVote
+      description: 401 then effective current curator/admin permission 403; missing curator or existing
+        draft/open 409. Empty draft shortlist belongs to current curator even when admin creates. No
+        request body.
+      tags:
+        - Member
+      responses:
+        "201":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+  /api/votes/{voteId}:
+    get:
+      operationId: getVote
+      summary: getVote
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+  /api/votes/{voteId}/candidates/{bookId}/approval:
+    put:
+      operationId: setApproval
+      summary: setApproval
+      description: Own identity from session. 401 then unknown vote/candidate 404, state not open 409,
+        invalid input 400; ownership keys 403. Public approvals; no automatic book transitions.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque bookId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalInput"
+            example:
+              approved: false
+  /api/votes/{voteId}/candidates:
+    post:
+      operationId: addCandidate
+      summary: addCandidate
+      description: 401 then current curator/admin 403 before lookup, vote/book 404 then
+        closed/duplicate/non-propuesto book 409, invalid input 400. Append candidate.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateInput"
+            example:
+              bookId: book-fiction-1
+  /api/votes/{voteId}/candidates/{bookId}:
+    delete:
+      operationId: removeCandidate
+      summary: removeCandidate
+      description: 401 then current curator/admin 403, unknown vote/candidate 404, closed or open
+        shortlist <=2 409. Remove all approvals atomically.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque bookId.
+  /api/votes/{voteId}/candidates/order:
+    put:
+      operationId: reorderCandidates
+      summary: reorderCandidates
+      description: 401 then permission 403, vote/any book lookup 404, closed or stale/non-exact candidate
+        set 409, malformed input 400.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateOrderInput"
+            example:
+              bookIds: []
+  /api/votes/{voteId}/open:
+    post:
+      operationId: openVote
+      summary: openVote
+      description: 401 then permission 403, vote lookup 404, non-draft or <2 candidates 409. No body.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+  /api/votes/{voteId}/close:
+    post:
+      operationId: closeVote
+      summary: closeVote
+      description: 401 then permission 403, lookup 404, non-open 409. Server computes winner/tie. No body
+        or automatic catalogue/curator changes.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+  /api/votes/{voteId}/tie-winner:
+    post:
+      operationId: recordTieWinner
+      summary: recordTieWinner
+      description: 401 then admin-only 403, vote/book lookup 404, not pending tie/not tied book 409,
+        trimmed note >1000 400. Manual outcome, never book transitions.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vote"
+              example:
+                id: book-fiction-1
+                status: draft
+                curator:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                openedAt: null
+                closedAt: null
+                candidates: []
+                outcome: null
+                canManage: false
+                canRecordTieWinner: false
+                curatedByMe: false
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: voteId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque voteId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TieWinnerInput"
+            example:
+              bookId: book-fiction-1
+              note: Texto ficticio
+  /api/books/{bookId}/ratings:
+    get:
+      operationId: getBookRatings
+      summary: getBookRatings
+      description: 401 before book lookup. Ratings gate finished AND own complete review, including
+        historical/admin member views. Own review always returned.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookRatings"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  authors: []
+                  coverUrl: null
+                ratable: false
+                finishedByMe: false
+                myReview: null
+                club:
+                  status: locked
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque bookId.
+  /api/rating-rubric:
+    get:
+      operationId: getRatingRubric
+      summary: getRatingRubric
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingRubric"
+              example:
+                disfrute:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                estilo:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                personajes:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                trama:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+                huella:
+                  "1": null
+                  "2": null
+                  "3": null
+                  "4": null
+                  "5": null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/books/{bookId}/finished:
+    put:
+      operationId: setBookFinished
+      summary: setBookFinished
+      description: Session identity only. 401, ownership 403, book lookup 404, not ratable when finishing
+        or existing review when clearing 409, invalid 400. Independent from weekly completion.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookRatings"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  authors: []
+                  coverUrl: null
+                ratable: false
+                finishedByMe: false
+                myReview: null
+                club:
+                  status: locked
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque bookId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishedInput"
+            example:
+              finished: false
+  /api/books/{bookId}/my-review:
+    put:
+      operationId: saveMyReview
+      summary: saveMyReview
+      description: Session identity only. 401, smuggled ownership 403, book lookup 404, not ratable/not
+        finished 409, scores/text 400. Atomic create/replace; exactly five half-star scores; text
+        <=5000 AFTER trim, blank->null.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookRatings"
+              example:
+                book:
+                  id: book-fiction-1
+                  title: Texto ficticio
+                  authors: []
+                  coverUrl: null
+                ratable: false
+                finishedByMe: false
+                myReview: null
+                club:
+                  status: locked
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque bookId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+            example:
+              scores:
+                disfrute: 1
+                estilo: 1
+                personajes: 1
+                trama: 1
+                huella: 1
+  /api/statistics:
+    get:
+      operationId: getStatistics
+      summary: getStatistics
+      description: Drop viewer-locked books BEFORE all means/counts/radars/highlights, with
+        thresholds/denominators unchanged. No hidden book count.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Statistics"
+              example:
+                booksRead: 0
+                meetingsHeld: 0
+                thresholds:
+                  bookRatings: 3
+                  memberRatings: 3
+                ratings:
+                  status: empty
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/statistics/compatibility:
+    get:
+      operationId: getTasteCompatibility
+      summary: getTasteCompatibility
+      description: Only viewer-unlocked shared ratings. Three shared books minimum before
+        differences/metadata. Insufficient status has no scores/books; permitted sharedBookCount
+        remains at outer member level.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TasteCompatibility"
+              example:
+                minSharedBooks: 1
+                members: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/members:
+    get:
+      operationId: listMembers
+      summary: listMembers
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberDirectory"
+              example:
+                currentWeekNumber: null
+                members: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/members/{memberId}:
+    get:
+      operationId: getMemberProfile
+      summary: getMemberProfile
+      description: 401 before lookup; revoked and unknown IDs indistinguishable generic 404. Public
+        website-native profile/progress only, never ratings/taste/Discord identity.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberProfile"
+              example:
+                member:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                bio: null
+                favouriteQuote: null
+                favouriteBooks: []
+                isMe: false
+                currentWeek: null
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+          description: Opaque memberId.
+  /api/me/profile:
+    get:
+      operationId: getMyProfile
+      summary: getMyProfile
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+              example:
+                member:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                bio: null
+                favouriteQuote: null
+                favouriteBooks: []
+                favouriteOptions: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+    put:
+      operationId: updateMyProfile
+      summary: updateMyProfile
+      description: 401 before validation, any smuggled owner/member/id key 403 and never used for
+        identity. JSON metadata+optional avatar image multipart parts. Normalize trim before
+        lengths, blank optional text null, allowed ordered distinct <=5 favourites. Replace requires
+        valid image <=2 MiB; all validation before atomic profile/avatar save.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+              example:
+                member:
+                  id: book-fiction-1
+                  displayName: Texto ficticio
+                  avatarUrl: null
+                bio: null
+                favouriteQuote: null
+                favouriteBooks: []
+                favouriteOptions: []
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ProfileMultipart"
+            example:
+              metadata:
+                displayName: Texto ficticio
+                favouriteBookIds: []
+                avatarAction: keep
+            encoding:
+              metadata:
+                contentType: application/json
+              avatar:
+                contentType: image/jpeg, image/png, image/webp
+  /api/me/reviews:
+    get:
+      operationId: listMyReviews
+      summary: listMyReviews
+      description: Approved membership rechecked before data lookup. See docs/api.md for server
+        obligations and error precedence.
+      tags:
+        - Member
+      responses:
+        "200":
+          description: Successful result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyReviewEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+  /api/auth/discord/start:
+    get:
+      operationId: startSignIn
+      summary: Same-site OAuth navigation
+      tags:
+        - Session
+      security: []
+      parameters:
+        - name: purpose
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - login
+              - export
+            default: login
+          description: "export purpose reserves admin recent reauthentication for #102; server stores
+            purpose/return path in OAuth state, no arbitrary external redirect."
+      description: Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact
+        IDs, revoke check, state and identity checked server-side. Server-held same-origin return
+        navigation; deny missing/invalid state without club payload. No access/refresh tokens
+        exposed. Export purpose performs admin reauthentication (#102).
+      responses:
+        "302":
+          description: Redirect to Discord authorisation from start, or safe same-origin page/session gate
+            after callback. Failure lands on anonymous/denied Spanish page; no club payload.
+          headers:
+            Location:
+              required: true
+              description: Provider URL (start) or validated same-origin page (callback).
+              schema:
+                type: string
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+  /api/auth/discord/callback:
+    get:
+      operationId: discordCallback
+      summary: Same-site OAuth navigation
+      tags:
+        - Session
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provider response; validate OAuth state and exact approved identity server-side. Never
+            echo values.
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provider response; validate OAuth state and exact approved identity server-side. Never
+            echo values.
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provider response; validate OAuth state and exact approved identity server-side. Never
+            echo values.
+      description: Top-level navigation, not JSON sign-in. Discord identify scope only; approved exact
+        IDs, revoke check, state and identity checked server-side. Server-held same-origin return
+        navigation; deny missing/invalid state without club payload. No access/refresh tokens
+        exposed. Export purpose performs admin reauthentication (#102).
+      responses:
+        "302":
+          description: Redirect to Discord authorisation from start, or safe same-origin page/session gate
+            after callback. Failure lands on anonymous/denied Spanish page; no club payload.
+          headers:
+            Location:
+              required: true
+              description: Provider URL (start) or validated same-origin page (callback).
+              schema:
+                type: string
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sessionid
+      description: "Server session cookie, HttpOnly; Secure in HTTPS deployment; SameSite=Lax for OAuth.
+        Local HTTP does not claim Secure cookies. Approved membership/revocation rechecked each
+        request. Names reversible for #5."
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRFToken
+      description: "CSRF cookie csrftoken bootstrapped by GET /api/session and sent as X-CSRFToken on
+        unsafe JSON/multipart/logout/demo requests. Not authentication. Wrong/missing ->403
+        forbidden. Cookie flow reversible #5."
+  schemas:
+    Id:
+      type: string
+      minLength: 1
+      description: Opaque website identifier, not necessarily UUID; never a Discord identity.
+      examples:
+        - book-fiction-1
+    Instant:
+      type: string
+      format: date-time
+      description: ISO 8601 instant with offset; server clock and configured club timezone govern ordering.
+      examples:
+        - 2026-01-15T19:00:00Z
+    CalendarDate:
+      type: string
+      format: date
+      description: Calendar date YYYY-MM-DD without a timezone. Approximate historical dates use this
+        best-known date plus datesApproximate; unknown dates are null.
+      examples:
+        - 1985-01-01
+    MemberSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        displayName:
+          type: string
+        avatarUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - id
+        - displayName
+        - avatarUrl
+      examples:
+        - id: book-fiction-1
+          displayName: Texto ficticio
+          avatarUrl: null
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        displayName:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - member
+        avatarUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - id
+        - displayName
+        - role
+        - avatarUrl
+      examples:
+        - id: book-fiction-1
+          displayName: Texto ficticio
+          role: admin
+          avatarUrl: null
+    SessionAnonymous:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: anonymous
+        demoSignInAvailable:
+          type: boolean
+      required:
+        - status
+        - demoSignInAvailable
+      examples:
+        - status: anonymous
+          demoSignInAvailable: false
+    SessionDenied:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: denied
+        demoSignInAvailable:
+          type: boolean
+      required:
+        - status
+        - demoSignInAvailable
+      examples:
+        - status: denied
+          demoSignInAvailable: false
+    SessionSignedIn:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: signedIn
+        user:
+          $ref: "#/components/schemas/CurrentUser"
+      required:
+        - status
+        - user
+      examples:
+        - status: signedIn
+          user:
+            id: member-fiction-1
+            displayName: Lucía
+            role: member
+            avatarUrl: null
+    Session:
+      oneOf:
+        - $ref: "#/components/schemas/SessionAnonymous"
+        - $ref: "#/components/schemas/SessionDenied"
+        - $ref: "#/components/schemas/SessionSignedIn"
+      discriminator:
+        propertyName: status
+        mapping:
+          anonymous: "#/components/schemas/SessionAnonymous"
+          denied: "#/components/schemas/SessionDenied"
+          signedIn: "#/components/schemas/SessionSignedIn"
+      description: Only signedIn carries a website user. Anonymous/denied carry no club information. Demo
+        availability is false in production; no tokens, Discord IDs, secrets or passwords are
+        exposed. Revoked sessions are refused.
+      examples:
+        - status: anonymous
+          demoSignInAvailable: false
+    BookSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        coverUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - id
+        - title
+        - authors
+        - coverUrl
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          coverUrl: null
+    MeetingAssignment:
+      type: object
+      additionalProperties: false
+      properties:
+        weekNumber:
+          type: integer
+          minimum: 1
+        percentStart:
+          type: number
+          minimum: 0
+          maximum: 100
+        percentEnd:
+          type: number
+          minimum: 0
+          maximum: 100
+        pageStart:
+          type: integer
+          minimum: 0
+        pageEnd:
+          type: integer
+          minimum: 0
+      required:
+        - weekNumber
+        - percentStart
+        - percentEnd
+        - pageStart
+        - pageEnd
+      examples:
+        - weekNumber: 1
+          percentStart: 0
+          percentEnd: 0
+          pageStart: 0
+          pageEnd: 0
+    ReadingWeek:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        weekNumber:
+          type: integer
+          minimum: 1
+        percentStart:
+          type: number
+          minimum: 0
+          maximum: 100
+        percentEnd:
+          type: number
+          minimum: 0
+          maximum: 100
+        pageStart:
+          type: integer
+          minimum: 0
+        pageEnd:
+          type: integer
+          minimum: 0
+        meetingStartsAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+        completedByMe:
+          type: boolean
+      required:
+        - id
+        - weekNumber
+        - percentStart
+        - percentEnd
+        - pageStart
+        - pageEnd
+        - meetingStartsAt
+        - completedByMe
+      examples:
+        - id: book-fiction-1
+          weekNumber: 1
+          percentStart: 0
+          percentEnd: 0
+          pageStart: 0
+          pageEnd: 0
+          meetingStartsAt: null
+          completedByMe: false
+    NextMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        book:
+          anyOf:
+            - $ref: "#/components/schemas/BookSummary"
+            - type: "null"
+        assignment:
+          anyOf:
+            - $ref: "#/components/schemas/MeetingAssignment"
+            - type: "null"
+      required:
+        - id
+        - startsAt
+        - book
+        - assignment
+      examples:
+        - id: book-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+          book: null
+          assignment: null
+    MemberProgress:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        completed:
+          type: boolean
+      required:
+        - member
+        - completed
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          completed: false
+    ActivityEvent:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        type:
+          type: string
+          enum:
+            - book_selected
+            - vote_opened
+            - vote_closed
+            - nomination_added
+            - summary_published
+            - review_available
+        occurredAt:
+          $ref: "#/components/schemas/Instant"
+        text:
+          type: string
+      required:
+        - id
+        - type
+        - occurredAt
+        - text
+      description: Spanish plain text composed server-side AFTER gates. review_available requires a
+        canonical visible book the viewer finished AND fully rated. summary_published requires a
+        canonical visible noncancelled meeting with an actually published summary and the existing
+        completed-active-week or explicitly-safe-unlinked record gate. Removed linked weeks stay
+        blocked. Omit unverifiable subject references. No hidden content or inference via labels.
+      examples:
+        - id: book-fiction-1
+          type: book_selected
+          occurredAt: 2026-01-15T19:00:00Z
+          text: Texto ficticio
+    ClubStats:
+      type: object
+      additionalProperties: false
+      properties:
+        booksCompleted:
+          type: integer
+          minimum: 0
+        reviews:
+          type: integer
+          minimum: 0
+        members:
+          type: integer
+          minimum: 0
+      required:
+        - booksCompleted
+        - reviews
+        - members
+      description: Books with terminado status and active member count are public to members. reviews
+        counts only reviews for viewer-unlocked books (finished AND full own rating), never a hidden
+        global total.
+      examples:
+        - booksCompleted: 0
+          reviews: 0
+          members: 0
+    LiteraryQuote:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+        author:
+          anyOf:
+            - type: string
+            - type: "null"
+        source:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - text
+        - author
+        - source
+      examples:
+        - text: Texto ficticio
+          author: null
+          source: null
+    HomeData:
+      type: object
+      additionalProperties: false
+      properties:
+        currentBook:
+          anyOf:
+            - $ref: "#/components/schemas/BookSummary"
+            - type: "null"
+        currentWeek:
+          anyOf:
+            - $ref: "#/components/schemas/ReadingWeek"
+            - type: "null"
+        nextMeeting:
+          anyOf:
+            - $ref: "#/components/schemas/NextMeeting"
+            - type: "null"
+        memberProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberProgress"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEvent"
+        stats:
+          $ref: "#/components/schemas/ClubStats"
+        quote:
+          anyOf:
+            - $ref: "#/components/schemas/LiteraryQuote"
+            - type: "null"
+      required:
+        - currentBook
+        - currentWeek
+        - nextMeeting
+        - memberProgress
+        - recentActivity
+        - stats
+        - quote
+      examples:
+        - currentBook: null
+          currentWeek: null
+          nextMeeting: null
+          memberProgress: []
+          recentActivity: []
+          stats:
+            booksCompleted: 0
+            reviews: 0
+            members: 0
+          quote: null
+    LibraryBook:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        coverUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        status:
+          type: string
+          enum:
+            - propuesto
+            - elegido
+            - leyendo
+            - terminado
+            - archivado
+        readingStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        readingEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        datesApproximate:
+          type: boolean
+      required:
+        - id
+        - title
+        - authors
+        - coverUrl
+        - status
+        - readingStartDate
+        - readingEndDate
+        - datesApproximate
+      description: Catalogue metadata only; no review/count/mean/meeting record keys. Unsorted list;
+        client applies existing local filters/sorts.
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          coverUrl: null
+          status: propuesto
+          readingStartDate: null
+          readingEndDate: null
+          datesApproximate: false
+    ScheduleMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+      required:
+        - id
+        - startsAt
+      examples:
+        - id: book-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+    ScheduleWeek:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        completedByMe:
+          type: boolean
+        weekNumber:
+          type: integer
+          minimum: 1
+        percentStart:
+          type: number
+          minimum: 0
+          maximum: 100
+        percentEnd:
+          type: number
+          minimum: 0
+          maximum: 100
+        pageStart:
+          type: integer
+          minimum: 0
+        pageEnd:
+          type: integer
+          minimum: 0
+        dueDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        meeting:
+          anyOf:
+            - $ref: "#/components/schemas/ScheduleMeeting"
+            - type: "null"
+        notes:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - id
+        - completedByMe
+        - weekNumber
+        - percentStart
+        - percentEnd
+        - pageStart
+        - pageEnd
+        - dueDate
+        - meeting
+        - notes
+      examples:
+        - id: book-fiction-1
+          completedByMe: false
+          weekNumber: 1
+          percentStart: 0
+          percentEnd: 0
+          pageStart: 0
+          pageEnd: 0
+          dueDate: null
+          meeting: null
+          notes: null
+    BookMeeting:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        cancelled:
+          type: boolean
+        weekNumber:
+          anyOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+      required:
+        - id
+        - startsAt
+        - cancelled
+        - weekNumber
+      examples:
+        - id: book-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+          cancelled: false
+          weekNumber: null
+    OriginVote:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        label:
+          type: string
+      required:
+        - id
+        - label
+      examples:
+        - id: book-fiction-1
+          label: Texto ficticio
+    BookDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        coverUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        status:
+          type: string
+          enum:
+            - propuesto
+            - elegido
+            - leyendo
+            - terminado
+            - archivado
+        readingStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        readingEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        datesApproximate:
+          type: boolean
+        plannedStartDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        plannedEndDate:
+          anyOf:
+            - $ref: "#/components/schemas/CalendarDate"
+            - type: "null"
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+        publicationDate:
+          anyOf:
+            - type: string
+            - type: "null"
+        publisher:
+          anyOf:
+            - type: string
+            - type: "null"
+        isbn:
+          anyOf:
+            - type: string
+            - type: "null"
+        pageCount:
+          anyOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+        schedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleWeek"
+        meetings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookMeeting"
+        originVote:
+          anyOf:
+            - $ref: "#/components/schemas/OriginVote"
+            - type: "null"
+      required:
+        - id
+        - title
+        - authors
+        - coverUrl
+        - status
+        - readingStartDate
+        - readingEndDate
+        - datesApproximate
+        - plannedStartDate
+        - plannedEndDate
+        - description
+        - publicationDate
+        - publisher
+        - isbn
+        - pageCount
+        - schedule
+        - meetings
+        - originVote
+      description: publicationDate is free text, e.g. 1884–1885, not forced to ISO date. Schedule by
+        weekNumber; meetings ascending startsAt. No ratings or substantive meeting records.
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          coverUrl: null
+          status: propuesto
+          readingStartDate: null
+          readingEndDate: null
+          datesApproximate: false
+          plannedStartDate: null
+          plannedEndDate: null
+          description: null
+          publicationDate: null
+          publisher: null
+          isbn: null
+          pageCount: null
+          schedule: []
+          meetings: []
+          originVote: null
+    MeetingListItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        cancelled:
+          type: boolean
+        book:
+          anyOf:
+            - $ref: "#/components/schemas/BookSummary"
+            - type: "null"
+        assignment:
+          anyOf:
+            - $ref: "#/components/schemas/MeetingAssignment"
+            - type: "null"
+      required:
+        - id
+        - startsAt
+        - cancelled
+        - book
+        - assignment
+      examples:
+        - id: book-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+          cancelled: false
+          book: null
+          assignment: null
+    MeetingList:
+      type: object
+      additionalProperties: false
+      properties:
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingListItem"
+        past:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingListItem"
+      required:
+        - upcoming
+        - past
+      description: "Server partitions at startsAt >= now: upcoming soonest first, past newest first.
+        Cancelled entries stay in date partition. No pagination or substantive records."
+      examples:
+        - upcoming: []
+          past: []
+    MeetingHighlight:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        text:
+          type: string
+        kind:
+          type: string
+          enum:
+            - quote
+            - paraphrase
+        speakers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+      required:
+        - id
+        - text
+        - kind
+        - speakers
+      examples:
+        - id: book-fiction-1
+          text: Texto ficticio
+          kind: quote
+          speakers: []
+    MeetingRecordVisible:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: visible
+        summary:
+          anyOf:
+            - type: string
+            - type: "null"
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingHighlight"
+      required:
+        - status
+        - summary
+        - highlights
+      examples:
+        - status: visible
+          summary: null
+          highlights: []
+    MeetingRecordLockedWeekNotRead:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: lockedWeekNotRead
+        weekNumber:
+          type: integer
+          minimum: 1
+      required:
+        - status
+        - weekNumber
+      examples:
+        - status: lockedWeekNotRead
+          weekNumber: 2
+    MeetingRecordLockedNoWeek:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: lockedNoWeek
+      required:
+        - status
+      examples:
+        - status: lockedNoWeek
+    MeetingRecord:
+      oneOf:
+        - $ref: "#/components/schemas/MeetingRecordVisible"
+        - $ref: "#/components/schemas/MeetingRecordLockedWeekNotRead"
+        - $ref: "#/components/schemas/MeetingRecordLockedNoWeek"
+      discriminator:
+        propertyName: status
+        mapping:
+          visible: "#/components/schemas/MeetingRecordVisible"
+          lockedWeekNotRead: "#/components/schemas/MeetingRecordLockedWeekNotRead"
+          lockedNoWeek: "#/components/schemas/MeetingRecordLockedNoWeek"
+      description: "Central server gate for admin and member views: completed linked active week OR
+        explicitly safe unlinked record. Cancelled meeting or removed linked week always
+        lockedNoWeek, even when previously safe/completed. Visible returns published
+        summary/highlights only; drafts and deleted highlights absent. Locked records reveal no
+        existence/count/content of records."
+      examples:
+        - status: visible
+          summary: null
+          highlights: []
+    MeetingDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        startsAt:
+          $ref: "#/components/schemas/Instant"
+        cancelled:
+          type: boolean
+        book:
+          anyOf:
+            - $ref: "#/components/schemas/BookSummary"
+            - type: "null"
+        assignment:
+          anyOf:
+            - $ref: "#/components/schemas/MeetingAssignment"
+            - type: "null"
+        upcoming:
+          type: boolean
+        attendance:
+          anyOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/MemberSummary"
+            - type: "null"
+        record:
+          $ref: "#/components/schemas/MeetingRecord"
+      required:
+        - id
+        - startsAt
+        - cancelled
+        - book
+        - assignment
+        - upcoming
+        - attendance
+        - record
+      description: Attendance null when upcoming/cancelled or not recorded; otherwise list (possibly empty).
+      examples:
+        - id: book-fiction-1
+          startsAt: 2026-01-15T19:00:00Z
+          cancelled: false
+          book: null
+          assignment: null
+          upcoming: false
+          attendance: null
+          record:
+            status: visible
+            summary: null
+            highlights: []
+    VoteCandidateBook:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        coverUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        publicationDate:
+          anyOf:
+            - type: string
+            - type: "null"
+        pageCount:
+          anyOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+      required:
+        - id
+        - title
+        - authors
+        - coverUrl
+        - publicationDate
+        - pageCount
+      examples:
+        - id: book-fiction-1
+          title: Texto ficticio
+          authors: []
+          coverUrl: null
+          publicationDate: null
+          pageCount: null
+    VoteCandidate:
+      type: object
+      additionalProperties: false
+      properties:
+        book:
+          $ref: "#/components/schemas/VoteCandidateBook"
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberSummary"
+        approvedByMe:
+          type: boolean
+      required:
+        - book
+        - approvals
+        - approvedByMe
+      description: Public approvals; one per candidate/member, empty and approvedByMe false in draft.
+      examples:
+        - book:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+            publicationDate: null
+            pageCount: null
+          approvals: []
+          approvedByMe: false
+    VoteOutcomeWinner:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: winner
+        winner:
+          $ref: "#/components/schemas/BookSummary"
+        tieNote:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - status
+        - winner
+        - tieNote
+      examples:
+        - status: winner
+          winner:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+          tieNote: null
+    VoteOutcomeTiePending:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: tiePending
+        tiedBookIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          minItems: 2
+          uniqueItems: true
+      required:
+        - status
+        - tiedBookIds
+      examples:
+        - status: tiePending
+          tiedBookIds:
+            - book-fiction-1
+            - book-fiction-2
+    VoteOutcome:
+      oneOf:
+        - $ref: "#/components/schemas/VoteOutcomeWinner"
+        - $ref: "#/components/schemas/VoteOutcomeTiePending"
+      discriminator:
+        propertyName: status
+        mapping:
+          winner: "#/components/schemas/VoteOutcomeWinner"
+          tiePending: "#/components/schemas/VoteOutcomeTiePending"
+      description: Server chooses strictly highest approvals at close, otherwise every tied highest
+        candidate (including zero) remains pending. Only admin records manual tie winner; never
+        automatically changes book status, origin vote or curator.
+      examples:
+        - status: winner
+          winner:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+          tieNote: null
+    Vote:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        status:
+          type: string
+          enum:
+            - draft
+            - open
+            - closed
+        curator:
+          $ref: "#/components/schemas/MemberSummary"
+        openedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+        closedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoteCandidate"
+        outcome:
+          anyOf:
+            - $ref: "#/components/schemas/VoteOutcome"
+            - type: "null"
+        canManage:
+          type: boolean
+        canRecordTieWinner:
+          type: boolean
+        curatedByMe:
+          type: boolean
+      required:
+        - id
+        - status
+        - curator
+        - openedAt
+        - closedAt
+        - candidates
+        - outcome
+        - canManage
+        - canRecordTieWinner
+        - curatedByMe
+      description: Candidates remain in shortlist order. At most one draft/open. Draft has null
+        openedAt/closedAt/outcome; open has openedAt but null closedAt/outcome; closed has both
+        instants and outcome. Flags computed by server; management current curator/admin, tie winner
+        admin only. No automatic role or lifecycle changes.
+      examples:
+        - id: book-fiction-1
+          status: draft
+          curator:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          openedAt: null
+          closedAt: null
+          candidates: []
+          outcome: null
+          canManage: false
+          canRecordTieWinner: false
+          curatedByMe: false
+    VoteHistoryItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: "#/components/schemas/Id"
+        curator:
+          $ref: "#/components/schemas/MemberSummary"
+        openedAt:
+          $ref: "#/components/schemas/Instant"
+        closedAt:
+          $ref: "#/components/schemas/Instant"
+        outcome:
+          $ref: "#/components/schemas/VoteOutcome"
+        candidateCount:
+          type: integer
+          minimum: 0
+      required:
+        - id
+        - curator
+        - openedAt
+        - closedAt
+        - outcome
+        - candidateCount
+      examples:
+        - id: book-fiction-1
+          curator:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          openedAt: 2026-01-15T19:00:00Z
+          closedAt: 2026-01-15T19:00:00Z
+          outcome:
+            status: winner
+            winner:
+              id: book-fiction-1
+              title: Texto ficticio
+              authors: []
+              coverUrl: null
+            tieNote: null
+          candidateCount: 0
+    VotesOverview:
+      type: object
+      additionalProperties: false
+      properties:
+        curator:
+          anyOf:
+            - $ref: "#/components/schemas/MemberSummary"
+            - type: "null"
+        current:
+          anyOf:
+            - $ref: "#/components/schemas/Vote"
+            - type: "null"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoteHistoryItem"
+        canCreateVote:
+          type: boolean
+      required:
+        - curator
+        - current
+        - history
+        - canCreateVote
+      description: History newest closedAt first, including pending ties. Current null without draft/open;
+        may create only current curator/admin with curator assigned and no draft/open.
+      examples:
+        - curator: null
+          current: null
+          history: []
+          canCreateVote: false
+    CriterionScores:
+      type: object
+      additionalProperties: false
+      properties:
+        disfrute:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.5
+        estilo:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.5
+        personajes:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.5
+        trama:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.5
+        huella:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.5
+      required:
+        - disfrute
+        - estilo
+        - personajes
+        - trama
+        - huella
+      description: Exactly five scores, 1..5 in half-star steps. Disfrute/Estilo/Personajes/Trama/Huella
+        Spanish labels use these lowercase code keys.
+      examples:
+        - disfrute: 1
+          estilo: 1
+          personajes: 1
+          trama: 1
+          huella: 1
+    CriterionMeans:
+      type: object
+      additionalProperties: false
+      properties:
+        disfrute:
+          type: number
+          minimum: 1
+          maximum: 5
+        estilo:
+          type: number
+          minimum: 1
+          maximum: 5
+        personajes:
+          type: number
+          minimum: 1
+          maximum: 5
+        trama:
+          type: number
+          minimum: 1
+          maximum: 5
+        huella:
+          type: number
+          minimum: 1
+          maximum: 5
+      required:
+        - disfrute
+        - estilo
+        - personajes
+        - trama
+        - huella
+      description: Unrounded means, not constrained to half-star steps.
+      examples:
+        - disfrute: 1
+          estilo: 1
+          personajes: 1
+          trama: 1
+          huella: 1
+    CriterionDifferences:
+      type: object
+      additionalProperties: false
+      properties:
+        disfrute:
+          type: number
+          minimum: 0
+          maximum: 4
+        estilo:
+          type: number
+          minimum: 0
+          maximum: 4
+        personajes:
+          type: number
+          minimum: 0
+          maximum: 4
+        trama:
+          type: number
+          minimum: 0
+          maximum: 4
+        huella:
+          type: number
+          minimum: 0
+          maximum: 4
+      required:
+        - disfrute
+        - estilo
+        - personajes
+        - trama
+        - huella
+      description: Mean absolute differences 0..4, not star scores or half-star constrained.
+      examples:
+        - disfrute: 0
+          estilo: 0
+          personajes: 0
+          trama: 0
+          huella: 0
+    MyReview:
+      type: object
+      additionalProperties: false
+      properties:
+        scores:
+          $ref: "#/components/schemas/CriterionScores"
+        overall:
+          type: number
+          minimum: 1
+          maximum: 5
+        text:
+          anyOf:
+            - type: string
+            - type: "null"
+        submittedAt:
+          $ref: "#/components/schemas/Instant"
+        editedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+      required:
+        - scores
+        - overall
+        - text
+        - submittedAt
+        - editedAt
+      description: Own review always returned. Overall unweighted mean of five scores; edit retains submittedAt.
+      examples:
+        - scores:
+            disfrute: 1
+            estilo: 1
+            personajes: 1
+            trama: 1
+            huella: 1
+          overall: 1
+          text: null
+          submittedAt: 2026-01-15T19:00:00Z
+          editedAt: null
+    ClubReview:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        scores:
+          $ref: "#/components/schemas/CriterionScores"
+        overall:
+          type: number
+          minimum: 1
+          maximum: 5
+        text:
+          anyOf:
+            - type: string
+            - type: "null"
+        isMine:
+          type: boolean
+      required:
+        - member
+        - scores
+        - overall
+        - text
+        - isMine
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          scores:
+            disfrute: 1
+            estilo: 1
+            personajes: 1
+            trama: 1
+            huella: 1
+          overall: 1
+          text: null
+          isMine: false
+    ClubRatingsLocked:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: locked
+      required:
+        - status
+      examples:
+        - status: locked
+    ClubRatingsVisible:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: visible
+        reviewCount:
+          type: integer
+          minimum: 1
+        overallMean:
+          type: number
+          minimum: 1
+          maximum: 5
+        criterionMeans:
+          $ref: "#/components/schemas/CriterionMeans"
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClubReview"
+          minItems: 1
+      required:
+        - status
+        - reviewCount
+        - overallMean
+        - criterionMeans
+        - reviews
+      examples:
+        - status: visible
+          reviewCount: 1
+          overallMean: 1
+          criterionMeans:
+            disfrute: 1
+            estilo: 1
+            personajes: 1
+            trama: 1
+            huella: 1
+          reviews:
+            - member:
+                id: book-fiction-1
+                displayName: Texto ficticio
+                avatarUrl: null
+              scores:
+                disfrute: 1
+                estilo: 1
+                personajes: 1
+                trama: 1
+                huella: 1
+              overall: 1
+              text: null
+              isMine: false
+    ClubRatings:
+      oneOf:
+        - $ref: "#/components/schemas/ClubRatingsLocked"
+        - $ref: "#/components/schemas/ClubRatingsVisible"
+      discriminator:
+        propertyName: status
+        mapping:
+          locked: "#/components/schemas/ClubRatingsLocked"
+          visible: "#/components/schemas/ClubRatingsVisible"
+      description: Viewer finished AND submitted all five scores before ANY other rating/count/aggregate
+        is returned. Same gate for historical books and admin member views. Own review first, others
+        by Spanish display name, never score. Mean of member overall means equally weighted;
+        reviewCount denominator explicit.
+      examples:
+        - status: locked
+    BookRatings:
+      type: object
+      additionalProperties: false
+      properties:
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        ratable:
+          type: boolean
+        finishedByMe:
+          type: boolean
+        myReview:
+          anyOf:
+            - $ref: "#/components/schemas/MyReview"
+            - type: "null"
+        club:
+          $ref: "#/components/schemas/ClubRatings"
+      required:
+        - book
+        - ratable
+        - finishedByMe
+        - myReview
+        - club
+      description: Only leyendo/terminado/archivado official books ratable. finishedByMe independent of
+        all weekly completions.
+      examples:
+        - book:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+          ratable: false
+          finishedByMe: false
+          myReview: null
+          club:
+            status: locked
+    RubricAnchors:
+      type: object
+      additionalProperties: false
+      properties:
+        "1":
+          anyOf:
+            - type: string
+            - type: "null"
+        "2":
+          anyOf:
+            - type: string
+            - type: "null"
+        "3":
+          anyOf:
+            - type: string
+            - type: "null"
+        "4":
+          anyOf:
+            - type: string
+            - type: "null"
+        "5":
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+      examples:
+        - "1": null
+          "2": null
+          "3": null
+          "4": null
+          "5": null
+    RatingRubric:
+      type: object
+      additionalProperties: false
+      properties:
+        disfrute:
+          $ref: "#/components/schemas/RubricAnchors"
+        estilo:
+          $ref: "#/components/schemas/RubricAnchors"
+        personajes:
+          $ref: "#/components/schemas/RubricAnchors"
+        trama:
+          $ref: "#/components/schemas/RubricAnchors"
+        huella:
+          $ref: "#/components/schemas/RubricAnchors"
+      required:
+        - disfrute
+        - estilo
+        - personajes
+        - trama
+        - huella
+      description: Admin-written anchors can all be null; no invented canonical prose.
+      examples:
+        - disfrute:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          estilo:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          personajes:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          trama:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+          huella:
+            "1": null
+            "2": null
+            "3": null
+            "4": null
+            "5": null
+    ReviewInput:
+      type: object
+      additionalProperties: false
+      properties:
+        scores:
+          $ref: "#/components/schemas/CriterionScores"
+        text:
+          anyOf:
+            - type: string
+              x-trimmedMaxLength: 5000
+              description: Optional plain text; trim before <=5000 check; blank becomes null.
+            - type: "null"
+      required:
+        - scores
+      examples:
+        - scores:
+            disfrute: 1
+            estilo: 1
+            personajes: 1
+            trama: 1
+            huella: 1
+    StatisticsThresholds:
+      type: object
+      additionalProperties: false
+      properties:
+        bookRatings:
+          type: integer
+          minimum: 1
+        memberRatings:
+          type: integer
+          minimum: 1
+      required:
+        - bookRatings
+        - memberRatings
+      examples:
+        - bookRatings: 3
+          memberRatings: 3
+    BookStatistics:
+      type: object
+      additionalProperties: false
+      properties:
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        reviewCount:
+          type: integer
+          minimum: 1
+        overallMean:
+          type: number
+          minimum: 1
+          maximum: 5
+        dispersion:
+          type: number
+          minimum: 0
+          maximum: 2
+      required:
+        - book
+        - reviewCount
+        - overallMean
+        - dispersion
+      description: Population standard deviation of overall scores; 0 with one review. Not rounded.
+      examples:
+        - book:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+          reviewCount: 1
+          overallMean: 1
+          dispersion: 0
+    MemberStatistics:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        isMe:
+          type: boolean
+        reviewCount:
+          type: integer
+          minimum: 1
+        overallMean:
+          type: number
+          minimum: 1
+          maximum: 5
+      required:
+        - member
+        - isMe
+        - reviewCount
+        - overallMean
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          isMe: false
+          reviewCount: 1
+          overallMean: 1
+    StatisticsHighlights:
+      type: object
+      additionalProperties: false
+      properties:
+        topRated:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookStatistics"
+        lowestRated:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookStatistics"
+        mostDivisive:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookStatistics"
+        mostGenerous:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberStatistics"
+        harshest:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberStatistics"
+      required:
+        - topRated
+        - lowestRated
+        - mostDivisive
+        - mostGenerous
+        - harshest
+      description: Threshold 3 counted ratings per book/member. Empty below threshold; include all ties
+        sorted Spanish title/name.
+      examples:
+        - topRated: []
+          lowestRated: []
+          mostDivisive: []
+          mostGenerous: []
+          harshest: []
+    RatingStatisticsEmpty:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: empty
+      required:
+        - status
+      examples:
+        - status: empty
+    RatingStatisticsAvailable:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: available
+        bookCount:
+          type: integer
+          minimum: 1
+        reviewCount:
+          type: integer
+          minimum: 1
+        overallMean:
+          type: number
+          minimum: 1
+          maximum: 5
+        criterionMeans:
+          $ref: "#/components/schemas/CriterionMeans"
+        books:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookStatistics"
+          minItems: 1
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberStatistics"
+          minItems: 1
+        highlights:
+          $ref: "#/components/schemas/StatisticsHighlights"
+      required:
+        - status
+        - bookCount
+        - reviewCount
+        - overallMean
+        - criterionMeans
+        - books
+        - members
+        - highlights
+      examples:
+        - status: available
+          bookCount: 1
+          reviewCount: 1
+          overallMean: 1
+          criterionMeans:
+            disfrute: 1
+            estilo: 1
+            personajes: 1
+            trama: 1
+            huella: 1
+          books:
+            - book:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+              reviewCount: 1
+              overallMean: 1
+              dispersion: 0
+          members:
+            - member:
+                id: book-fiction-1
+                displayName: Texto ficticio
+                avatarUrl: null
+              isMe: false
+              reviewCount: 1
+              overallMean: 1
+          highlights:
+            topRated: []
+            lowestRated: []
+            mostDivisive: []
+            mostGenerous: []
+            harshest: []
+    RatingStatistics:
+      oneOf:
+        - $ref: "#/components/schemas/RatingStatisticsEmpty"
+        - $ref: "#/components/schemas/RatingStatisticsAvailable"
+      discriminator:
+        propertyName: status
+        mapping:
+          empty: "#/components/schemas/RatingStatisticsEmpty"
+          available: "#/components/schemas/RatingStatisticsAvailable"
+      description: Only viewer-unlocked books before any aggregation; no hidden book/count/candidate
+        inference. Each counted review equally weighted. Books highest mean first then Spanish
+        title; viewer first then display name. Empty branch contains only status.
+      examples:
+        - status: empty
+    Statistics:
+      type: object
+      additionalProperties: false
+      properties:
+        booksRead:
+          type: integer
+          minimum: 0
+        meetingsHeld:
+          type: integer
+          minimum: 0
+        thresholds:
+          $ref: "#/components/schemas/StatisticsThresholds"
+        ratings:
+          $ref: "#/components/schemas/RatingStatistics"
+      required:
+        - booksRead
+        - meetingsHeld
+        - thresholds
+        - ratings
+      description: Public catalogue counts terminado/archivado; meetingsHeld noncancelled before server
+        now. Rating totals/radars/highlights gated independently.
+      examples:
+        - booksRead: 0
+          meetingsHeld: 0
+          thresholds:
+            bookRatings: 3
+            memberRatings: 3
+          ratings:
+            status: empty
+    SharedBook:
+      type: object
+      additionalProperties: false
+      properties:
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        myOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        theirOverall:
+          type: number
+          minimum: 1
+          maximum: 5
+        difference:
+          type: number
+          minimum: 0
+          maximum: 4
+      required:
+        - book
+        - myOverall
+        - theirOverall
+        - difference
+      examples:
+        - book:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+          myOverall: 1
+          theirOverall: 1
+          difference: 0
+    TasteComparisonInsufficient:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: insufficient
+      required:
+        - status
+      examples:
+        - status: insufficient
+    TasteComparisonAvailable:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          const: available
+        overallDifference:
+          type: number
+          minimum: 0
+          maximum: 4
+        criterionDifferences:
+          $ref: "#/components/schemas/CriterionDifferences"
+        books:
+          type: array
+          items:
+            $ref: "#/components/schemas/SharedBook"
+          minItems: 3
+      required:
+        - status
+        - overallDifference
+        - criterionDifferences
+        - books
+      examples:
+        - status: available
+          overallDifference: 0
+          criterionDifferences:
+            disfrute: 0
+            estilo: 0
+            personajes: 0
+            trama: 0
+            huella: 0
+          books:
+            - book:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+              myOverall: 1
+              theirOverall: 1
+              difference: 0
+            - book:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+              myOverall: 1
+              theirOverall: 1
+              difference: 0
+            - book:
+                id: book-fiction-1
+                title: Texto ficticio
+                authors: []
+                coverUrl: null
+              myOverall: 1
+              theirOverall: 1
+              difference: 0
+    TasteComparison:
+      oneOf:
+        - $ref: "#/components/schemas/TasteComparisonInsufficient"
+        - $ref: "#/components/schemas/TasteComparisonAvailable"
+      discriminator:
+        propertyName: status
+        mapping:
+          insufficient: "#/components/schemas/TasteComparisonInsufficient"
+          available: "#/components/schemas/TasteComparisonAvailable"
+      description: Only shared books viewer finished/rated AND other member rated. At least minSharedBooks
+        (currently 3) before differences/book metadata; insufficient carries status only. Difference
+        unrounded mean absolute overall/criterion difference, 0..4. Books Spanish title order.
+      examples:
+        - status: insufficient
+    MemberCompatibility:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        sharedBookCount:
+          type: integer
+          minimum: 0
+        comparison:
+          $ref: "#/components/schemas/TasteComparison"
+      required:
+        - member
+        - sharedBookCount
+        - comparison
+      description: Count only permitted shared books, never hidden overlap. Insufficient retains this
+        explicit count but no books/scores.
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          sharedBookCount: 0
+          comparison:
+            status: insufficient
+    TasteCompatibility:
+      type: object
+      additionalProperties: false
+      properties:
+        minSharedBooks:
+          type: integer
+          minimum: 1
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberCompatibility"
+      required:
+        - minSharedBooks
+        - members
+      description: Every other active member by Spanish display name, never difference; viewer omitted.
+        Empty club members list valid.
+      examples:
+        - minSharedBooks: 1
+          members: []
+    MemberDirectoryEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        isMe:
+          type: boolean
+        completedCurrentWeek:
+          anyOf:
+            - type: boolean
+            - type: "null"
+      required:
+        - member
+        - isMe
+        - completedCurrentWeek
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          isMe: false
+          completedCurrentWeek: null
+    MemberDirectory:
+      type: object
+      additionalProperties: false
+      properties:
+        currentWeekNumber:
+          anyOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberDirectoryEntry"
+      required:
+        - currentWeekNumber
+        - members
+      description: Active members only incl viewer by Spanish name. Public progress null exactly with no
+        current week; no ratings/taste/Discord IDs.
+      examples:
+        - currentWeekNumber: null
+          members: []
+    MemberWeekStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        weekNumber:
+          type: integer
+          minimum: 1
+        completed:
+          type: boolean
+      required:
+        - weekNumber
+        - completed
+      examples:
+        - weekNumber: 1
+          completed: false
+    MemberProfile:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        bio:
+          anyOf:
+            - type: string
+            - type: "null"
+        favouriteQuote:
+          anyOf:
+            - type: string
+            - type: "null"
+        favouriteBooks:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookSummary"
+          maxItems: 5
+        isMe:
+          type: boolean
+        currentWeek:
+          anyOf:
+            - $ref: "#/components/schemas/MemberWeekStatus"
+            - type: "null"
+      required:
+        - member
+        - bio
+        - favouriteQuote
+        - favouriteBooks
+        - isMe
+        - currentWeek
+      description: Website-native profile/public reading progress only. Favourite books are intentional
+        public choices, metadata summaries without ratings. Revoked/unknown profile same generic
+        404.
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          bio: null
+          favouriteQuote: null
+          favouriteBooks: []
+          isMe: false
+          currentWeek: null
+    MyProfile:
+      type: object
+      additionalProperties: false
+      properties:
+        member:
+          $ref: "#/components/schemas/MemberSummary"
+        bio:
+          anyOf:
+            - type: string
+            - type: "null"
+        favouriteQuote:
+          anyOf:
+            - type: string
+            - type: "null"
+        favouriteBooks:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookSummary"
+          maxItems: 5
+        favouriteOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookSummary"
+      required:
+        - member
+        - bio
+        - favouriteQuote
+        - favouriteBooks
+        - favouriteOptions
+      description: "Allowed favourites: terminado/archivado visible catalogue books, Spanish title order;
+        selected books in chosen order."
+      examples:
+        - member:
+            id: book-fiction-1
+            displayName: Texto ficticio
+            avatarUrl: null
+          bio: null
+          favouriteQuote: null
+          favouriteBooks: []
+          favouriteOptions: []
+    ProfileMetadata:
+      type: object
+      additionalProperties: false
+      properties:
+        displayName:
+          type: string
+          x-trimmedMinLength: 1
+          x-trimmedMaxLength: 40
+          description: Trim, then 1..40 chars single line. Reject control characters incl U+2028/U+2029.
+        bio:
+          anyOf:
+            - type: string
+              x-trimmedMaxLength: 500
+            - type: "null"
+        favouriteQuote:
+          anyOf:
+            - type: string
+              x-trimmedMaxLength: 300
+            - type: "null"
+        favouriteBookIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          maxItems: 5
+          uniqueItems: true
+        avatarAction:
+          type: string
+          enum:
+            - keep
+            - remove
+            - replace
+      required:
+        - displayName
+        - favouriteBookIds
+        - avatarAction
+      description: JSON metadata multipart part. Optional text missing/null/trimmed blank becomes null.
+        Max lengths AFTER trim, server obligation. Favourites ordered distinct allowed IDs; reject
+        whole transaction for any invalid value. Smuggled ownership keys 403, never used for
+        ownership.
+      examples:
+        - displayName: Texto ficticio
+          favouriteBookIds: []
+          avatarAction: keep
+    ProfileMultipart:
+      type: object
+      additionalProperties: false
+      properties:
+        metadata:
+          $ref: "#/components/schemas/ProfileMetadata"
+        avatar:
+          type: string
+          format: binary
+          description: JPEG/PNG/WebP bytes, >0 and <=2097152 bytes; required ONLY for replace. Server
+            sniffs/validates content before atomic save.
+          x-maxBytes: 2097152
+      required:
+        - metadata
+      allOf:
+        - if:
+            properties:
+              metadata:
+                properties:
+                  avatarAction:
+                    const: replace
+                required:
+                  - avatarAction
+            required:
+              - metadata
+          then:
+            required:
+              - avatar
+          else:
+            not:
+              required:
+                - avatar
+      description: "Multipart adapter: metadata application/json part; avatar binary image part for
+        replace. Browser File/AvatarChange never JSON objects."
+      examples:
+        - metadata:
+            displayName: Texto ficticio
+            favouriteBookIds: []
+            avatarAction: keep
+    MyReviewEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        scores:
+          $ref: "#/components/schemas/CriterionScores"
+        overall:
+          type: number
+          minimum: 1
+          maximum: 5
+        text:
+          anyOf:
+            - type: string
+            - type: "null"
+        submittedAt:
+          $ref: "#/components/schemas/Instant"
+        editedAt:
+          anyOf:
+            - $ref: "#/components/schemas/Instant"
+            - type: "null"
+      required:
+        - book
+        - scores
+        - overall
+        - text
+        - submittedAt
+        - editedAt
+      description: Only own review, latest max(submittedAt, editedAt) first then Spanish title, no club
+        totals. Removed books omitted.
+      examples:
+        - book:
+            id: book-fiction-1
+            title: Texto ficticio
+            authors: []
+            coverUrl: null
+          scores:
+            disfrute: 1
+            estilo: 1
+            personajes: 1
+            trama: 1
+            huella: 1
+          overall: 1
+          text: null
+          submittedAt: 2026-01-15T19:00:00Z
+          editedAt: null
+    WeekCompletionInput:
+      type: object
+      additionalProperties: false
+      properties:
+        completed:
+          type: boolean
+      required:
+        - completed
+      examples:
+        - completed: false
+    ApprovalInput:
+      type: object
+      additionalProperties: false
+      properties:
+        approved:
+          type: boolean
+      required:
+        - approved
+      examples:
+        - approved: false
+    FinishedInput:
+      type: object
+      additionalProperties: false
+      properties:
+        finished:
+          type: boolean
+      required:
+        - finished
+      examples:
+        - finished: false
+    CandidateInput:
+      type: object
+      additionalProperties: false
+      properties:
+        bookId:
+          $ref: "#/components/schemas/Id"
+      required:
+        - bookId
+      examples:
+        - bookId: book-fiction-1
+    CandidateOrderInput:
+      type: object
+      additionalProperties: false
+      properties:
+        bookIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          uniqueItems: true
+      required:
+        - bookIds
+      description: Exactly current candidates in requested order; known but stale/different set 409,
+        unknown book 404.
+      examples:
+        - bookIds: []
+    TieWinnerInput:
+      type: object
+      additionalProperties: false
+      properties:
+        bookId:
+          $ref: "#/components/schemas/Id"
+        note:
+          type: string
+          x-trimmedMaxLength: 1000
+      required:
+        - bookId
+        - note
+      description: Note trimmed before limit; blank becomes null; tied candidate only, admin only.
+      examples:
+        - bookId: book-fiction-1
+          note: Texto ficticio
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_input
+            - unauthenticated
+            - forbidden
+            - not_found
+            - conflict
+            - reauthentication_required
+            - internal_error
+            - service_unavailable
+        message:
+          type: string
+          minLength: 1
+      required:
+        - code
+        - message
+      description: "Central JSON error; Spanish safe plain text, no request echo/private payload. Local
+        ApiError(status,message) adapter deferred #103."
+      examples:
+        - code: unauthenticated
+          message: Debes iniciar sesión.
+  responses:
+    Error400:
+      description: Datos no válidos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: invalid_input
+            message: Datos no válidos.
+    Error401:
+      description: Debes iniciar sesión.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: unauthenticated
+            message: Debes iniciar sesión.
+    Error403:
+      description: No tienes permiso para realizar esta acción.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: forbidden
+            message: No tienes permiso para realizar esta acción.
+    Error404:
+      description: No se encuentra el recurso.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: not_found
+            message: No se encuentra el recurso.
+    Error409:
+      description: El estado actual no permite esta acción.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: conflict
+            message: El estado actual no permite esta acción.
+    Error500:
+      description: No se ha podido completar la solicitud.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: internal_error
+            message: No se ha podido completar la solicitud.
+    Error503:
+      description: El servicio no está disponible temporalmente.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: service_unavailable
+            message: El servicio no está disponible temporalmente.
