@@ -101,6 +101,58 @@ try {
 
 The integration suite reproduces this verification in pytest's temporary directory and checks the actual table, initial migration, uniqueness and SQL checks. Its test database is separate from development storage. On Unix, set `DATABASE_PATH` to a new temporary absolute path before running the same commands. The temporary verification database can be removed afterwards.
 
+### Explicit initial owner bootstrap (#6)
+
+`bootstrap_admin` reads only `INITIAL_ADMIN_DISCORD_ID`: an exact string of 17–20
+ASCII digits, without trimming or numeric conversion. It creates an approved native
+admin with placeholder display name `Administrador`, empty avatar and null bio/quote,
+and an unusable password. No OAuth credentials/provider requests, email, Django
+staff/superuser, SocialAccount or SocialToken are needed. Website profiles remain
+independent of Discord and can be edited through the later profile feature (#9).
+
+Example from `backend/`, using a fictional ID and a new disposable database:
+
+```powershell
+$bootstrapDirectory = Join-Path $env:TEMP ('bookclub-bootstrap-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $bootstrapDirectory | Out-Null
+$previousDatabase = $env:DATABASE_PATH
+$previousAdminIdentity = $env:INITIAL_ADMIN_DISCORD_ID
+$previousEnvironment = $env:BOOKCLUB_ENV
+try {
+  $env:BOOKCLUB_ENV = 'test'
+  $env:DATABASE_PATH = Join-Path $bootstrapDirectory 'disposable.sqlite3'
+  uv run python manage.py migrate --noinput
+  $env:INITIAL_ADMIN_DISCORD_ID = '100000000000000001'
+  uv run python manage.py bootstrap_admin
+  uv run python manage.py bootstrap_admin # Already configured; no persisted changes.
+} finally {
+  $env:DATABASE_PATH = $previousDatabase
+  $env:INITIAL_ADMIN_DISCORD_ID = $previousAdminIdentity
+  $env:BOOKCLUB_ENV = $previousEnvironment
+}
+```
+
+POSIX equivalent, again on a disposable database:
+
+```sh
+bootstrap_directory=$(mktemp -d)
+BOOKCLUB_ENV=test DATABASE_PATH="$bootstrap_directory/disposable.sqlite3" uv run python manage.py migrate --noinput
+BOOKCLUB_ENV=test DATABASE_PATH="$bootstrap_directory/disposable.sqlite3" INITIAL_ADMIN_DISCORD_ID=100000000000000001 uv run python manage.py bootstrap_admin
+```
+
+Existing pending/approved/revoked members and the same-identity admin are reused;
+explicit execution promotes/reapproves and clears revocation while retaining the
+native key, identity, profile, creation time, last login and password. Any different
+admin-role row blocks the operation, including pending/revoked admins: changing the
+variable cannot transfer ownership. Malformed persisted rows fail without repairs.
+No positional ID or override option exists. Missing/invalid input makes this command
+fail safely in Spanish without writes; Django startup/check and OAuth never consult
+the variable or provision/reapprove anyone. An already configured rerun changes no
+field, including `updated_at`. `.env.example` is reference-only and is never loaded
+automatically. Never run these provisioning/migration examples on the owner's
+development database. There is no HTTP bootstrap or new route; the frontend remains
+the existing mock preview on localhost:5173.
+
 The schema command compares every registered/generated implemented operation against its handwritten contract, reports the implemented subset and fails on missing/undocumented handlers or changed behavioural schemas/security/statuses/media. See [docs/api.md](docs/api.md). It does not pretend the 74 future club/provider operations are implemented. CI runs locked uv install, checks, Ruff, both real nonempty test selections and schema drift checking; frontend CI continues its complete existing suite.
 
 The mock admin can maintain independent page/percentage targets at
