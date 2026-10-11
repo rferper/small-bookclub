@@ -8,12 +8,13 @@ const ok = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
 const health = { method: 'GET', path: '/api/health', successStatus: 200 } as const
 
 describe('central HTTP operation transport', () => {
-  it('every unavailable feature and session adapter sends zero HTTP requests', async () => {
+  it('every unavailable feature adapter sends zero HTTP requests', async () => {
     const send = vi.fn<typeof fetch>()
     vi.stubGlobal('fetch', send)
     try {
       const client = createHttpClient()
       for (const name of Object.keys(client)) {
+        if (name === 'getSession' || name === 'startSignIn' || name === 'signOut') continue
         await expect(Reflect.apply(Reflect.get(client, name), client, [])).rejects.toMatchObject({ status: 503 })
       }
       expect(send).not.toHaveBeenCalled()

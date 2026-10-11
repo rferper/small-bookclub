@@ -1,8 +1,14 @@
 import type { ApiClient } from './client'
-import { safeError } from './transport'
+import { createTransport, operationUrl, safeError } from './transport'
 
 // Explicit inventory: a new feature requires an intentional HTTP behavior decision.
-export function createHttpClient(): ApiClient {
+export function createHttpClient(options: {
+  fetch?: typeof fetch
+  cookie?: () => string
+  navigate?: (url: string) => void
+} = {}): ApiClient {
+  const request = createTransport(options)
+  const navigate = options.navigate ?? ((url: string) => window.location.assign(url))
   const unavailable = async (): Promise<never> => { throw safeError(503) }
   return {
     getBackupInfo: unavailable,
@@ -42,10 +48,13 @@ export function createHttpClient(): ApiClient {
     createBook: unavailable,
     updateBook: unavailable,
     searchBookMetadata: unavailable,
-    getSession: unavailable,
-    startSignIn: unavailable,
+    getSession: () => request<'getSession'>({ method: 'GET', path: '/api/session', successStatus: 200 }),
+    startSignIn: async () => {
+      // OAuth redirects belong to the top-level browser, never the JSON transport.
+      navigate(operationUrl('/api/auth/discord/start'))
+    },
     startDemoSignIn: unavailable,
-    signOut: unavailable,
+    signOut: () => request<'signOut'>({ method: 'POST', path: '/api/auth/logout', successStatus: 204 }),
     getHome: unavailable,
     setWeekCompleted: unavailable,
     listBooks: unavailable,

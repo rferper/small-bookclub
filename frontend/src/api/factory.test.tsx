@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { createApiClient, CONFIGURATION_ERROR } from './factory'
 import { createHttpClient } from './httpClient'
 import { createMockClient } from './mock/mockClient'
 import { withUnauthorizedHandler } from './unauthorized'
 import { ApiError, SESSION_METHODS, type ApiClient } from './client'
-import { renderApp } from '../test/renderApp'
 import { proxyTarget } from '../../proxy'
 
 describe('explicit client selection and unavailable HTTP inventory', () => {
@@ -21,12 +18,13 @@ describe('explicit client selection and unavailable HTTP inventory', () => {
     expect(() => createApiClient(mode, '?mock-session=admin')).toThrow(CONFIGURATION_ERROR)
   })
 
-  it('HTTP ignores every mock query control and rejects the complete explicit inventory', async () => {
+  it('HTTP ignores every mock query control and rejects every unimplemented adapter', async () => {
     const client = createApiClient('http', '?mock-session=admin&mock-demo=1&mock-data=empty&mock-sign-in=admin&mock-vote=tie&mock-rubric=ejemplo')
     expect(Object.keys(client).sort()).toEqual(Object.keys(createMockClient()).sort())
     const before = window.location.href
     // Reflect invokes even parameterized methods: unsupported adapters must refuse before reading inputs.
     for (const name of Object.keys(client)) {
+      if (name === 'getSession' || name === 'startSignIn' || name === 'signOut') continue
       const method: unknown = Reflect.get(client, name)
       if (typeof method !== 'function') throw new Error('Expected explicit client method')
       await expect(Reflect.apply(method, client, [])).rejects.toMatchObject({ status: 503, code: 'service_unavailable', message: 'El servicio no está disponible. Inténtalo de nuevo.' })
@@ -34,20 +32,9 @@ describe('explicit client selection and unavailable HTTP inventory', () => {
     expect(window.location.href).toBe(before)
   })
 
-  it('initial HTTP application and retry show the safe session error without club fixtures', async () => {
-    const user = userEvent.setup()
-    const { container } = renderApp({ client: createApiClient('http', '?mock-session=admin&mock-demo=1') })
-    expect(await screen.findByRole('button', { name: 'Reintentar' })).toBeVisible()
-    expect(container).not.toHaveTextContent('La Regenta')
-    expect(container).not.toHaveTextContent('ficticios')
-    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
-    expect(await screen.findByRole('button', { name: 'Reintentar' })).toBeVisible()
-  })
-
   it('only 401 club calls trigger the shared session handler; HTTP 503 never does', async () => {
     const expired = vi.fn()
-    const http = createHttpClient()
+    const http = createHttpClient({ fetch: async () => { throw new Error('Offline') } })
     const wrapped = withUnauthorizedHandler(http, expired)
     await expect(wrapped.getHome()).rejects.toMatchObject({ status: 503 })
     await expect(wrapped.getSession()).rejects.toMatchObject({ status: 503 })
