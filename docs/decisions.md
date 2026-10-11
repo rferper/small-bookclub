@@ -684,3 +684,35 @@ constraint bypass, identity uniqueness after revocation, timestamp updates and f
 subprocess migration checks are integration tests. README documents disposable SQLite
 verification; it never migrates/resets the owner's development database. No dependency,
 endpoint, contract, frontend selection or localhost behavior changes.
+
+## 2026-10-11: Backend default membership and CSRF boundary (#4)
+
+**Decision:** Install Django database sessions against the existing custom user, with
+explicit sessionid/csrftoken cookie names. Middleware order is Security, Session,
+Authentication, Membership, Common, RequiredCsrf. The shared pure membership helper
+requires authentication, persisted identity, approval and no revocation; role is
+irrelevant. The guard rechecks the database row on each private request and replaces
+request.user with it. Failed sessions containing an auth identity are logged out
+and their server session deleted; reapproval cannot revive an old cookie.
+
+**Boundary:** Only the six exact method/path pairs in users/access.py waive
+membership: GET health/session/OAuth start/OAuth callback and POST logout/demo.
+Unknown paths and future routes are private by default, before redirects, parsing
+or lookup. Public health remains database-independent and cookie-free by leaving
+authentication/session state lazy. No static/media/docs/admin prefix is public.
+No new production operations or authentication provider library are added.
+
+**CSRF:** RequiredCsrfMiddleware wraps the callback passed to Django's standard
+CSRF process_view, removing the effect of Ninja's generated csrf_exempt flag.
+This retains normal token/origin checks on every unsafe backend handler, including
+anonymous public logout/demo probes. Membership refusal returns safe JSON 401 first;
+CSRF_FAILURE_VIEW returns closed safe Spanish JSON 403 without reasons or input.
+Test-only URLconf Django/Ninja sentinel handlers prove this ordering without
+inventing production club APIs. Full authorization/spoiler rules remain #11,
+OAuth/session/logout #5, demo #75, and frontend HTTP adoption #105. This protects
+backend data only; Vite and the current mock client remain unchanged.
+
+**Verification:** Pure boundary/membership tests and real-session integration tests
+cover approval, admin ineligibility, next-request revocation/deletion, cookie replay,
+unknown/private paths, exact public exceptions and CSRF. The fresh disposable
+migration test includes the sessions table. No new dependency is required.
