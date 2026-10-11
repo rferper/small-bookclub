@@ -125,13 +125,14 @@ describe('Inicio', () => {
     const stats = await screen.findByRole('region', { name: 'El club en números' })
     const terms = within(stats).getAllByRole('term').map((el) => el.textContent)
     const values = within(stats).getAllByRole('definition').map((el) => el.textContent)
-    expect(terms).toEqual(['libros leídos', 'valoraciones', 'miembros'])
-    expect(values).toEqual(['2', '12', '7'])
+    expect(terms).toEqual(['libros leídos', 'valoraciones visibles', 'miembros'])
+    expect(values).toEqual(['2', '13', '7'])
 
     const activity = screen.getByRole('region', { name: 'Actividad reciente' })
     expect(within(activity).getAllByRole('listitem')[0]).toHaveTextContent(
-      'Se ha publicado el resumen de la reunión de la semana 2.',
+      'Se ha abierto la votación de Jordi.',
     )
+    expect(activity).not.toHaveTextContent('Se ha publicado el resumen de la reunión de la semana 2.')
 
     const quote = screen.getByRole('region', { name: 'Una cita para hoy' })
     expect(within(quote).getByText(/El que lee mucho y anda mucho/)).toBeInTheDocument()
