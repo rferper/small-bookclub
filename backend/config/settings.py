@@ -1,4 +1,4 @@
-"""Migration-free bootstrap; #2 adds the custom user before auth applications."""
+"""Backend settings; the custom identity precedes all auth-dependent migrations."""
 
 import os
 from pathlib import Path
@@ -10,7 +10,8 @@ globals().update(configure(os.environ, BASE_DIR))
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
-INSTALLED_APPS = []
+INSTALLED_APPS = ["users", "django.contrib.auth", "django.contrib.contenttypes"]
+AUTH_USER_MODEL = "users.User"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
