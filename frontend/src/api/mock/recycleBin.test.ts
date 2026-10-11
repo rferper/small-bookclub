@@ -131,6 +131,75 @@ describe('central deletion visibility and retained facts', () => {
 })
 
 describe('atomic conflicts, exact expiry, ordering and safe purge', () => {
+  it.each(['book', 'meeting', 'week', 'highlight', 'quote'] as DeletedType[])('purged identity stays terminal after creating new %s content', async (type) => {
+    const state = createEmptyState(), api = createMockClient({ state })
+    const book = await api.createBook({ ...blankBookInput(), title: 'Historia ficticia' })
+    const meeting = await api.createMeeting({ bookId: null, weekId: null, startsAt: state.now })
+    const create = async () => {
+      if (type === 'book') return (await api.createBook({ ...blankBookInput(), title: 'Otra historia ficticia' })).id
+      if (type === 'meeting') return (await api.createMeeting({ bookId: null, weekId: null, startsAt: state.now })).id
+      if (type === 'quote') return (await api.addLiteraryQuote({ text: 'Cita original ficticia', author: 'Autor inventado', source: null, active: true })).id
+      if (type === 'week') { await api.createReadingWeek(book.id, input, true); return state.weeks.at(-1)!.id }
+      await api.createMeetingHighlight(meeting.id, { text: 'Momento ficticio', kind: 'quote', speakerIds: ['m1'], published: false }); return state.meetings[0].highlights.at(-1)!.id
+    }
+    const id = await create()
+    if (type === 'book') await api.deleteBook(id)
+    else if (type === 'meeting') await api.deleteMeeting(id)
+    else if (type === 'quote') await api.deleteLiteraryQuote(id)
+    else if (type === 'week') await api.removeReadingWeek(book.id, id)
+    else await api.removeMeetingHighlight(meeting.id, id)
+    await api.purgeDeleted(type, id)
+    expect(await create()).not.toBe(id)
+    await expect(api.restoreDeleted(type, id)).rejects.toMatchObject({ status: 404 })
+    await expect(api.purgeDeleted(type, id)).rejects.toMatchObject({ status: 404 })
+  })
+  it.each(['week', 'meeting', 'review', 'finished', 'favourite', 'candidate', 'outcome', 'source'] as const)('each independent book dependency blocks purge: %s', async (dependency) => {
+    const state = createClubState(), api = createMockClient({ state }), book = state.books[0]
+    state.weeks = []; state.meetings = []; state.reviews = []; state.finished = {}; state.profiles = {}; state.votes = []; book.originVote = null
+    if (dependency === 'week') state.weeks.push({ id: 'retained', bookId: book.id, weekNumber: 1, ...input, deletedAt: state.now })
+    if (dependency === 'meeting') state.meetings.push({ id: 'retained', bookId: book.id, startsAt: state.now, cancelled: true, attendance: null, markedSafe: false, summary: null, highlights: [], deletedAt: state.now })
+    if (dependency === 'review') state.reviews.push({ bookId: book.id, userId: 'm1', scores: { disfrute: 3, estilo: 3, personajes: 3, trama: 3, huella: 3 }, text: 'Historial ficticio', submittedAt: state.now, editedAt: null })
+    if (dependency === 'finished') state.finished[book.id] = ['m1']
+    if (dependency === 'favourite') state.profiles.m1 = { bio: null, favouriteQuote: null, favouriteBookIds: [book.id] }
+    if (dependency === 'candidate' || dependency === 'outcome') state.votes.push({ id: 'retained', status: 'closed', curatorId: 'm1', openedAt: state.now, closedAt: state.now, candidates: dependency === 'candidate' ? [{ bookId: book.id, approverIds: [] }] : [], outcome: dependency === 'outcome' ? { winnerBookId: book.id, tieNote: null } : null })
+    if (dependency === 'source') book.originVote = { id: 'retained', label: 'Votacion ficticia' }
+    await api.deleteBook(book.id)
+    const before = structuredClone(state)
+    await expect(api.purgeDeleted('book', book.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+  })
+  it.each(['attendance', 'removedHighlight', 'removedWeek'] as const)('each retained meeting dependency blocks purge: %s', async (dependency) => {
+    const state = createClubState(), api = createMockClient({ state }), meeting = state.meetings.find((m) => m.id === 'mt1')!
+    state.weeks = []; meeting.attendance = []; meeting.highlights = []
+    if (dependency === 'attendance') meeting.attendance = ['m8']
+    if (dependency === 'removedHighlight') meeting.highlights = [{ id: 'retained', text: 'Texto independiente', kind: 'quote', speakerIds: [], published: false, deletedAt: state.now }]
+    if (dependency === 'removedWeek') state.weeks = [{ id: 'retained', bookId: meeting.bookId!, weekNumber: 1, ...input, meetingId: meeting.id, deletedAt: state.now }]
+    await api.deleteMeeting(meeting.id)
+    const before = structuredClone(state)
+    await expect(api.purgeDeleted('meeting', meeting.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+  })
+  it.each(['completion', 'meeting'] as const)('each independent week dependency blocks purge: %s', async (dependency) => {
+    const state = createClubState(), api = createMockClient({ state }), week = state.weeks[0]
+    state.completions[week.id] = dependency === 'completion' ? ['m8'] : []
+    if (dependency === 'completion') week.meetingId = null
+    await api.removeReadingWeek(week.bookId, week.id)
+    const before = structuredClone(state)
+    await expect(api.purgeDeleted('week', week.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+  })
+  it('meeting restore rejects conflicting canonical reservations and removed/missing book parents atomically', async () => {
+    const state = createClubState(), api = createMockClient({ state }), meeting = state.meetings.find((m) => m.id === 'mt1')!
+    await api.deleteMeeting(meeting.id)
+    const linked = state.weeks.find((w) => w.meetingId === meeting.id)!
+    const other = state.weeks.find((w) => w.id !== linked.id)!, previous = other.meetingId
+    other.meetingId = meeting.id
+    let before = structuredClone(state)
+    await expect(api.restoreDeleted('meeting', meeting.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+    other.meetingId = previous; linked.bookId = 'b2'; before = structuredClone(state)
+    await expect(api.restoreDeleted('meeting', meeting.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+    linked.bookId = 'b3'; await api.deleteBook('b3'); before = structuredClone(state)
+    await expect(api.restoreDeleted('meeting', meeting.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+    state.books = state.books.filter((b) => b.id !== 'b3'); before = structuredClone(state)
+    await expect(api.restoreDeleted('meeting', meeting.id)).rejects.toMatchObject({ status: 409 }); expect(state).toEqual(before)
+  })
   it('blocks a second Leyendo and recovers exact book facts after conflict is resolved', async () => {
     const state = createClubState(), api = createMockClient({ state }), original = structuredClone(state.books.find((b) => b.id === 'b3')!)
     await api.deleteBook('b3')
