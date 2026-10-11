@@ -3,7 +3,7 @@ info:
   title: Small Bookclub API
   version: 1.2.0
   description: "Private Spanish book club member (#71) and administration (#102) contract. Future
-    same-site cookie club API; only public health is implemented, without club security enforcement. Approved access rechecked on
+    same-site cookie club API; only public health is implemented, with a backend default membership guard. Approved access rechecked on
     every request. Generated adoption #103, backend response validation #72. See docs/api.md."
 servers:
   - url: /
