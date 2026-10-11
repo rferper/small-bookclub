@@ -174,22 +174,12 @@ function LockedRecord({ children }: { children: ReactNode }) {
 
 // Plain text: React escapes it, so markup in a summary is shown, not rendered.
 function Summary({ summary }: { summary: string | null }) {
-  const paragraphs = (summary ?? '')
-    .split(/\n+/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
   return (
-    <Card title="Resumen">
-      {paragraphs.length === 0 ? (
+    <Card title="Resumen" className="min-w-0">
+      {!summary ? (
         <EmptyState>Todavía no hay un resumen de esta reunión.</EmptyState>
       ) : (
-        <div className="grid max-w-prose gap-3">
-          {paragraphs.map((paragraph, index) => (
-            <p key={index} className="break-words">
-              {paragraph}
-            </p>
-          ))}
-        </div>
+        <p className="max-w-prose whitespace-pre-wrap break-words">{summary}</p>
       )}
     </Card>
   )
@@ -197,7 +187,7 @@ function Summary({ summary }: { summary: string | null }) {
 
 function Highlights({ highlights }: { highlights: MeetingHighlight[] }) {
   return (
-    <Card title="Momentos destacados">
+    <Card title="Momentos destacados" className="min-w-0">
       {highlights.length === 0 ? (
         <EmptyState>Todavía no hay momentos destacados de esta reunión.</EmptyState>
       ) : (
@@ -206,10 +196,10 @@ function Highlights({ highlights }: { highlights: MeetingHighlight[] }) {
             <li key={highlight.id} className="min-w-0">
               {highlight.kind === 'quote' ? (
                 <blockquote className="border-l-4 border-soft-green pl-3 font-serif text-lg break-words text-forest">
-                  <p>«{highlight.text}»</p>
+                  <p className="whitespace-pre-wrap">«{highlight.text}»</p>
                 </blockquote>
               ) : (
-                <p className="break-words">{highlight.text}</p>
+                <p className="whitespace-pre-wrap break-words">{highlight.text}</p>
               )}
               {highlight.speakers.length > 0 && (
                 <p className="mt-1 text-sm break-words text-bark">

@@ -31,6 +31,7 @@ export function AdminMeetingsPage() {
         <p className="break-words text-bark">{calendar.data.books.find((b) => b.id === meeting.bookId)?.title ?? 'Sin libro'}{meeting.weekId && ` · Semana ${calendar.data.weeks.find((w) => w.id === meeting.weekId)?.weekNumber}`}</p>
         {meeting.removedWeekNumber !== undefined && <p>Semana retirada ({meeting.removedWeekNumber})</p>}
         {meeting.cancelled && <p className="font-semibold">Cancelada</p>}
+        <Link className={linkClass} to={`${base}/${encodeURIComponent(meeting.id)}/resumen`}>Editar resumen y momentos destacados</Link>
       </li>)}</ul> : <EmptyState>{group === 'upcoming' ? 'No hay próximas reuniones. Puedes crear una cuando quieras.' : 'Todavía no hay reuniones pasadas.'}</EmptyState>}
     </Card>)}
   </div>
@@ -90,6 +91,7 @@ function MeetingEditor({ calendar, meeting, reload }: { calendar: AdminMeetingCa
     <Link to={base} className={linkClass}>Volver a Reuniones</Link>
     <h1 className="text-3xl">{meeting ? 'Editar reunión' : 'Crear reunión'}</h1>
     {meeting?.cancelled && <p className="font-semibold">Cancelada</p>}
+    {meeting && <Link className={linkClass} to={`${base}/${encodeURIComponent(meeting.id)}/resumen`}>Editar resumen y momentos destacados</Link>}
     <Card title="Fecha y lectura">
       <p className="mb-4 break-words text-bark">Zona horaria del club: {CLUB_TIMEZONE}</p>
       <form onSubmit={save} noValidate className="grid min-w-0 gap-4">
