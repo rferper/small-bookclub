@@ -8,6 +8,7 @@ from users.authentication import fresh_export_auth
 def identity(**changes):
     data = {
         "pk": 7,
+        "discord_user_id": "12345678901234567",
         "is_authenticated": True,
         "approved": True,
         "revoked_at": None,
@@ -22,7 +23,12 @@ def identity(**changes):
 )
 def test_export_freshness_finite_server_time(age, expected):
     assert (
-        fresh_export_auth(identity(), {"id": "7", "at": 1000 - age}, 1000) is expected
+        fresh_export_auth(
+            identity(),
+            {"id": "7", "discord": "12345678901234567", "at": 1000 - age},
+            1000,
+        )
+        is expected
     )
 
 
@@ -30,6 +36,7 @@ def test_export_freshness_finite_server_time(age, expected):
     "changes",
     [
         {"pk": 8},
+        {"discord_user_id": "98765432109876543"},
         {"role": "member"},
         {"approved": False},
         {"revoked_at": object()},
@@ -38,7 +45,11 @@ def test_export_freshness_finite_server_time(age, expected):
     ],
 )
 def test_export_freshness_requires_same_current_approved_admin(changes):
-    assert not fresh_export_auth(identity(**changes), {"id": "7", "at": 900}, 1000)
+    assert not fresh_export_auth(
+        identity(**changes),
+        {"id": "7", "discord": "12345678901234567", "at": 900},
+        1000,
+    )
 
 
 @pytest.mark.parametrize(
@@ -46,10 +57,12 @@ def test_export_freshness_requires_same_current_approved_admin(changes):
     [
         None,
         {},
-        {"id": "7", "at": True},
-        {"id": "7", "at": "900"},
-        {"id": "7", "at": float("nan")},
-        {"id": "7", "at": float("inf")},
+        {"id": "7", "at": 900},
+        {"id": "7", "discord": None, "at": 900},
+        {"id": "7", "discord": "12345678901234567", "at": True},
+        {"id": "7", "discord": "12345678901234567", "at": "900"},
+        {"id": "7", "discord": "12345678901234567", "at": float("nan")},
+        {"id": "7", "discord": "12345678901234567", "at": float("inf")},
     ],
 )
 def test_export_freshness_rejects_invalid_records(record):

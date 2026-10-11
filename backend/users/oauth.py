@@ -94,6 +94,7 @@ class ClubSocialAdapter(DefaultSocialAccountAdapter):
                 raise ImmediateHttpResponse(fail(request))
             request.session[EXPORT_KEY] = {
                 "id": str(identity.pk),
+                "discord": identity.discord_user_id,
                 "at": timezone.now().timestamp(),
             }
             response = HttpResponseRedirect("/administracion")

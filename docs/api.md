@@ -340,7 +340,9 @@ Failed/replayed export clears freshness and preserves an otherwise eligible sess
 The retained last-purpose marker identifies failed export replays without reusable state.
 `users.authentication.has_fresh_export_auth(request)` is the handoff to #49: same current
 approved admin, finite nonfuture timestamp, age strictly <300 seconds; invalid authority
-is removed. No export endpoint/archive/UI is implemented here. Logout flushes all state,
+is removed. The record binds both native and exact Discord IDs; replacing either
+identity invalidates freshness, including old records missing a Discord binding.
+No export endpoint/archive/UI is implemented here. Logout flushes all state,
 denial, purpose and freshness markers; real Django CSRF/origin checks apply anonymously
 and when signed in. GET cannot log out.
 

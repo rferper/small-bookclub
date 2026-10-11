@@ -32,7 +32,11 @@ def fresh_export_auth(identity, record, now):
     """Pure freshness decision: exactly 300 seconds and future times are invalid."""
     if not is_effective_member(identity) or identity.role != "admin":
         return False
-    if not isinstance(record, dict) or record.get("id") != str(identity.pk):
+    if (
+        not isinstance(record, dict)
+        or record.get("id") != str(identity.pk)
+        or record.get("discord") != identity.discord_user_id
+    ):
         return False
     stamp = record.get("at")
     if isinstance(stamp, bool) or not isinstance(stamp, (int, float)):

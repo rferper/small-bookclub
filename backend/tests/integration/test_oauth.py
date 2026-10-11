@@ -459,6 +459,30 @@ def test_ordinary_login_rotates_existing_identity_and_clears_export_authority(
     assert not freshness(client)
 
 
+def test_export_freshness_invalidated_by_discord_identity_replacement(
+    client, member, provider_http
+):
+    member.role = "admin"
+    member.save()
+    finish(client, start(client))
+    finish(client, start(client, "export"))
+    assert freshness(client)
+    cookie = client.cookies["sessionid"].value
+    cached_identity = User.objects.get(pk=member.pk)
+    member.discord_user_id = "98765432109876543"
+    member.save()
+
+    request = RequestFactory().get("/api/session")
+    request.session = client.session
+    request.user = cached_identity
+    assert not has_fresh_export_auth(request)
+    assert EXPORT_KEY not in request.session
+    request.session.save()
+    assert EXPORT_KEY not in client.session
+    assert projection(client)["user"]["id"] == str(member.pk)
+    assert client.cookies["sessionid"].value == cookie
+
+
 def test_logout_clears_all_server_authentication_markers(client, member, provider_http):
     member.role = "admin"
     member.save()

@@ -777,3 +777,13 @@ allauth HTTP tests mock only provider HTTP and check DB/session/state/native pro
 CSRF and contracts; fake frontend tests independently prove adapter/gate behavior.
 Clean entire-HEAD temporary archives protect the owner's port5173/DLLs/database.
 No real Discord smoke test is claimed.
+
+## 2026-10-11: Export freshness retains verified provider identity (#5 QA round 1)
+
+**Correction:** The callback freshness record retains the verified native ID and exact
+Discord ID as well as server timestamp inside the existing DB session. The shared
+check compares both against the current approved admin row. Replacing Discord ID on
+the same native row invalidates and removes freshness while preserving an eligible
+session. Older records without provider identity fail closed. No wire/API/model change.
+Mounted allauth regression reproduces replacement after actual login/export exchange;
+pure tests cover exact identity and missing binding independently of age/role checks.
