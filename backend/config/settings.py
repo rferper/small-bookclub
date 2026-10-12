@@ -12,6 +12,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 INSTALLED_APPS = [
     "users",
+    "core",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
