@@ -13,6 +13,7 @@ from django.utils import timezone
 from ninja import NinjaAPI, Schema, Status
 from pydantic import ConfigDict, Field
 
+from books.catalogue import list_catalogue, read_book, save_book, serve_cover
 from users.authentication import (
     DENIED_KEY,
     EXPORT_KEY,
@@ -32,6 +33,7 @@ from users.oauth import ClubDiscordAdapter, callback
 from users.profile import read_profile, serve_avatar, update_profile
 from users.schemas import (
     REDIRECT_RESPONSE,
+    AdminBook,
     AdminMembers,
     Error,
     MemberDirectory,
@@ -42,10 +44,13 @@ from users.schemas import (
     query_parameter,
 )
 
-from .contract import read_contract, resolve
+from .contract import normalize_schema, read_contract, resolve
 
 PROFILE_MULTIPART_SCHEMA = resolve(
     read_contract(), {"$ref": "#/components/schemas/ProfileMultipart"}
+)
+BOOK_MULTIPART_SCHEMA = normalize_schema(
+    resolve(read_contract(), {"$ref": "#/components/schemas/BookMultipart"})
 )
 
 api = NinjaAPI(
@@ -362,3 +367,109 @@ def get_directory(request):
 )
 def get_member_profile(request, memberId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(member_profile, request, memberId)
+
+
+@api.get(
+    "/admin/books",
+    response={200: list[AdminBook], 401: Error, 403: Error, 500: Error, 503: Error},
+    operation_id="listAdminBooks",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def admin_books(request):
+    return allowlist_result(list_catalogue, request)
+
+
+@api.get(
+    "/admin/books/{bookId}",
+    response={
+        200: AdminBook,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="getAdminBook",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def admin_book(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_book, request, bookId)
+
+
+BOOK_REQUEST = {
+    "security": [{"sessionCookie": [], "csrfHeader": []}],
+    "requestBody": {
+        "required": True,
+        "content": {
+            "multipart/form-data": {
+                "schema": BOOK_MULTIPART_SCHEMA,
+                "encoding": {
+                    "metadata": {"contentType": "application/json"},
+                    "cover": {"contentType": "image/jpeg, image/png, image/webp"},
+                },
+            }
+        },
+    },
+}
+
+
+@api.post(
+    "/admin/books",
+    response={
+        201: AdminBook,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="createBook",
+    openapi_extra=BOOK_REQUEST,
+)
+def create_book(request):
+    return allowlist_result(save_book, request)
+
+
+@api.put(
+    "/admin/books/{bookId}",
+    response={
+        200: AdminBook,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="updateBook",
+    openapi_extra=BOOK_REQUEST,
+)
+def update_book(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(save_book, request, bookId)
+
+
+@api.get(
+    "/media/covers/{coverId}",
+    response={200: None, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getCover",
+    openapi_extra={
+        "security": [{"sessionCookie": []}],
+        "responses": {
+            "200": {
+                "description": "WebP image bytes.",
+                "content": {
+                    "image/webp": {"schema": {"type": "string", "format": "binary"}}
+                },
+            }
+        },
+    },
+)
+def get_cover(request, coverId: str):
+    try:
+        result = serve_cover(request, coverId)
+    except Exception:
+        return Status(*error_result(500))
+    return result if isinstance(result, HttpResponse) else Status(*result)

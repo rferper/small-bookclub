@@ -34,6 +34,11 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/media/avatars/{avatarId} (getAvatar)",
         "GET /api/members (listMembers)",
         "GET /api/members/{memberId} (getMemberProfile)",
+        "GET /api/admin/books (listAdminBooks)",
+        "POST /api/admin/books (createBook)",
+        "GET /api/admin/books/{bookId} (getAdminBook)",
+        "PUT /api/admin/books/{bookId} (updateBook)",
+        "GET /api/media/covers/{coverId} (getCover)",
     ]
 
 

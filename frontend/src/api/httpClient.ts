@@ -1,6 +1,6 @@
 import type { ApiClient } from './client'
 import { createTransport, operationUrl, safeError } from './transport'
-import { multipartFormData, profileMultipart } from './adapters'
+import { bookMultipart, multipartFormData, profileMultipart } from './adapters'
 
 // Explicit inventory: a new feature requires an intentional HTTP behavior decision.
 export function createHttpClient(options: {
@@ -44,10 +44,10 @@ export function createHttpClient(options: {
     updateMeeting: unavailable,
     setMeetingCancelled: unavailable,
     setMeetingAttendance: unavailable,
-    listAdminBooks: unavailable,
-    getAdminBook: unavailable,
-    createBook: unavailable,
-    updateBook: unavailable,
+    listAdminBooks: () => request<'listAdminBooks'>({ method: 'GET', path: '/api/admin/books', successStatus: 200 }),
+    getAdminBook: (bookId) => request<'getAdminBook'>({ method: 'GET', path: '/api/admin/books/{bookId}', pathParams: { bookId }, successStatus: 200 }),
+    createBook: (input) => request<'createBook'>({ method: 'POST', path: '/api/admin/books', body: multipartFormData(bookMultipart(input)), successStatus: 201 }),
+    updateBook: (bookId, input) => request<'updateBook'>({ method: 'PUT', path: '/api/admin/books/{bookId}', pathParams: { bookId }, body: multipartFormData(bookMultipart(input)), successStatus: 200 }),
     searchBookMetadata: unavailable,
     getSession: () => request<'getSession'>({ method: 'GET', path: '/api/session', successStatus: 200 }),
     startSignIn: async () => {

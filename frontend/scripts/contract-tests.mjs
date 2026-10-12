@@ -46,7 +46,10 @@ function checkInventory(clientSource, documentation, document) {
   assert.ok(avatar?.includes('getAvatar') && avatar.includes('no client method'), 'Binary avatar is a documented browser image resource')
   const avatarRoute = /`(GET \/api[^`]+)`/.exec(avatar)
   assert.equal(operations.get('getAvatar'), avatarRoute?.[1])
-  assert.deepEqual([...operations.keys()].sort(), [...methods, 'discordCallback', 'getHealth', 'getAvatar'].sort(), 'No undocumented contract operations')
+  const cover = documentation.split(/\r?\n/).find((line) => line.startsWith('| private cover'))
+  assert.ok(cover?.includes('getCover') && cover.includes('no client method'), 'Binary cover is a documented browser image resource')
+  assert.equal(operations.get('getCover'), /`(GET \/api[^`]+)`/.exec(cover)?.[1])
+  assert.deepEqual([...operations.keys()].sort(), [...methods, 'discordCallback', 'getHealth', 'getAvatar', 'getCover'].sort(), 'No undocumented contract operations')
 }
 
 test('complete client inventory documents every method and exact member/admin route', async () => {
@@ -62,6 +65,7 @@ test('complete client inventory documents every method and exact member/admin ro
   assert.throws(() => checkInventory(client, documentation, unexplained))
   assert.throws(() => checkInventory(client, documentation.replace('| infrastructure health', '| unexplained health'), document))
   assert.throws(() => checkInventory(client, documentation.replace('| private avatar', '| unexplained avatar'), document))
+  assert.throws(() => checkInventory(client, documentation.replace('| private cover', '| unexplained cover'), document))
 })
 
 function minimalContract() {

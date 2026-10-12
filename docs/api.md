@@ -114,6 +114,7 @@ All listed routes below are complete #71 operations. Path IDs are required opaqu
 | `startSignIn` | Navigation: `GET /api/auth/discord/start` | Optional query `purpose=login|export`; default login | 302 Location; local Promise<void> adapter | 302 | 500,503 |
 | infrastructure health (`getHealth`, no client method) | Infrastructure: `GET /api/health` | Public process liveness; no database/provider probe | Closed `{status: "ok"}` JSON | 200 | None declared |
 | private avatar (`getAvatar`, no client method) | Browser image: `GET /api/media/avatars/{avatarId}` | Opaque active-member avatar resource, guarded by the server | `image/webp` bytes | 200 | 401,404,500,503 |
+| private cover (`getCover`, no client method) | Browser image: `GET /api/media/covers/{coverId}` | Opaque nonremoved-book cover resource, guarded by the server | `image/webp` bytes | 200 | 401,404,500,503 |
 | provider callback (`discordCallback`, no client method) | Navigation: `GET /api/auth/discord/callback` | Provider query `code`, `state`, `error`; valid state required server-side | 302 same-origin Location; no JSON | 302 | 500,503 |
 
 Admin operations (all path parameters are required opaque ids; type is restricted to DeletedType, preview to book/meeting/quote; metadata search alone requires query):
