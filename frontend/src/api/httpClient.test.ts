@@ -132,6 +132,14 @@ describe('HTTP member directory adapters', () => {
 })
 
 describe('HTTP manual catalogue adapters', () => {
+  it('reads protected book detail by safe native key and preserves generic 404', async () => {
+    const send = vi.fn<typeof fetch>(async () => json({ code: 'not_found', message: 'No se ha encontrado.' }, 404))
+    const client = createHttpClient({ fetch: send })
+    await expect(client.getBook('7')).rejects.toMatchObject({ status: 404, code: 'not_found' })
+    expect(send.mock.calls[0][0]).toBe('/api/books/7')
+    await expect(client.getBook('../session')).rejects.toMatchObject({ status: 500 })
+    expect(send).toHaveBeenCalledTimes(1)
+  })
   it('reads the member bookshelf once without sending local view/filter/sort state', async () => {
     const books = [{ id: '7', title: 'Fictional', authors: [], coverUrl: null, status: 'terminado', readingStartDate: null, readingEndDate: null, datesApproximate: false }]
     const send = vi.fn<typeof fetch>(async () => json(books))

@@ -75,3 +75,67 @@ def test_catalogue_empty_and_membership_recheck():
     User.objects.filter(pk=viewer.pk).update(approved=False, revoked_at=timezone.now())
     response = client.get("/api/books")
     assert response.status_code == 401 and response.json()["code"] == "unauthenticated"
+
+
+@pytest.mark.parametrize("role", ["member", "admin"])
+def test_detail_metadata_contract_and_unknown_removed_denial(role):
+    viewer = User.objects.create_user(
+        "100000000000000001", display_name="Fictional viewer", role=role, approved=True
+    )
+    admin = User.objects.create_user(
+        "100000000000000002",
+        display_name="Fictional admin",
+        role="admin",
+        approved=True,
+    )
+    book = Book.objects.create(
+        title="Fictional",
+        authors=["Fictional author"],
+        description="Fictional public description",
+        publication_date="circa 1900",
+        page_count=180,
+        external_ids={"private": "Not projected"},
+    )
+    client = Client()
+    assert (
+        client.get(f"/api/books/{book.pk}").status_code
+        == client.get("/api/books/unknown").status_code
+        == 401
+    )
+    client.force_login(viewer)
+    response = client.get(f"/api/books/{book.pk}")
+    assert response.status_code == 200
+    document = read_contract()
+    schema = resolve(
+        document, document["paths"]["/api/books/{bookId}"]["get"]["responses"]["200"]
+    )["content"]["application/json"]["schema"]
+    data = response.json()
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(data)
+    assert data == {
+        "id": str(book.pk),
+        "title": "Fictional",
+        "authors": ["Fictional author"],
+        "coverUrl": None,
+        "status": "propuesto",
+        "readingStartDate": None,
+        "readingEndDate": None,
+        "datesApproximate": False,
+        "plannedStartDate": None,
+        "plannedEndDate": None,
+        "description": book.description,
+        "publicationDate": "circa 1900",
+        "publisher": None,
+        "isbn": None,
+        "pageCount": 180,
+        "originVote": None,
+        "schedule": [],
+        "meetings": [],
+    }
+    book.soft_delete(admin)
+    removed = client.get(f"/api/books/{book.pk}")
+    assert removed.status_code == 404
+    for key in ["unknown", "999999", "0", "9" * 30]:
+        missing = client.get(f"/api/books/{key}")
+        assert missing.status_code == 404 and missing.json() == removed.json()
+    User.objects.filter(pk=viewer.pk).update(approved=False, revoked_at=timezone.now())
+    assert client.get(f"/api/books/{book.pk}").status_code == 401
