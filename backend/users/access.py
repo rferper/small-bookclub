@@ -25,3 +25,10 @@ def is_effective_member(identity):
         and identity.approved is True
         and identity.revoked_at is None
     )
+
+
+def approved_admin_refusal(identity):
+    """Pure permission decision; curator assignment never supplies admin authority."""
+    if identity is None or not is_effective_member(identity):
+        return 401
+    return None if identity.role == "admin" else 403

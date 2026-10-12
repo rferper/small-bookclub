@@ -5,6 +5,38 @@ import pytest
 from users.access import PUBLIC_OPERATIONS, is_effective_member, is_public_operation
 
 
+@pytest.mark.parametrize("role", ["admin", "member", "curator"])
+@pytest.mark.parametrize(
+    "approved,revoked", [(True, None), (False, None), (False, "now")]
+)
+@pytest.mark.parametrize("persisted", [True, False])
+@pytest.mark.parametrize("authenticated", [True, False])
+def test_admin_authority_requires_effective_native_membership(
+    role, approved, revoked, persisted, authenticated
+):
+    from users.access import approved_admin_refusal
+
+    identity = SimpleNamespace(
+        role=role,
+        approved=approved,
+        revoked_at=revoked,
+        is_authenticated=authenticated,
+        pk=1 if persisted else None,
+        _state=SimpleNamespace(adding=not persisted),
+        is_curator=True,
+    )
+    effective = authenticated and persisted and approved and revoked is None
+    assert approved_admin_refusal(identity) == (
+        401 if not effective else None if role == "admin" else 403
+    )
+
+
+def test_missing_identity_has_no_admin_authority():
+    from users.access import approved_admin_refusal
+
+    assert approved_admin_refusal(None) == 401
+
+
 @pytest.mark.parametrize("role", ["member", "admin", "curator"])
 @pytest.mark.parametrize("authenticated", [True, False])
 @pytest.mark.parametrize("persisted", [True, False])
