@@ -149,7 +149,8 @@ describe('HTTP manual catalogue adapters', () => {
     const created = send.mock.calls[2][1]?.body as FormData
     expect([...created.keys()]).toEqual(['metadata', 'cover'])
     expect(JSON.parse(await (created.get('metadata') as Blob).text())).toMatchObject({ title: 'Fictional', coverAction: 'replace' })
-    expect([...(send.mock.calls[3][1]?.body as FormData).keys()]).toEqual(['metadata'])
+    const updated = send.mock.calls[3][1]!.body as FormData
+    expect([...updated.keys()]).toEqual(['metadata'])
     await expect(client.getAdminBook('../session')).rejects.toMatchObject({ status: 500 })
     expect(send).toHaveBeenCalledTimes(4)
   })
