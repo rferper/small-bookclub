@@ -3005,6 +3005,7 @@ export interface components {
         /**
          * @description Upcoming earliest first/past newest first by server time; cancellation does not change partition. Choices omit removed books/weeks and revoked members. No summary/highlight/rating content.
          * @example {
+         *       "clubTimezone": "Europe/Madrid",
          *       "upcoming": [],
          *       "past": [],
          *       "books": [],
@@ -3013,6 +3014,8 @@ export interface components {
          *     }
          */
         AdminMeetingCalendar: {
+            /** @description Server-configured IANA club timezone used for display and local-time input. */
+            clubTimezone: string;
             upcoming: components["schemas"]["AdminMeeting"][];
             past: components["schemas"]["AdminMeeting"][];
             books: {
@@ -6815,6 +6818,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "clubTimezone": "Europe/Madrid",
                      *       "upcoming": [],
                      *       "past": [],
                      *       "books": [],
