@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createHttpClient } from './httpClient'
 import { createApiClient } from './factory'
 import type { Session } from './types'
+import type { BookInput } from './types'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
@@ -127,5 +128,30 @@ describe('HTTP member directory adapters', () => {
     for (const [, init] of send.mock.calls) expect(init).toMatchObject({ method: 'GET', credentials: 'same-origin', body: undefined })
     await expect(client.getMemberProfile('../session')).rejects.toMatchObject({ status: 500 })
     expect(send).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('HTTP manual catalogue adapters', () => {
+  it('lists/reads and creates/updates through contract multipart routes and CSRF', async () => {
+    const input: BookInput = { title: 'Fictional', authors: [], status: 'propuesto', description: null, publicationDate: null, publisher: null, isbn: null, pageCount: null, readingStartDate: null, readingEndDate: null, plannedStartDate: null, plannedEndDate: null, datesApproximate: false, cover: { action: 'replace', file: new File(['fictional'], 'cover.png', { type: 'image/png' }) } }
+    const book = { id: '7', originVote: null, coverUrl: '/api/media/covers/fictional', title: input.title }
+    const send = vi.fn<typeof fetch>(async (url, init) => json(url === '/api/admin/books' && init?.method === 'GET' ? [book] : book, init?.method === 'POST' ? 201 : 200))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'c'.repeat(32)}` })
+    expect(await client.listAdminBooks()).toEqual([book])
+    expect(await client.getAdminBook('7')).toEqual(book)
+    expect(await client.createBook(input)).toEqual(book)
+    expect(await client.updateBook('7', { ...input, cover: { action: 'remove' } })).toEqual(book)
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/books', '/api/admin/books/7', '/api/admin/books', '/api/admin/books/7'])
+    for (const [, init] of send.mock.calls.slice(2)) {
+      expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('c'.repeat(32))
+      expect(new Headers(init?.headers).get('Content-Type')).toBeNull()
+    }
+    const created = send.mock.calls[2][1]?.body as FormData
+    expect([...created.keys()]).toEqual(['metadata', 'cover'])
+    expect(JSON.parse(await (created.get('metadata') as Blob).text())).toMatchObject({ title: 'Fictional', coverAction: 'replace' })
+    const updated = send.mock.calls[3][1]!.body as FormData
+    expect([...updated.keys()]).toEqual(['metadata'])
+    await expect(client.getAdminBook('../session')).rejects.toMatchObject({ status: 500 })
+    expect(send).toHaveBeenCalledTimes(4)
   })
 })

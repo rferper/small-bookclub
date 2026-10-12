@@ -1311,6 +1311,37 @@ paths:
           $ref: "#/components/responses/Error503"
       security:
         - sessionCookie: []
+  /api/media/covers/{coverId}:
+    get:
+      operationId: getCover
+      summary: getCover
+      description: Private re-encoded catalogue cover. Approved members may read only covers of nonremoved books. Unknown or removed covers share generic 404.
+      tags:
+        - Member
+      parameters:
+        - name: coverId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: WebP image bytes.
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
   /api/me/reviews:
     get:
       operationId: listMyReviews

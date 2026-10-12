@@ -1,6 +1,5 @@
 """Session-owned native profile updates and private avatar storage."""
 
-import io
 import json
 import re
 import uuid
@@ -11,7 +10,8 @@ from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.db import transaction
 from django.http import HttpResponse
 from django.http.multipartparser import MultiPartParser, MultiPartParserError
-from PIL import Image, UnidentifiedImageError
+
+from core.images import encode_image as encode_avatar
 
 from .access import can_edit_profile, is_effective_member, require_permission
 from .authentication import current_identity
@@ -19,11 +19,8 @@ from .membership import error_result
 from .models import User
 from .validators import validate_display_name
 
-AVATAR_TYPES = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP"}
 OWNER_KEYS = {"id", "memberid", "userid", "ownerid", "member", "user", "owner"}
-MAX_AVATAR_BYTES = 2 * 1024 * 1024
 MAX_METADATA_BYTES = 4096
-IMAGE_MAX_PIXELS = 16_000_000
 AVATAR_URL = "/api/media/avatars/"
 
 
@@ -110,30 +107,6 @@ def parse_input(request):
         action,
         encoded,
     )
-
-
-def encode_avatar(upload):
-    if (
-        upload.content_type not in AVATAR_TYPES
-        or not 0 < upload.size <= MAX_AVATAR_BYTES
-    ):
-        raise ValueError("Invalid avatar upload")
-    data = upload.read(MAX_AVATAR_BYTES + 1)
-    if not 0 < len(data) <= MAX_AVATAR_BYTES:
-        raise ValueError("Invalid avatar size")
-    try:
-        with Image.open(io.BytesIO(data)) as source:
-            if source.format != AVATAR_TYPES[upload.content_type]:
-                raise ValueError("Image type mismatch")
-            if source.width * source.height > IMAGE_MAX_PIXELS:
-                raise ValueError("Image dimensions too large")
-            source.load()
-            image = source.convert("RGBA" if "A" in source.getbands() else "RGB")
-            output = io.BytesIO()
-            image.save(output, format="WEBP", quality=85)
-            return output.getvalue()
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as error:
-        raise ValueError("Invalid image data") from error
 
 
 def avatar_file(key):

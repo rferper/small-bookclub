@@ -588,6 +588,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media/covers/{coverId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getCover
+         * @description Private re-encoded catalogue cover. Approved members may read only covers of nonremoved books. Unknown or removed covers share generic 404.
+         */
+        get: operations["getCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/reviews": {
         parameters: {
             query?: never;
@@ -5579,6 +5599,32 @@ export interface operations {
             header?: never;
             path: {
                 avatarId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebP image bytes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/webp": Blob;
+                };
+            };
+            401: components["responses"]["Error401"];
+            404: components["responses"]["Error404"];
+            500: components["responses"]["Error500"];
+            503: components["responses"]["Error503"];
+        };
+    };
+    getCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coverId: string;
             };
             cookie?: never;
         };
