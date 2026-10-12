@@ -58,7 +58,7 @@ export function createHttpClient(options: {
     signOut: () => request<'signOut'>({ method: 'POST', path: '/api/auth/logout', successStatus: 204 }),
     getHome: unavailable,
     setWeekCompleted: unavailable,
-    listBooks: unavailable,
+    listBooks: () => request<'listBooks'>({ method: 'GET', path: '/api/books', successStatus: 200 }),
     getBook: unavailable,
     listMeetings: unavailable,
     getMeeting: unavailable,

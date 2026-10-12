@@ -890,3 +890,7 @@ needed. #30 owns atomic clearing of its future assignment during revoke.
 ## 2026-10-12: Explicit manual book lifecycle confirmation (#16)
 
 **Decision:** Reuse the whole-book update contract and existing accessible ConfirmDialog for changed status (or nondefault status at creation). Cancel/Escape keeps the draft, restores save-button focus and makes no API call. Confirm submits the reviewed snapshot once; busy state prevents duplicate actions, and safe backend conflicts retain the draft in the dialog. Existing SQL/service constraints remain authoritative; no new status endpoint or automatic date/vote transition is added.
+
+## 2026-10-12: Private member catalogue transport (#17)
+
+**Decision:** GET /api/books returns a closed retained-book metadata projection shared by existing bookshelf/timeline UI. Local view/filter/sort state remains in the browser URL and is never an authority or extra network query. Removed rows, operational metadata and review/count/mean data are absent; private cover reads reuse the guarded resource. No new schema shape, dependency or layout change. Book detail persistence is #19.

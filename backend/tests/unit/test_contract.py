@@ -40,6 +40,7 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "PUT /api/admin/books/{bookId} (updateBook)",
         "GET /api/media/covers/{coverId} (getCover)",
         "GET /api/admin/book-metadata (searchBookMetadata)",
+        "GET /api/books (listBooks)",
     ]
 
 
