@@ -13,6 +13,7 @@ ASGI_APPLICATION = "config.asgi.application"
 INSTALLED_APPS = [
     "users",
     "core",
+    "books",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
