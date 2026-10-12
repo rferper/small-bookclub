@@ -866,3 +866,7 @@ needed. #30 owns atomic clearing of its future assignment during revoke.
 ## 2026-10-12: Native private member directory (#10)
 
 **Decision:** Reuse current session identity and the existing Spanish name ordering for the active directory. Return closed native profile projections only. Pending, revoked and unknown targets share generic 404 after viewer membership is checked. Directory and profile progress remain null, and favourite books empty, until the assignment/catalogue issues persist those features. Existing React pages use central HTTP adapters without layout changes or new dependencies.
+
+## 2026-10-12: Central permission policy (#11)
+
+**Decision:** Keep pure membership, admin, ownership, assigned-curator and spoiler decisions in users/access.py, with a tuple-returning decorator for Django Ninja service functions. Context must be loaded from server state, never request authority claims. Membership and admin-only refusals precede context/resource lookups. Mutations retain transaction-level rechecks and domain validation. All roles need personally-finished plus their own submitted review to see other ratings; admin has no foreign-profile/review edit override. Current contract tie resolution is admin-only; delegated tie authority would require explicitly scoped contract and audit work. No persisted curator, completion or review model is introduced here.
