@@ -20,6 +20,7 @@ from users.authentication import (
     PURPOSE_KEY,
     current_identity,
 )
+from users.directory import directory, member_profile
 from users.membership import (
     add_member,
     error_result,
@@ -33,6 +34,8 @@ from users.schemas import (
     REDIRECT_RESPONSE,
     AdminMembers,
     Error,
+    MemberDirectory,
+    MemberProfile,
     MyProfile,
     NewMember,
     Session,
@@ -339,3 +342,23 @@ def get_avatar(request, avatarId: str):
     if isinstance(result, HttpResponse):
         return result
     return Status(*result)
+
+
+@api.get(
+    "/members",
+    response={200: MemberDirectory, 401: Error, 500: Error, 503: Error},
+    operation_id="listMembers",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_directory(request):
+    return allowlist_result(directory, request)
+
+
+@api.get(
+    "/members/{memberId}",
+    response={200: MemberProfile, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getMemberProfile",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_member_profile(request, memberId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(member_profile, request, memberId)

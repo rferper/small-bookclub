@@ -32,6 +32,8 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/me/profile (getMyProfile)",
         "PUT /api/me/profile (updateMyProfile)",
         "GET /api/media/avatars/{avatarId} (getAvatar)",
+        "GET /api/members (listMembers)",
+        "GET /api/members/{memberId} (getMemberProfile)",
     ]
 
 
