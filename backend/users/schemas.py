@@ -40,6 +40,14 @@ class AdminMembers(ClosedSchema):
     curator: MemberSummary | None
 
 
+class NewMember(ClosedSchema):
+    discordId: str = Field(pattern=r"^[0-9]{17,20}$")
+    displayName: str = Field(
+        min_length=1,
+        json_schema_extra={"x-trimmedMinLength": 1, "x-trimmedMaxLength": 40},
+    )
+
+
 class SessionAnonymous(ClosedSchema):
     status: Literal["anonymous"]
     demoSignInAvailable: bool

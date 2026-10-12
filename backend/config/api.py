@@ -20,12 +20,19 @@ from users.authentication import (
     PURPOSE_KEY,
     current_identity,
 )
-from users.membership import error_result, revoke_member
+from users.membership import (
+    add_member,
+    error_result,
+    list_members,
+    restore_member,
+    revoke_member,
+)
 from users.oauth import ClubDiscordAdapter, callback
 from users.schemas import (
     REDIRECT_RESPONSE,
     AdminMembers,
     Error,
+    NewMember,
     Session,
     query_parameter,
 )
@@ -195,3 +202,65 @@ def revoke(request, memberId: Annotated[str, Field(min_length=1)]):
         # declared envelope is returned. Never echo exceptions or session data.
         status, result = error_result(500)
     return Status(status, result)
+
+
+def allowlist_result(operation, *args):
+    try:
+        status, result = operation(*args)
+    except Exception:
+        # Exceptions leave the atomic operation before the declared safe envelope.
+        status, result = error_result(500)
+    return Status(status, result)
+
+
+@api.get(
+    "/admin/members",
+    response={200: AdminMembers, 401: Error, 403: Error, 500: Error, 503: Error},
+    operation_id="getAdminMembers",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def admin_members(request):
+    return allowlist_result(list_members, request)
+
+
+@api.post(
+    "/admin/members",
+    response={
+        201: AdminMembers,
+        400: Error,
+        401: Error,
+        403: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="addMember",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": NewMember.model_json_schema()}},
+        },
+    },
+)
+def add_admin_member(request):
+    # Deliberate raw-body boundary: authorize and check duplicates before validation.
+    return allowlist_result(add_member, request)
+
+
+@api.post(
+    "/admin/members/{memberId}/restore",
+    response={
+        200: AdminMembers,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="restoreMember",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def restore(request, memberId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(restore_member, request, memberId)

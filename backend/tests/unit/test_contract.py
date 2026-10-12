@@ -26,6 +26,9 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/auth/discord/callback (discordCallback)",
         "POST /api/auth/logout (signOut)",
         "POST /api/admin/members/{memberId}/revoke (revokeMember)",
+        "GET /api/admin/members (getAdminMembers)",
+        "POST /api/admin/members (addMember)",
+        "POST /api/admin/members/{memberId}/restore (restoreMember)",
     ]
 
 
