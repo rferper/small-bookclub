@@ -13,7 +13,7 @@ from django.http import HttpResponse
 from django.http.multipartparser import MultiPartParser, MultiPartParserError
 from PIL import Image, UnidentifiedImageError
 
-from .access import is_effective_member
+from .access import can_edit_profile, is_effective_member, require_permission
 from .authentication import current_identity
 from .membership import error_result
 from .models import User
@@ -41,13 +41,9 @@ def projection(identity):
     }
 
 
+@require_permission("view_club")
 def read_profile(request):
-    identity = current_identity(request)
-    return (
-        (200, projection(identity))
-        if is_effective_member(identity)
-        else error_result(401)
-    )
+    return 200, projection(request.user)
 
 
 def text_value(value, limit):
@@ -161,10 +157,9 @@ def delete_old_avatar(key):
         pass
 
 
+@require_permission("view_club")
 def update_profile(request):
-    actor = current_identity(request)
-    if not is_effective_member(actor):
-        return error_result(401)
+    actor = request.user
     try:
         status, values = parse_input(request)
     except (
@@ -185,6 +180,8 @@ def update_profile(request):
             identity = User.objects.select_for_update().get(pk=actor.pk)
             if not is_effective_member(identity):
                 return error_result(401)
+            if not can_edit_profile(identity, actor.pk):
+                return error_result(403)
             old_key = stored_avatar_key(identity.avatar_path)
             identity.display_name = name
             identity.bio = bio
