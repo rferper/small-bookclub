@@ -832,8 +832,8 @@ active rows and revoked rows, omit pending rows, and expose exact Discord ID onl
 the approved admin. Sort active before revoked, then a pure Unicode Spanish key:
 case/diacritic-insensitive primary order with ñ between n and o; folded/original name
 and native key break ties deterministically. This avoids mutable process-global OS
-locale and another dependency. Until #8 persists assignments, curator is null and
-isCurator false. #8 must reuse this operation and integrate curator clearing into its
+locale and another dependency. Until #30 persists assignments, curator is null and
+isCurator false. #30 must reuse this operation and integrate curator clearing into its
 transaction; retained future domain records and audit remain #31/#50. No frontend
 HTTP adapter, mock/default preview, database migration or owner database is changed.
 
@@ -842,3 +842,17 @@ prove multi-browser deletion, cookie nonrevival after test-only reapproval, safe
 rollback and exact response contracts. Real mounted allauth exchange with only
 provider HTTP mocked proves denied login while revoked and fresh login after
 reapproval. No real provider credentials or live Discord smoke test is claimed.
+
+## 2026-10-12: Immediately approved allowlist and staged curator control (#8)
+
+**Decision:** The existing native user row is the allowlist record. Adding an exact
+Discord ID creates an approved ordinary member without importing a Discord profile;
+restoring a revoked row reuses its identity and website profile, deletes stale sessions,
+and requires fresh OAuth sign-in. Duplicate IDs conflict even when other submitted
+fields are invalid. The live HTTP members page uses the central transport for list,
+add, restore and revoke. It shows the null curator state without an assignment form
+until #30 persists that assignment; mock-backed assignment remains available.
+
+**Why:** This follows the groomed contract while keeping the administrator's live
+controls honest about persisted capabilities. No model, migration or dependency is
+needed. #30 owns atomic clearing of its future assignment during revoke.

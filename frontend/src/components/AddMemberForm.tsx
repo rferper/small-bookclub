@@ -92,7 +92,7 @@ export function AddMemberForm({
     running.current = true
     setSaving(true)
     try {
-      const data = await api.addMember({ discordId: values.discordId, displayName: values.displayName })
+      const data = await api.addMember({ discordId: values.discordId.trim(), displayName: values.displayName.trim() })
       const name = values.displayName.trim()
       onAdded(data)
       setValues({ discordId: '', displayName: '' })

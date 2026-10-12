@@ -48,6 +48,7 @@ The frontend exists; backend commands work once `backend/` is created.
 - Stay inside the issue you were given. If you find other needed work, say so in an issue comment instead of doing it.
 - Record reversible technical decisions in `docs/decisions.md`.
 - When the user corrects how an agent works, update this file or the relevant linked doc.
+- If a local verification needs Docker and the daemon is closed, ask the user to open Docker Desktop before recording Docker as unavailable. Use only the repository's existing Compose setup and preserve the owner's database and preview.
 
 ## Documents
 

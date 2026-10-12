@@ -24,7 +24,7 @@ describe('explicit client selection and unavailable HTTP inventory', () => {
     const before = window.location.href
     // Reflect invokes even parameterized methods: unsupported adapters must refuse before reading inputs.
     for (const name of Object.keys(client)) {
-      if (name === 'getSession' || name === 'startSignIn' || name === 'signOut') continue
+      if (['getSession', 'startSignIn', 'signOut', 'getAdminMembers', 'addMember', 'revokeMember', 'restoreMember'].includes(name)) continue
       const method: unknown = Reflect.get(client, name)
       if (typeof method !== 'function') throw new Error('Expected explicit client method')
       await expect(Reflect.apply(method, client, [])).rejects.toMatchObject({ status: 503, code: 'service_unavailable', message: 'El servicio no está disponible. Inténtalo de nuevo.' })

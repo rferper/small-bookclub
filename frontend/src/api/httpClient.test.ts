@@ -60,3 +60,35 @@ describe('HTTP session adapters', () => {
     await expect(client.signOut()).rejects.toMatchObject({ status: 403, code: 'forbidden' })
   })
 })
+
+describe('HTTP allowlist adapters', () => {
+  it('uses the contract paths, bodies, status codes and current CSRF cookie', async () => {
+    const members = { members: [], curator: null }
+    const send = vi.fn<typeof fetch>(async (_url, init) => json(members, init?.method === 'POST' && init?.body ? 201 : 200))
+    let token = 'a'.repeat(32)
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${token}` })
+    await expect(client.getAdminMembers()).resolves.toEqual(members)
+    await expect(client.addMember({ discordId: '000000000000000001', displayName: 'Alba' })).resolves.toEqual(members)
+    token = 'b'.repeat(32)
+    await expect(client.restoreMember('member-1')).resolves.toEqual(members)
+    await expect(client.revokeMember('member-1')).resolves.toEqual(members)
+    expect(send.mock.calls.map(([url]) => url)).toEqual([
+      '/api/admin/members', '/api/admin/members',
+      '/api/admin/members/member-1/restore', '/api/admin/members/member-1/revoke',
+    ])
+    expect(send.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'POST', 'POST', 'POST'])
+    expect(JSON.parse(send.mock.calls[1][1]?.body as string)).toEqual({ discordId: '000000000000000001', displayName: 'Alba' })
+    expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBeNull()
+    expect(new Headers(send.mock.calls[1][1]?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
+    for (const call of send.mock.calls.slice(2)) expect(new Headers(call[1]?.headers).get('X-CSRFToken')).toBe('b'.repeat(32))
+    for (const call of send.mock.calls) expect(call[1]).toMatchObject({ credentials: 'same-origin', redirect: 'error' })
+  })
+
+  it('keeps generic conflict and authorization failures and never sends unsafe path data', async () => {
+    const send = vi.fn<typeof fetch>(async () => json({ code: 'conflict', message: 'La acción no está disponible en este estado.' }, 409))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'c'.repeat(32)}` })
+    await expect(client.addMember({ discordId: '12345678901234567', displayName: 'Alba' })).rejects.toMatchObject({ status: 409, code: 'conflict' })
+    await expect(client.revokeMember('../session')).rejects.toMatchObject({ status: 500 })
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+})
