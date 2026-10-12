@@ -36,6 +36,17 @@ class OriginVote(ClosedSchema):
     label: str
 
 
+class LibraryBook(ClosedSchema):
+    id: str = Field(min_length=1)
+    title: str
+    authors: list[str]
+    coverUrl: str | None
+    status: Literal["propuesto", "elegido", "leyendo", "terminado", "archivado"]
+    readingStartDate: date | None
+    readingEndDate: date | None
+    datesApproximate: bool
+
+
 class BookMetadataResult(ClosedSchema):
     id: str = Field(min_length=1)
     title: str = Field(

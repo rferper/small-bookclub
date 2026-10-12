@@ -132,6 +132,12 @@ describe('HTTP member directory adapters', () => {
 })
 
 describe('HTTP manual catalogue adapters', () => {
+  it('reads the member bookshelf once without sending local view/filter/sort state', async () => {
+    const books = [{ id: '7', title: 'Fictional', authors: [], coverUrl: null, status: 'terminado', readingStartDate: null, readingEndDate: null, datesApproximate: false }]
+    const send = vi.fn<typeof fetch>(async () => json(books))
+    expect(await createHttpClient({ fetch: send }).listBooks()).toEqual(books)
+    expect(send).toHaveBeenCalledExactlyOnceWith('/api/books', expect.objectContaining({ method: 'GET', credentials: 'same-origin', body: undefined }))
+  })
   it('encodes explicit metadata search terms and preserves safe provider failures', async () => {
     const send = vi.fn<typeof fetch>(async () => json([]))
     const client = createHttpClient({ fetch: send })

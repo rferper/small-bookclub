@@ -14,6 +14,7 @@ from ninja import NinjaAPI, Schema, Status
 from pydantic import ConfigDict, Field
 
 from books.catalogue import list_catalogue, read_book, save_book, serve_cover
+from books.library import list_books
 from books.metadata import search_metadata
 from users.authentication import (
     DENIED_KEY,
@@ -38,6 +39,7 @@ from users.schemas import (
     AdminMembers,
     BookMetadataResult,
     Error,
+    LibraryBook,
     MemberDirectory,
     MemberProfile,
     MyProfile,
@@ -508,3 +510,13 @@ def get_cover(request, coverId: str):
 )
 def book_metadata(request):
     return allowlist_result(search_metadata, request)
+
+
+@api.get(
+    "/books",
+    response={200: list[LibraryBook], 401: Error, 500: Error, 503: Error},
+    operation_id="listBooks",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def books(request):
+    return allowlist_result(list_books, request)
