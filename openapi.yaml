@@ -4035,17 +4035,17 @@ components:
         percentStart:
           type: number
           minimum: 0
-          maximum: 100
         percentEnd:
           type: number
           minimum: 0
-          maximum: 100
         pageStart:
           type: integer
-          minimum: 0
+          minimum: 1
+          maximum: 9007199254740991
         pageEnd:
           type: integer
-          minimum: 0
+          minimum: 1
+          maximum: 9007199254740991
         meetingStartsAt:
           anyOf:
             - $ref: "#/components/schemas/Instant"
@@ -4066,8 +4066,8 @@ components:
           weekNumber: 1
           percentStart: 0
           percentEnd: 0
-          pageStart: 0
-          pageEnd: 0
+          pageStart: 1
+          pageEnd: 1
           meetingStartsAt: null
           completedByMe: false
     NextMeeting:
@@ -4324,17 +4324,17 @@ components:
         percentStart:
           type: number
           minimum: 0
-          maximum: 100
         percentEnd:
           type: number
           minimum: 0
-          maximum: 100
         pageStart:
           type: integer
-          minimum: 0
+          minimum: 1
+          maximum: 9007199254740991
         pageEnd:
           type: integer
-          minimum: 0
+          minimum: 1
+          maximum: 9007199254740991
         dueDate:
           anyOf:
             - $ref: "#/components/schemas/CalendarDate"
@@ -4364,8 +4364,8 @@ components:
           weekNumber: 1
           percentStart: 0
           percentEnd: 0
-          pageStart: 0
-          pageEnd: 0
+          pageStart: 1
+          pageEnd: 1
           dueDate: null
           meeting: null
           notes: null

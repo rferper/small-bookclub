@@ -25,6 +25,12 @@ from meetings.calendar import (
     save_meeting,
     set_cancelled,
 )
+from meetings.reading_plan import read_plan, remove_week, reorder_weeks, save_week
+from meetings.reading_schemas import (
+    AdminReadingPlan,
+    ReadingWeekOrder,
+    write_schema,
+)
 from meetings.schemas import (
     AdminMeeting,
     AdminMeetingCalendar,
@@ -695,3 +701,121 @@ def preview_deletion(
 )
 def delete_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(remove_meeting, request, meetingId)
+
+
+@api.get(
+    "/admin/books/{bookId}/reading-plan",
+    response={
+        200: AdminReadingPlan,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="getAdminReadingPlan",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def getAdminReadingPlan(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_plan, request, bookId)
+
+
+@api.post(
+    "/admin/books/{bookId}/reading-plan/weeks",
+    response={
+        201: AdminReadingPlan,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="createReadingWeek",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": write_schema()}},
+        },
+    },
+)
+def createReadingWeek(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(save_week, request, bookId)
+
+
+@api.put(
+    "/admin/books/{bookId}/reading-plan/weeks/order",
+    response={
+        200: AdminReadingPlan,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="reorderReadingWeeks",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {"schema": ReadingWeekOrder.model_json_schema()}
+            },
+        },
+    },
+)
+def reorderReadingWeeks(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(reorder_weeks, request, bookId)
+
+
+@api.put(
+    "/admin/books/{bookId}/reading-plan/weeks/{weekId}",
+    response={
+        200: AdminReadingPlan,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="updateReadingWeek",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": write_schema()}},
+        },
+    },
+)
+def updateReadingWeek(
+    request,
+    bookId: Annotated[str, Field(min_length=1)],
+    weekId: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(save_week, request, bookId, weekId)
+
+
+@api.delete(
+    "/admin/books/{bookId}/reading-plan/weeks/{weekId}",
+    response={
+        200: AdminReadingPlan,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="removeReadingWeek",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def removeReadingWeek(
+    request,
+    bookId: Annotated[str, Field(min_length=1)],
+    weekId: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(remove_week, request, bookId, weekId)

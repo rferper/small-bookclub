@@ -165,7 +165,7 @@ function Schedule({ weeks }: { weeks: ScheduleWeek[] }) {
                   due && <p className="text-bark">Para el {due}</p>
                 )}
                 {week.notes && <p className="mt-1 text-sm break-words">Nota: {week.notes}</p>}
-                <WeekCompletion week={week} />
+                {import.meta.env.VITE_API_MODE === 'http' ? <p className="mt-3 text-bark">Las marcas de lectura estarán disponibles más adelante.</p> : <WeekCompletion week={week} />}
               </li>
             )
           })}

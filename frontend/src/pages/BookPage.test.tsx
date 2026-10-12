@@ -24,6 +24,9 @@ describe('Book page', () => {
       const { tracked } = await openBook('b3')
       expect(region('Valoraciones')).toHaveTextContent('Las valoraciones estarán disponibles más adelante.')
       expect(tracked.calls).not.toContain('getBookRatings')
+      expect(region('Plan de lectura')).toHaveTextContent('Las marcas de lectura estarán disponibles más adelante.')
+      expect(within(region('Plan de lectura')).queryByRole('button')).not.toBeInTheDocument()
+      expect(tracked.calls).not.toContain('setWeekCompleted')
     } finally { vi.unstubAllEnvs() }
   })
   it('shows the book with its cover, title, authors, status, dates, description and metadata', async () => {
