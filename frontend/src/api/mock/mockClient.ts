@@ -1,5 +1,6 @@
 import { ApiError, type ApiClient } from '../client'
 import { mockDownload } from '../adapters'
+import { CLUB_TIMEZONE } from '../../lib/format'
 import type {
   AdminMeetingRecord, MeetingSummaryInput, MeetingHighlightInput,
   AdminReadingPlan, ReadingWeekInput,
@@ -763,7 +764,7 @@ export function createMockClient({
     async listAdminMeetings(): Promise<AdminMeetingCalendar> {
       meetingAccess('listAdminMeetings')
       const ordered = [...visibleMeetings()].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
-      return { upcoming: ordered.filter(isUpcoming).map(toAdminMeeting), past: ordered.filter((m) => !isUpcoming(m)).reverse().map(toAdminMeeting),
+      return { clubTimezone: CLUB_TIMEZONE, upcoming: ordered.filter(isUpcoming).map(toAdminMeeting), past: ordered.filter((m) => !isUpcoming(m)).reverse().map(toAdminMeeting),
         books: [...visibleBooks()].sort((a, b) => a.title.localeCompare(b.title, 'es')).map((b) => ({ id: b.id, title: b.title })),
         weeks: state.weeks.filter((w) => weekVisible(state, w)).map((w) => ({ id: w.id, bookId: w.bookId, weekNumber: w.weekNumber, meetingId: w.meetingId })),
         activeMembers: toMemberSummaries(state.members.map((m) => m.id)) }

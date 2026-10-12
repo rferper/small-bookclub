@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createClubState, createEmptyState } from '../api/mock/fixtures'
 import { createMockClient } from '../api/mock/mockClient'
 import { holdCalls, trackCalls } from '../test/clients'
@@ -9,6 +9,23 @@ import { renderApp } from '../test/renderApp'
 const base = '/administracion/reuniones'
 const change = (name: string, value: string) => fireEvent.change(screen.getByLabelText(name), { target: { value } })
 describe('admin meeting calendar', () => {
+  it('uses the server timezone and stages unavailable live attendance editing', async () => {
+    vi.stubEnv('VITE_API_MODE', 'http')
+    try {
+      const state = createClubState()
+      const meeting = state.meetings.find(row => row.id === 'mt1')!
+      meeting.startsAt = '2020-01-15T19:30:00Z'
+      meeting.cancelled = false
+      const api = createMockClient({ state })
+      expect((await api.getAdminMeeting('mt1')).attendanceEligible).toBe(true)
+      const tracked = trackCalls({ ...api, listAdminMeetings: async () => ({ ...await api.listAdminMeetings(), clubTimezone: 'UTC' }) })
+      renderApp({ path: `${base}/mt1/editar`, client: tracked.client })
+      expect(await screen.findByText('Zona horaria del club: UTC')).toBeInTheDocument()
+      expect(screen.getByText('El registro de asistencia estará disponible más adelante.')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Guardar asistencia' })).not.toBeInTheDocument()
+      expect(tracked.calls).not.toContain('setMeetingAttendance')
+    } finally { vi.unstubAllEnvs() }
+  })
   it('links the hub to both groups and all meeting editors', async () => {
     const user = userEvent.setup()
     renderApp({ path: '/administracion' })
