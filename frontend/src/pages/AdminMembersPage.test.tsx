@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ApiClient } from '../api/client'
+import { createHttpClient } from '../api/httpClient'
+import type { AdminMembers } from '../api/types'
 import { createClubState, createEmptyState, type MockState } from '../api/mock/fixtures'
 import { createMockClient, type MockOptions } from '../api/mock/mockClient'
 import { ADMIN_LIST_CHANGED } from '../lib/admin'
@@ -39,6 +41,51 @@ const addButton = () => within(region('Añadir un miembro')).getByRole('button')
 const curatorSelect = () => screen.getByRole('combobox', { name: 'Persona en la curaduría' })
 const saveCurator = () => screen.getByRole('button', { name: 'Guardar curaduría' })
 const status = (name: string) => within(region(name)).getAllByRole('status').find((s) => s.textContent)?.textContent
+
+describe('Live HTTP allowlist', () => {
+  it('uses server projections for mutations and keeps the future curator action absent', async () => {
+    vi.stubEnv('VITE_API_MODE', 'http')
+    try {
+      const source = createMockClient()
+      const session = await source.getSession()
+      const initial = await source.getAdminMembers()
+      let members: AdminMembers = { ...initial, curator: null, members: initial.members.map((entry) => ({ ...entry, isCurator: false })) }
+      const sent = vi.fn<typeof fetch>(async (url, init) => {
+        if (url === '/api/session') return new Response(JSON.stringify(session), { headers: { 'Content-Type': 'application/json' } })
+        if (url === '/api/admin/members' && init?.method === 'GET') return new Response(JSON.stringify(members), { headers: { 'Content-Type': 'application/json' } })
+        if (url === '/api/admin/members' && init?.method === 'POST') {
+          const input = JSON.parse(init.body as string) as { discordId: string; displayName: string }
+          members = { ...members, members: [...members.members, {
+            member: { id: 'native-9', displayName: input.displayName, avatarUrl: null },
+            discordId: input.discordId, role: 'member', status: 'active',
+            addedAt: '2026-10-12T12:00:00Z', revokedAt: null, isMe: false, isCurator: false,
+          }] }
+          return new Response(JSON.stringify(members), { status: 201, headers: { 'Content-Type': 'application/json' } })
+        }
+        if (url === '/api/admin/members/m8/restore') {
+          members = { ...members, members: members.members.map((entry) => entry.member.id === 'm8'
+            ? { ...entry, status: 'active', revokedAt: null } : entry) }
+          return new Response(JSON.stringify(members), { headers: { 'Content-Type': 'application/json' } })
+        }
+        throw Error(`Unexpected request: ${url}`)
+      })
+      const user = userEvent.setup()
+      await openPage({ client: createHttpClient({ fetch: sent, cookie: () => `csrftoken=${'a'.repeat(32)}` }) })
+      expect(region('Curaduría')).toHaveTextContent('La asignación estará disponible más adelante.')
+      expect(screen.queryByRole('button', { name: 'Guardar curaduría' })).not.toBeInTheDocument()
+      await user.type(idField(), '000000000000000199')
+      await user.type(nameField(), 'Nora')
+      await user.click(addButton())
+      expect(await screen.findByText('Nora ya puede entrar al club con Discord.')).toBeInTheDocument()
+      expect(names(activeGroup())).toContain('Nora')
+      await user.click(screen.getByRole('button', { name: 'Devolver el acceso a Tomás' }))
+      await waitFor(() => expect(names(activeGroup())).toContain('Tomás'))
+      expect(sent.mock.calls.map(([url]) => url)).toEqual([
+        '/api/session', '/api/admin/members', '/api/admin/members', '/api/admin/members/m8/restore',
+      ])
+    } finally { vi.unstubAllEnvs() }
+  })
+})
 
 describe('Loading', () => {
   it('shows the page structure: one h1, a link back and three h2 sections', async () => {

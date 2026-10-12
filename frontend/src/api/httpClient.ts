@@ -82,10 +82,10 @@ export function createHttpClient(options: {
     getMyProfile: unavailable,
     updateMyProfile: unavailable,
     listMyReviews: unavailable,
-    getAdminMembers: unavailable,
-    addMember: unavailable,
-    revokeMember: unavailable,
-    restoreMember: unavailable,
+    getAdminMembers: () => request<'getAdminMembers'>({ method: 'GET', path: '/api/admin/members', successStatus: 200 }),
+    addMember: (body) => request<'addMember'>({ method: 'POST', path: '/api/admin/members', body, successStatus: 201 }),
+    revokeMember: (memberId) => request<'revokeMember'>({ method: 'POST', path: '/api/admin/members/{memberId}/revoke', pathParams: { memberId }, successStatus: 200 }),
+    restoreMember: (memberId) => request<'restoreMember'>({ method: 'POST', path: '/api/admin/members/{memberId}/restore', pathParams: { memberId }, successStatus: 200 }),
     setCurator: unavailable,
   }
 }

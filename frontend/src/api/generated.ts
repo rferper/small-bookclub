@@ -1249,13 +1249,13 @@ export interface paths {
         };
         /**
          * getAdminMembers
-         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints.
+         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Returns active approved rows followed by revoked rows in Spanish display-name order; pending rows and private prose are excluded. Until #30, curator is null and isCurator is false.
          */
         get: operations["getAdminMembers"];
         put?: never;
         /**
          * addMember
-         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Existing active/revoked Discord id 409 before invalid input 400.
+         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Existing active/revoked Discord id 409 before invalid input 400. New exact ASCII Discord IDs immediately become approved members with empty website profiles; names are trimmed and no Discord profile is imported.
          */
         post: operations["addMember"];
         delete?: never;
@@ -1295,7 +1295,7 @@ export interface paths {
         put?: never;
         /**
          * restoreMember
-         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Missing 404, already active 409; preserved own profile.
+         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Missing or nonnumeric native ID 404; active or pending/unapproved target 409. Only revoked rows are restored, preserving native identity, role and website profile. Clear revokedAt and approve access; old sessions/cookies never revive. Fresh Discord sign-in is required. Refusals preserve all data.
          */
         post: operations["restoreMember"];
         delete?: never;
@@ -2884,7 +2884,7 @@ export interface components {
             coverUrl: string | null;
         };
         /**
-         * @description Trim both fields. Name is one line without controls/Unicode separators. Approve with member role and empty profile; no role input. Duplicate Discord id active/revoked is 409.
+         * @description Discord ID is exact ASCII digits, without trimming or coercion. Trim the name; its trimmed length is 1–40 characters and it is one line without controls/Unicode separators. Approve with member role and empty profile; no role input. Duplicate Discord id active/revoked is 409.
          * @example {
          *       "discordId": "12345678901234567",
          *       "displayName": "Persona ficticia"

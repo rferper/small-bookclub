@@ -260,7 +260,12 @@ def test_revocation_denies_mounted_discord_and_reapproval_requires_fresh_login(
     assert SESSION_KEY not in fresh_browser.session
     assert list(User.objects.order_by("pk").values()) == before
     assert not SocialAccount.objects.exists() and not SocialToken.objects.exists()
-    User.objects.filter(pk=member.pk).update(approved=True, revoked_at=None)
+    response = owner.post(
+        f"/api/admin/members/{member.pk}/restore",
+        HTTP_X_CSRFTOKEN=owner.cookies["csrftoken"].value,
+    )
+    assert response.status_code == 200
+    assert response.json()["members"]
     # This browser never used its old cookie during the revoked period.
     assert projection(idle_browser) == {
         "status": "anonymous",

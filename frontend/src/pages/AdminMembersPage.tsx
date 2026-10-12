@@ -48,6 +48,7 @@ export function AdminMembersPage() {
 }
 
 function AdminMembersView({ loaded, reload }: { loaded: AdminMembers; reload: () => void }) {
+  const liveHttp = import.meta.env.VITE_API_MODE === 'http'
   // The list as the last change returned it, until the next load replaces it.
   const [saved, setSaved] = useState<{ from: AdminMembers; data: AdminMembers } | null>(null)
   const data = saved && saved.from === loaded ? saved.data : loaded
@@ -60,7 +61,9 @@ function AdminMembersView({ loaded, reload }: { loaded: AdminMembers; reload: ()
       </Card>
       <MemberList data={data} onSaved={update} onChanged={reload} />
       <Card title="Curaduría" className="min-w-0 lg:col-start-2 lg:row-start-2">
-        <CuratorForm members={data} onSaved={update} onChanged={reload} />
+        {liveHttp
+          ? <p>Ahora no hay nadie en la curaduría. La asignación estará disponible más adelante.</p>
+          : <CuratorForm members={data} onSaved={update} onChanged={reload} />}
       </Card>
     </div>
   )
