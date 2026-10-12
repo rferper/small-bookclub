@@ -1,6 +1,6 @@
-"""Only public process liveness is implemented in this bootstrap."""
+"""Mounted finite JSON and provider-navigation operations."""
 
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 from allauth.socialaccount.adapter import get_adapter
@@ -11,7 +11,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from ninja import NinjaAPI, Schema, Status
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from users.authentication import (
     DENIED_KEY,
@@ -20,8 +20,15 @@ from users.authentication import (
     PURPOSE_KEY,
     current_identity,
 )
+from users.membership import error_result, revoke_member
 from users.oauth import ClubDiscordAdapter, callback
-from users.schemas import REDIRECT_RESPONSE, Error, Session, query_parameter
+from users.schemas import (
+    REDIRECT_RESPONSE,
+    AdminMembers,
+    Error,
+    Session,
+    query_parameter,
+)
 
 api = NinjaAPI(
     title="Small Bookclub API", version="1.2.0", docs_url=None, openapi_url=None
@@ -162,3 +169,29 @@ def discord_callback(request):
 def sign_out(request):
     logout(request)
     return HttpResponse(status=204)
+
+
+@api.post(
+    "/admin/members/{memberId}/revoke",
+    response={
+        200: AdminMembers,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="revokeMember",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+    },
+)
+def revoke(request, memberId: Annotated[str, Field(min_length=1)]):
+    try:
+        status, result = revoke_member(request, memberId)
+    except Exception:
+        # Outside atomic: invalidation/storage failures roll back before a safe
+        # declared envelope is returned. Never echo exceptions or session data.
+        status, result = error_result(500)
+    return Status(status, result)

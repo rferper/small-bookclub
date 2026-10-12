@@ -1,5 +1,6 @@
 """Independent closed authentication wire schemas."""
 
+from datetime import datetime
 from typing import Annotated, Literal
 
 from ninja import Schema
@@ -15,6 +16,28 @@ class CurrentUser(ClosedSchema):
     displayName: str
     role: Literal["admin", "member"]
     avatarUrl: str | None
+
+
+class MemberSummary(ClosedSchema):
+    id: str = Field(min_length=1)
+    displayName: str
+    avatarUrl: str | None
+
+
+class AdminMember(ClosedSchema):
+    member: MemberSummary
+    discordId: str = Field(pattern=r"^[0-9]{17,20}$")
+    role: Literal["member", "admin"]
+    status: Literal["active", "revoked"]
+    addedAt: datetime
+    revokedAt: datetime | None
+    isMe: bool
+    isCurator: bool
+
+
+class AdminMembers(ClosedSchema):
+    members: list[AdminMember]
+    curator: MemberSummary | None
 
 
 class SessionAnonymous(ClosedSchema):

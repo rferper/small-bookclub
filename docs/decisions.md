@@ -807,3 +807,38 @@ change, provider/account provisioning or new dependency. Spanish command output 
 only the outcome and suppresses identity/profile/storage errors. Test subprocesses use
 new disposable SQLite databases; mounted allauth tests mock only provider HTTP and
 prove deny-before/approved-admin-after execution and inert browser/environment claims.
+
+## 2026-10-12: Atomic native member revocation (#7)
+
+**Decision:** Add bodyless mounted `revokeMember` using the existing current-identity
+recheck and a pure approved-admin refusal decision. Only a current approved admin
+may revoke an approved target; own/pending/already revoked targets return safe 409,
+missing or nonnumeric/out-of-range native keys safe 404. Browser claims are inert.
+The existing membership/CSRF middleware and public-operation boundary are unchanged.
+
+**Sessions and atomicity:** Update only approval, aware server revocation time and
+mutation time; scan signed Django database sessions and delete every matching native
+auth identity, including idle/expired sessions, in the same transaction. No profile,
+role, password, Discord identity or creation/login-history rewrite. Invalidation or
+storage failure rolls back before a closed Spanish 500 is returned. A scan is finite
+and suitable for this 6–10-member club; no session index/model or dependency is added.
+Django's database transaction supplies rollback on SQLite; `select_for_update` also
+locks the target on engines that support it, without claiming SQLite row locks.
+See [Django sessions](https://docs.djangoproject.com/en/5.2/topics/http/sessions/)
+and [SQLite boundaries](https://docs.djangoproject.com/en/5.2/ref/databases/#sqlite-notes).
+
+**Projection assumptions:** Closed explicit native projections include only approved
+active rows and revoked rows, omit pending rows, and expose exact Discord ID only to
+the approved admin. Sort active before revoked, then a pure Unicode Spanish key:
+case/diacritic-insensitive primary order with ñ between n and o; folded/original name
+and native key break ties deterministically. This avoids mutable process-global OS
+locale and another dependency. Until #8 persists assignments, curator is null and
+isCurator false. #8 must reuse this operation and integrate curator clearing into its
+transaction; retained future domain records and audit remain #31/#50. No frontend
+HTTP adapter, mock/default preview, database migration or owner database is changed.
+
+**Evidence boundary:** Pure authorization and mounted real-user/session/CSRF tests
+prove multi-browser deletion, cookie nonrevival after test-only reapproval, safe
+rollback and exact response contracts. Real mounted allauth exchange with only
+provider HTTP mocked proves denied login while revoked and fresh login after
+reapproval. No real provider credentials or live Discord smoke test is claimed.

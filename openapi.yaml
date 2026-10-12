@@ -3613,7 +3613,7 @@ paths:
         all their existing authenticated database sessions. Old cookies cannot regain access after
         reapproval; a fresh Discord login is required. Refusals preserve timestamps and sessions.
         Retain identity, profile, role and contributions. At this stage no current-curator assignment
-        is persisted: curator is null and all isCurator flags are false. Once assignment persistence
+        is persisted; curator is null and all isCurator flags are false. Once assignment persistence
         exists, clear the current assignment atomically when its member is revoked.
       x-access:
         approvedAdmin: true

@@ -220,6 +220,64 @@ def projection(client):
     return response.json()
 
 
+def test_revocation_denies_mounted_discord_and_reapproval_requires_fresh_login(
+    member, provider_http
+):
+    admin = User.objects.create_user(
+        "100000000000000099", display_name="Olivia", role="admin", approved=True
+    )
+    old_browser = Client(enforce_csrf_checks=True)
+    idle_browser = Client(enforce_csrf_checks=True)
+    for browser in [old_browser, idle_browser]:
+        finish(browser, start(browser))
+        assert projection(browser)["user"]["id"] == str(member.pk)
+    cookies = [
+        browser.cookies["sessionid"].value for browser in [old_browser, idle_browser]
+    ]
+    assert cookies[0] != cookies[1]
+    owner = Client(enforce_csrf_checks=True)
+    owner.force_login(admin)
+    projection(owner)
+    response = owner.post(
+        f"/api/admin/members/{member.pk}/revoke",
+        HTTP_X_CSRFTOKEN=owner.cookies["csrftoken"].value,
+    )
+    assert response.status_code == 200
+    assert not Session.objects.filter(session_key__in=cookies).exists()
+    assert projection(old_browser) == {
+        "status": "anonymous",
+        "demoSignInAvailable": False,
+    }
+    fresh_browser = Client(enforce_csrf_checks=True)
+    before = list(User.objects.order_by("pk").values())
+    provider_http["calls"].clear()
+    finish(fresh_browser, start(fresh_browser))
+    assert len(provider_http["calls"]) == 2
+    assert projection(fresh_browser) == {
+        "status": "denied",
+        "demoSignInAvailable": False,
+    }
+    assert SESSION_KEY not in fresh_browser.session
+    assert list(User.objects.order_by("pk").values()) == before
+    assert not SocialAccount.objects.exists() and not SocialToken.objects.exists()
+    User.objects.filter(pk=member.pk).update(approved=True, revoked_at=None)
+    # This browser never used its old cookie during the revoked period.
+    assert projection(idle_browser) == {
+        "status": "anonymous",
+        "demoSignInAvailable": False,
+    }
+    for cookie in cookies:
+        replay = Client(enforce_csrf_checks=True)
+        replay.cookies["sessionid"] = cookie
+        assert projection(replay) == {
+            "status": "anonymous",
+            "demoSignInAvailable": False,
+        }
+    finish(fresh_browser, start(fresh_browser))
+    assert projection(fresh_browser)["user"]["id"] == str(member.pk)
+    assert fresh_browser.cookies["sessionid"].value not in cookies
+
+
 def freshness(client):
     request = RequestFactory().get("/api/session")
     request.session = client.session
