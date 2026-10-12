@@ -11,6 +11,7 @@ ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 INSTALLED_APPS = [
+    "core",
     "users",
     "django.contrib.auth",
     "django.contrib.contenttypes",
