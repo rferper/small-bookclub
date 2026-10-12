@@ -1859,52 +1859,6 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/Id"
-  /api/admin/meetings/{id}:
-    delete:
-      operationId: deleteMeeting
-      summary: deleteMeeting
-      tags:
-        - Admin
-      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
-        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
-        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
-        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
-        repeated/missing target 404. Never cascade purge; member projections suppress removed
-        targets/dependent content.
-      x-access:
-        approvedAdmin: true
-        anonymous: 401
-        member: 403
-        curator: 403
-      responses:
-        "200":
-          description: Successful approved-admin result.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RecycleBinEntry"
-              example: []
-        "401":
-          $ref: "#/components/responses/Error401"
-        "403":
-          $ref: "#/components/responses/Error403"
-        "404":
-          $ref: "#/components/responses/Error404"
-        "500":
-          $ref: "#/components/responses/Error500"
-        "503":
-          $ref: "#/components/responses/Error503"
-      security:
-        - sessionCookie: []
-          csrfHeader: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Id"
   /api/admin/quotes/{id}:
     delete:
       operationId: deleteLiteraryQuote
@@ -3142,6 +3096,51 @@ paths:
               startsAt: 2026-01-15T19:00:00Z
               bookId: null
               weekId: null
+    delete:
+      operationId: deleteMeeting
+      summary: deleteMeeting
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
+        repeated/missing target 404. Never cascade purge; member projections suppress removed
+        targets/dependent content.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
   /api/admin/meetings/{meetingId}/cancelled:
     put:
       operationId: setMeetingCancelled
