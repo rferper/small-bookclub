@@ -114,3 +114,18 @@ describe('HTTP own-profile adapters', () => {
     expect((form.get('avatar') as File).name).toBe('avatar.png')
   })
 })
+
+describe('HTTP member directory adapters', () => {
+  it('reads the directory and encodes native profile keys using the central transport', async () => {
+    const directory = { currentWeekNumber: null, members: [] }
+    const profile = { member: { id: '7', displayName: 'Alba ficticia', avatarUrl: null }, bio: null, favouriteQuote: null, favouriteBooks: [], isMe: false, currentWeek: null }
+    const send = vi.fn<typeof fetch>(async url => json(url === '/api/members' ? directory : profile))
+    const client = createHttpClient({ fetch: send })
+    expect(await client.listMembers()).toEqual(directory)
+    expect(await client.getMemberProfile('7')).toEqual(profile)
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/members', '/api/members/7'])
+    for (const [, init] of send.mock.calls) expect(init).toMatchObject({ method: 'GET', credentials: 'same-origin', body: undefined })
+    await expect(client.getMemberProfile('../session')).rejects.toMatchObject({ status: 500 })
+    expect(send).toHaveBeenCalledTimes(2)
+  })
+})

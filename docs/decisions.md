@@ -862,3 +862,7 @@ needed. #30 owns atomic clearing of its future assignment during revoke.
 **Why:** Browser MIME and filename are untrusted, and a static media mount would bypass club membership. The profile screen and contract already require a single atomic save with a private avatar.
 **Consequence:** `MEDIA_ROOT` contains private uploaded avatars and must be included in future backup work. Catalogue and review persistence remain their separate issues.
 
+
+## 2026-10-12: Native private member directory (#10)
+
+**Decision:** Reuse current session identity and the existing Spanish name ordering for the active directory. Return closed native profile projections only. Pending, revoked and unknown targets share generic 404 after viewer membership is checked. Directory and profile progress remain null, and favourite books empty, until the assignment/catalogue issues persist those features. Existing React pages use central HTTP adapters without layout changes or new dependencies.

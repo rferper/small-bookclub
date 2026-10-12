@@ -39,6 +39,31 @@ class MyProfile(ClosedSchema):
     favouriteOptions: list[BookSummary]
 
 
+class MemberDirectoryEntry(ClosedSchema):
+    member: MemberSummary
+    isMe: bool
+    completedCurrentWeek: bool | None
+
+
+class MemberDirectory(ClosedSchema):
+    currentWeekNumber: int | None = Field(ge=1)
+    members: list[MemberDirectoryEntry]
+
+
+class MemberWeekStatus(ClosedSchema):
+    weekNumber: int = Field(ge=1)
+    completed: bool
+
+
+class MemberProfile(ClosedSchema):
+    member: MemberSummary
+    bio: str | None
+    favouriteQuote: str | None
+    favouriteBooks: list[BookSummary] = Field(max_length=5)
+    isMe: bool
+    currentWeek: MemberWeekStatus | None
+
+
 class AdminMember(ClosedSchema):
     member: MemberSummary
     discordId: str = Field(pattern=r"^[0-9]{17,20}$")
