@@ -22,6 +22,7 @@ ERRORS = {
     404: ("not_found", "No se ha encontrado."),
     409: ("conflict", "La acción no está disponible en este estado."),
     500: ("internal_error", "Ha ocurrido un error. Inténtalo de nuevo."),
+    503: ("service_unavailable", "El servicio no está disponible. Inténtalo de nuevo."),
 }
 
 

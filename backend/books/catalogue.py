@@ -17,6 +17,7 @@ from users.access import approved_admin_refusal, require_permission
 from users.membership import error_result, native_member_id, spanish_name_key
 from users.models import User
 
+from .metadata import MetadataUnavailable, import_cover
 from .models import Book
 
 COVER_URL = "/api/media/covers/"
@@ -129,7 +130,7 @@ def parse_input(request):
         field: getattr(candidate, field) for field in METADATA_FIELDS.values()
     }
     encoded = encode_image(covers[0]) if covers else None
-    return normalized, action, encoded
+    return normalized, action, encoded, metadata.get("metadataResultId")
 
 
 def cover_file(key):
@@ -156,7 +157,7 @@ def save_book(request, book_id=None):
     if book_id is not None and lookup(book_id) is None:
         return error_result(404)
     try:
-        values, action, encoded = parse_input(request)
+        values, action, encoded, result_id = parse_input(request)
     except (
         ValueError,
         UnicodeDecodeError,
@@ -165,9 +166,15 @@ def save_book(request, book_id=None):
         SuspiciousOperation,
     ):
         return error_result(400)
+    external_ids = None
     if action == "metadata":
-        # Known external search results are introduced in #15.
-        return error_result(404)
+        try:
+            imported = import_cover(request, result_id)
+        except MetadataUnavailable:
+            return error_result(503)
+        if imported is None:
+            return error_result(404)
+        encoded, external_ids = imported
     new_key = uuid.uuid4().hex if encoded is not None else None
     new_file = cover_file(new_key) if new_key else None
     try:
@@ -187,6 +194,8 @@ def save_book(request, book_id=None):
                 return error_result(404)
             for field, value in values.items():
                 setattr(book, field, value)
+            if external_ids is not None:
+                book.external_ids = {**book.external_ids, **external_ids}
             current_reading = (
                 Book.objects.filter(status="leyendo").exclude(pk=book.pk).first()
             )
@@ -198,7 +207,7 @@ def save_book(request, book_id=None):
                 )
                 return status, error
             old_key = cover_key(book.cover_path)
-            if action == "remove":
+            if action == "remove" or (action == "metadata" and encoded is None):
                 book.cover_path = ""
             elif new_key:
                 new_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)

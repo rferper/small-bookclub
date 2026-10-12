@@ -48,7 +48,7 @@ export function createHttpClient(options: {
     getAdminBook: (bookId) => request<'getAdminBook'>({ method: 'GET', path: '/api/admin/books/{bookId}', pathParams: { bookId }, successStatus: 200 }),
     createBook: (input) => request<'createBook'>({ method: 'POST', path: '/api/admin/books', body: multipartFormData(bookMultipart(input)), successStatus: 201 }),
     updateBook: (bookId, input) => request<'updateBook'>({ method: 'PUT', path: '/api/admin/books/{bookId}', pathParams: { bookId }, body: multipartFormData(bookMultipart(input)), successStatus: 200 }),
-    searchBookMetadata: unavailable,
+    searchBookMetadata: (query) => request<'searchBookMetadata'>({ method: 'GET', path: '/api/admin/book-metadata', query: { query }, successStatus: 200 }),
     getSession: () => request<'getSession'>({ method: 'GET', path: '/api/session', successStatus: 200 }),
     startSignIn: async () => {
       // OAuth redirects belong to the top-level browser, never the JSON transport.

@@ -132,6 +132,15 @@ describe('HTTP member directory adapters', () => {
 })
 
 describe('HTTP manual catalogue adapters', () => {
+  it('encodes explicit metadata search terms and preserves safe provider failures', async () => {
+    const send = vi.fn<typeof fetch>(async () => json([]))
+    const client = createHttpClient({ fetch: send })
+    expect(await client.searchBookMetadata('Fictional & author')).toEqual([])
+    expect(send.mock.calls[0][0]).toBe('/api/admin/book-metadata?query=Fictional+%26+author')
+    expect(send.mock.calls[0][1]).toMatchObject({ method: 'GET', credentials: 'same-origin', body: undefined })
+    const unavailable = createHttpClient({ fetch: async () => json({ code: 'service_unavailable', message: 'El servicio no está disponible. Inténtalo de nuevo.' }, 503) })
+    await expect(unavailable.searchBookMetadata('Fictional')).rejects.toMatchObject({ status: 503, code: 'service_unavailable' })
+  })
   it('lists/reads and creates/updates through contract multipart routes and CSRF', async () => {
     const input: BookInput = { title: 'Fictional', authors: [], status: 'propuesto', description: null, publicationDate: null, publisher: null, isbn: null, pageCount: null, readingStartDate: null, readingEndDate: null, plannedStartDate: null, plannedEndDate: null, datesApproximate: false, cover: { action: 'replace', file: new File(['fictional'], 'cover.png', { type: 'image/png' }) } }
     const book = { id: '7', originVote: null, coverUrl: '/api/media/covers/fictional', title: input.title }

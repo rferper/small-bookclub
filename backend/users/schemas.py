@@ -36,6 +36,51 @@ class OriginVote(ClosedSchema):
     label: str
 
 
+class BookMetadataResult(ClosedSchema):
+    id: str = Field(min_length=1)
+    title: str = Field(
+        min_length=1,
+        max_length=200,
+        json_schema_extra={"x-trimmedMinLength": 1, "x-trimmedMaxLength": 200},
+    )
+    authors: list[
+        Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=120,
+                json_schema_extra={"x-trimmedMinLength": 1, "x-trimmedMaxLength": 120},
+            ),
+        ]
+    ] = Field(max_length=20)
+    description: (
+        Annotated[
+            str, Field(max_length=5000, json_schema_extra={"x-trimmedMaxLength": 5000})
+        ]
+        | None
+    )
+    publicationDate: (
+        Annotated[
+            str, Field(max_length=100, json_schema_extra={"x-trimmedMaxLength": 100})
+        ]
+        | None
+    )
+    publisher: (
+        Annotated[
+            str, Field(max_length=200, json_schema_extra={"x-trimmedMaxLength": 200})
+        ]
+        | None
+    )
+    isbn: (
+        Annotated[
+            str, Field(max_length=100, json_schema_extra={"x-trimmedMaxLength": 100})
+        ]
+        | None
+    )
+    pageCount: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    coverUrl: str | None
+
+
 class AdminBook(ClosedSchema):
     id: str = Field(min_length=1)
     title: str = Field(
