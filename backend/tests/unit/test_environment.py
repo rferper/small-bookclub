@@ -77,6 +77,7 @@ def test_custom_identity_precedes_auth_and_sessions_without_admin_apps(settings)
     assert settings.INSTALLED_APPS == [
         "users",
         "core",
+        "books",
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.sessions",
