@@ -200,3 +200,24 @@ describe('HTTP admin calendar adapters', () => {
     expect(send).toHaveBeenCalledTimes(7)
   })
 })
+
+describe('HTTP reading plan adapters', () => {
+  it('submits exact independent facts, acknowledgement and order using CSRF', async () => {
+    const input = { percentStart: 101.5, percentEnd: 120, pageStart: 2, pageEnd: 80, dueDate: null, notes: 'manual', meetingId: '7' }
+    const send = vi.fn<typeof fetch>(async (_url, init) => json({}, init?.method === 'POST' ? 201 : 200))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'r'.repeat(32)}` })
+    await client.getAdminReadingPlan('4')
+    await client.createReadingWeek('4', input, true)
+    await client.updateReadingWeek('4', '8', input, false)
+    await client.reorderReadingWeeks('4', ['8', '9'], true)
+    await client.removeReadingWeek('4', '8')
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/books/4/reading-plan', '/api/admin/books/4/reading-plan/weeks', '/api/admin/books/4/reading-plan/weeks/8', '/api/admin/books/4/reading-plan/weeks/order', '/api/admin/books/4/reading-plan/weeks/8'])
+    expect(send.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'POST', 'PUT', 'PUT', 'DELETE'])
+    expect(JSON.parse(send.mock.calls[1][1]?.body as string)).toEqual({ input, acknowledged: true })
+    expect(JSON.parse(send.mock.calls[2][1]?.body as string)).toEqual({ input, acknowledged: false })
+    expect(JSON.parse(send.mock.calls[3][1]?.body as string)).toEqual({ ids: ['8', '9'], acknowledged: true })
+    for (const index of [1, 2, 3, 4]) expect(new Headers(send.mock.calls[index][1]?.headers).get('X-CSRFToken')).toBe('r'.repeat(32))
+    await expect(client.getAdminReadingPlan('../session')).rejects.toMatchObject({ status: 500 })
+    expect(send).toHaveBeenCalledTimes(5)
+  })
+})

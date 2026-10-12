@@ -1,5 +1,6 @@
 """Spoiler-free retained catalogue projection for bookshelf and timeline."""
 
+from meetings.reading_plan import schedule
 from users.access import require_permission
 from users.membership import error_result
 
@@ -29,4 +30,4 @@ def read_book(request, book_id):
     book = lookup(book_id)
     if book is None:
         return error_result(404)
-    return 200, {**projection(book), "schedule": [], "meetings": []}
+    return 200, {**projection(book), "schedule": schedule(book), "meetings": []}

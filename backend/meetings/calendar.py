@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from books.models import Book
@@ -14,7 +14,7 @@ from users.directory import member_summary
 from users.membership import error_result, native_member_id, spanish_name_key
 from users.models import User
 
-from .models import Meeting
+from .models import Meeting, ReadingAssignment
 from .time_rules import attendance_eligible, parse_instant
 
 
@@ -33,6 +33,11 @@ def locked_actor_refusal(request):
 
 
 def projection(meeting, now):
+    week = (
+        ReadingAssignment.all_objects.filter(meeting_id=meeting.pk).first()
+        if meeting.pk
+        else None
+    )
     attendance = None
     if meeting.attendance_recorded:
         attendance = [
@@ -46,7 +51,8 @@ def projection(meeting, now):
         "id": str(meeting.pk),
         "startsAt": meeting.starts_at,
         "bookId": str(meeting.book_id) if meeting.book_id else None,
-        "weekId": None,
+        "weekId": str(week.pk) if week else None,
+        **({"removedWeekNumber": week.week_number} if week and week.deleted_at else {}),
         "cancelled": meeting.cancelled,
         "upcoming": meeting.starts_at >= now,
         "attendance": attendance,
@@ -75,7 +81,17 @@ def list_calendar(request):
         "books": [
             {"id": str(book.pk), "title": book.title} for book in Book.objects.all()
         ],
-        "weeks": [],
+        "weeks": [
+            {
+                "id": str(week.pk),
+                "bookId": str(week.book_id),
+                "weekNumber": week.week_number,
+                "meetingId": str(week.meeting_id) if week.meeting_id else None,
+            }
+            for week in ReadingAssignment.objects.filter(
+                book__deleted_at__isnull=True
+            ).order_by("book_id", "week_number", "pk")
+        ],
         "activeMembers": [
             member_summary(member)
             for member in sorted(
@@ -128,18 +144,50 @@ def save_meeting(request, meeting_id=None):
         retained or (book_id and Book.objects.filter(pk=book_id).exists())
     ):
         return error_result(404)
+    week = None
     if value["weekId"] is not None:
-        return error_result(404)  # Canonical reading reservations are #21.
+        key = native_member_id(value["weekId"])
+        retained_week = (
+            key
+            and ReadingAssignment.all_objects.filter(
+                pk=key, meeting_id=meeting.pk
+            ).exists()
+            if meeting.pk
+            else False
+        )
+        manager = (
+            ReadingAssignment.all_objects
+            if retained_week
+            else ReadingAssignment.objects
+        )
+        week = manager.select_for_update().filter(pk=key).first() if key else None
+        if week is None or (
+            week.book.deleted_at is not None and not (retained_week and retained)
+        ):
+            return error_result(404)
+        if week.book_id != book_id:
+            return error_result(400)
+        if week.meeting_id is not None and week.meeting_id != meeting.pk:
+            return error_result(409)
     try:
         meeting.starts_at = parse_instant(value["startsAt"], settings.TIME_ZONE)
         meeting.book_id = book_id
         meeting.full_clean()
     except (ValueError, ValidationError):
         return error_result(400)
-    if meeting_id is None:
-        meeting.save()
-    else:
-        meeting.save(update_fields=["starts_at", "book", "updated_at"])
+    try:
+        with transaction.atomic():
+            if meeting_id is None:
+                meeting.save()
+            else:
+                meeting.save(update_fields=["starts_at", "book", "updated_at"])
+            ReadingAssignment.all_objects.filter(meeting=meeting).exclude(
+                pk=week.pk if week else None
+            ).update(meeting=None)
+            if week:
+                ReadingAssignment.all_objects.filter(pk=week.pk).update(meeting=meeting)
+    except IntegrityError:
+        return error_result(409)
     return (201 if meeting_id is None else 200), projection(meeting, timezone.now())
 
 
@@ -166,6 +214,8 @@ def set_cancelled(request, meeting_id):
 def safe_label(kind, row):
     if kind == "book":
         return row.title
+    if kind == "week":
+        return f"Semana {row.week_number}"
     local = timezone.localtime(row.starts_at, ZoneInfo(settings.TIME_ZONE))
     return "Reunión del " + local.strftime("%d/%m/%Y %H:%M")
 
@@ -173,9 +223,17 @@ def safe_label(kind, row):
 def dependencies(kind, row):
     if kind == "book":
         count = Meeting.all_objects.filter(book_id=row.pk).count()
-        return [f"{count} reuniones vinculadas"] if count else []
+        weeks = ReadingAssignment.all_objects.filter(book_id=row.pk).count()
+        return ([f"{count} reuniones vinculadas"] if count else []) + (
+            [f"{weeks} semanas vinculadas"] if weeks else []
+        )
+    if kind == "week":
+        return ["Reunión vinculada conservada"] if row.meeting_id else []
     count = row.attendees.count()
-    return [f"{count} registros de asistencia conservados"] if count else []
+    weeks = ReadingAssignment.all_objects.filter(meeting_id=row.pk).count()
+    return ([f"{count} registros de asistencia conservados"] if count else []) + (
+        [f"{weeks} semanas vinculadas"] if weeks else []
+    )
 
 
 @require_permission("manage_meetings")
@@ -196,7 +254,11 @@ def deletion_preview(request, kind, resource_id):
 def bin_projection():
     now = timezone.now()
     rows = []
-    for kind, model in [("book", Book), ("meeting", Meeting)]:
+    for kind, model in [
+        ("book", Book),
+        ("meeting", Meeting),
+        ("week", ReadingAssignment),
+    ]:
         for row in model.all_objects.filter(deleted_at__isnull=False).select_related(
             "deleted_by"
         ):

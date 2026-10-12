@@ -49,6 +49,12 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "DELETE /api/admin/meetings/{meetingId} (deleteMeeting)",
         "PUT /api/admin/meetings/{meetingId}/cancelled (setMeetingCancelled)",
         "GET /api/admin/deletion-preview/{type}/{id} (getDeletionPreview)",
+        "GET /api/admin/books/{bookId}/reading-plan (getAdminReadingPlan)",
+        "POST /api/admin/books/{bookId}/reading-plan/weeks (createReadingWeek)",
+        "PUT /api/admin/books/{bookId}/reading-plan/weeks/order (reorderReadingWeeks)",
+        "PUT /api/admin/books/{bookId}/reading-plan/weeks/{weekId} (updateReadingWeek)",
+        "DELETE /api/admin/books/{bookId}/reading-plan/weeks/{weekId} "
+        "(removeReadingWeek)",
     ]
 
 
