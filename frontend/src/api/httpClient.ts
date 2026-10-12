@@ -59,7 +59,7 @@ export function createHttpClient(options: {
     getHome: unavailable,
     setWeekCompleted: unavailable,
     listBooks: () => request<'listBooks'>({ method: 'GET', path: '/api/books', successStatus: 200 }),
-    getBook: unavailable,
+    getBook: (bookId) => request<'getBook'>({ method: 'GET', path: '/api/books/{bookId}', pathParams: { bookId }, successStatus: 200 }),
     listMeetings: unavailable,
     getMeeting: unavailable,
     getVotes: unavailable,

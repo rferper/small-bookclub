@@ -898,3 +898,7 @@ needed. #30 owns atomic clearing of its future assignment during revoke.
 ## 2026-10-12: Timeline reuses native catalogue (#18)
 
 **Decision:** Keep the existing chronological LibraryPage presentation over the same GET /api/books payload as the bookshelf. Reading start/end fallback, approximate-year grouping and the final Fecha desconocida group are local presentation logic; filter/view state stays in the URL. No second API, schema, dependency or layout is needed after #17. Existing timeline and sorting tests verify this adoption; detail persistence follows in #19.
+
+## 2026-10-12: Native member book-detail skeleton (#19)
+
+**Decision:** Connect the existing member detail contract to native retained metadata with generic removed/unknown 404 after membership checks. Schedule and meeting arrays and originating vote remain empty/null until their persistence issues. No ratings or substantive meeting content enters this endpoint. Live BookPage stages an honest ratings placeholder using the same explicit VITE_API_MODE pattern already used for curator controls; #39 will enable its existing ratings section when that endpoint is real. No new dependency, endpoint shape or database migration.

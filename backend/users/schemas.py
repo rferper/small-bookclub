@@ -47,6 +47,44 @@ class LibraryBook(ClosedSchema):
     datesApproximate: bool
 
 
+class ScheduleMeeting(ClosedSchema):
+    id: str = Field(min_length=1)
+    startsAt: datetime
+
+
+class ScheduleWeek(ClosedSchema):
+    id: str = Field(min_length=1)
+    completedByMe: bool
+    weekNumber: int = Field(ge=1)
+    percentStart: float = Field(ge=0, le=100)
+    percentEnd: float = Field(ge=0, le=100)
+    pageStart: int = Field(ge=0)
+    pageEnd: int = Field(ge=0)
+    dueDate: date | None
+    meeting: ScheduleMeeting | None
+    notes: str | None
+
+
+class BookMeeting(ClosedSchema):
+    id: str = Field(min_length=1)
+    startsAt: datetime
+    cancelled: bool
+    weekNumber: Annotated[int, Field(ge=1)] | None
+
+
+class BookDetail(LibraryBook):
+    plannedStartDate: date | None
+    plannedEndDate: date | None
+    description: str | None
+    publicationDate: str | None
+    publisher: str | None
+    isbn: str | None
+    pageCount: Annotated[int, Field(ge=1)] | None
+    schedule: list[ScheduleWeek]
+    meetings: list[BookMeeting]
+    originVote: OriginVote | None
+
+
 class BookMetadataResult(ClosedSchema):
     id: str = Field(min_length=1)
     title: str = Field(

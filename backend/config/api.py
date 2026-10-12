@@ -15,6 +15,7 @@ from pydantic import ConfigDict, Field
 
 from books.catalogue import list_catalogue, read_book, save_book, serve_cover
 from books.library import list_books
+from books.library import read_book as read_member_book
 from books.metadata import search_metadata
 from users.authentication import (
     DENIED_KEY,
@@ -37,6 +38,7 @@ from users.schemas import (
     REDIRECT_RESPONSE,
     AdminBook,
     AdminMembers,
+    BookDetail,
     BookMetadataResult,
     Error,
     LibraryBook,
@@ -520,3 +522,13 @@ def book_metadata(request):
 )
 def books(request):
     return allowlist_result(list_books, request)
+
+
+@api.get(
+    "/books/{bookId}",
+    response={200: BookDetail, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getBook",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def book_detail(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_member_book, request, bookId)

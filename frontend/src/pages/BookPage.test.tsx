@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createClubState } from '../api/mock/fixtures'
 import { createMockClient, type MockOptions } from '../api/mock/mockClient'
 import { holdCalls, trackCalls } from '../test/clients'
@@ -18,6 +18,14 @@ const region = (name: string) => screen.getByRole('region', { name })
 const items = (name: string) => within(region(name)).getAllByRole('listitem')
 
 describe('Book page', () => {
+  it('shows an honest live ratings placeholder without requesting unimplemented ratings', async () => {
+    vi.stubEnv('VITE_API_MODE', 'http')
+    try {
+      const { tracked } = await openBook('b3')
+      expect(region('Valoraciones')).toHaveTextContent('Las valoraciones estarán disponibles más adelante.')
+      expect(tracked.calls).not.toContain('getBookRatings')
+    } finally { vi.unstubAllEnvs() }
+  })
   it('shows the book with its cover, title, authors, status, dates, description and metadata', async () => {
     const { main } = await openBook('b3')
 
