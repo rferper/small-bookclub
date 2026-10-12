@@ -24,6 +24,21 @@ class MemberSummary(ClosedSchema):
     avatarUrl: str | None
 
 
+class BookSummary(ClosedSchema):
+    id: str = Field(min_length=1)
+    title: str
+    authors: list[str]
+    coverUrl: str | None
+
+
+class MyProfile(ClosedSchema):
+    member: MemberSummary
+    bio: str | None
+    favouriteQuote: str | None
+    favouriteBooks: list[BookSummary] = Field(max_length=5)
+    favouriteOptions: list[BookSummary]
+
+
 class AdminMember(ClosedSchema):
     member: MemberSummary
     discordId: str = Field(pattern=r"^[0-9]{17,20}$")

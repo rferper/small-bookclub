@@ -201,7 +201,7 @@ export class ApiError extends Error {
 }
 
 
-// Every central method has one operation; callback and infrastructure health have no UI method.
+// Browser image resources, callback navigation and infrastructure health have no JSON client method.
 type AssertNever<T extends never> = T
 export type ClientOperationCoverage = AssertNever<Exclude<keyof ApiClient, keyof operations>>
-export type ContractOperationCoverage = AssertNever<Exclude<keyof operations, keyof ApiClient | 'discordCallback' | 'getHealth'>>
+export type ContractOperationCoverage = AssertNever<Exclude<keyof operations, keyof ApiClient | 'discordCallback' | 'getHealth' | 'getAvatar'>>

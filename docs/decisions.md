@@ -856,3 +856,9 @@ until #30 persists that assignment; mock-backed assignment remains available.
 **Why:** This follows the groomed contract while keeping the administrator's live
 controls honest about persisted capabilities. No model, migration or dependency is
 needed. #30 owns atomic clearing of its future assignment during revoke.
+## 2026-10-12: Private native avatars and profile transport (#9)
+
+**Decision:** Accept the existing multipart profile contract, validate uploads with Pillow, and re-encode accepted JPEG/PNG/WebP bytes to a private WebP file named by an opaque random identifier. A guarded API route serves the image only while its owning member is active. Profile updates derive the owner from the current session and reject ownership keys; all metadata and image validation precedes persistence. Pillow is a free, open-source image library used for content validation and re-encoding. Until a book catalogue exists, favourite lists in the profile result are empty and nonempty submitted favourite IDs are invalid.
+**Why:** Browser MIME and filename are untrusted, and a static media mount would bypass club membership. The profile screen and contract already require a single atomic save with a private avatar.
+**Consequence:** `MEDIA_ROOT` contains private uploaded avatars and must be included in future backup work. Catalogue and review persistence remain their separate issues.
+

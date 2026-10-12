@@ -1,5 +1,6 @@
 import type { ApiClient } from './client'
 import { createTransport, operationUrl, safeError } from './transport'
+import { multipartFormData, profileMultipart } from './adapters'
 
 // Explicit inventory: a new feature requires an intentional HTTP behavior decision.
 export function createHttpClient(options: {
@@ -79,8 +80,8 @@ export function createHttpClient(options: {
     getTasteCompatibility: unavailable,
     listMembers: unavailable,
     getMemberProfile: unavailable,
-    getMyProfile: unavailable,
-    updateMyProfile: unavailable,
+    getMyProfile: () => request<'getMyProfile'>({ method: 'GET', path: '/api/me/profile', successStatus: 200 }),
+    updateMyProfile: (input) => request<'updateMyProfile'>({ method: 'PUT', path: '/api/me/profile', body: multipartFormData(profileMultipart(input)), successStatus: 200 }),
     listMyReviews: unavailable,
     getAdminMembers: () => request<'getAdminMembers'>({ method: 'GET', path: '/api/admin/members', successStatus: 200 }),
     addMember: (body) => request<'addMember'>({ method: 'POST', path: '/api/admin/members', body, successStatus: 201 }),

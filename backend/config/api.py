@@ -28,13 +28,21 @@ from users.membership import (
     revoke_member,
 )
 from users.oauth import ClubDiscordAdapter, callback
+from users.profile import read_profile, serve_avatar, update_profile
 from users.schemas import (
     REDIRECT_RESPONSE,
     AdminMembers,
     Error,
+    MyProfile,
     NewMember,
     Session,
     query_parameter,
+)
+
+from .contract import read_contract, resolve
+
+PROFILE_MULTIPART_SCHEMA = resolve(
+    read_contract(), {"$ref": "#/components/schemas/ProfileMultipart"}
 )
 
 api = NinjaAPI(
@@ -264,3 +272,70 @@ def add_admin_member(request):
 )
 def restore(request, memberId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(restore_member, request, memberId)
+
+
+@api.get(
+    "/me/profile",
+    response={200: MyProfile, 401: Error, 500: Error, 503: Error},
+    operation_id="getMyProfile",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_my_profile(request):
+    return allowlist_result(read_profile, request)
+
+
+@api.put(
+    "/me/profile",
+    response={
+        200: MyProfile,
+        400: Error,
+        401: Error,
+        403: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="updateMyProfile",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": PROFILE_MULTIPART_SCHEMA,
+                    "encoding": {
+                        "metadata": {"contentType": "application/json"},
+                        "avatar": {"contentType": "image/jpeg, image/png, image/webp"},
+                    },
+                }
+            },
+        },
+    },
+)
+def put_my_profile(request):
+    return allowlist_result(update_profile, request)
+
+
+@api.get(
+    "/media/avatars/{avatarId}",
+    response={200: None, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getAvatar",
+    openapi_extra={
+        "security": [{"sessionCookie": []}],
+        "responses": {
+            "200": {
+                "description": "WebP image bytes.",
+                "content": {
+                    "image/webp": {"schema": {"type": "string", "format": "binary"}}
+                },
+            }
+        },
+    },
+)
+def get_avatar(request, avatarId: str):
+    try:
+        result = serve_avatar(request, avatarId)
+    except Exception:
+        return Status(*error_result(500))
+    if isinstance(result, HttpResponse):
+        return result
+    return Status(*result)
