@@ -1413,9 +1413,7 @@ paths:
       description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
         both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
         Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
-        endpoints. Returns active approved rows followed by revoked rows in Spanish display-name
-        order; pending rows and private prose are excluded. Until #30, curator is null and
-        isCurator is false. "
+        endpoints. "
       x-access:
         approvedAdmin: true
         anonymous: 401
@@ -3527,7 +3525,9 @@ paths:
       description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;
         both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
         Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
-        endpoints. "
+        endpoints. Returns active approved rows followed by revoked rows in Spanish display-name
+        order; pending rows and private prose are excluded. Until #30, curator is null and
+        isCurator is false. "
       x-access:
         approvedAdmin: true
         anonymous: 401
