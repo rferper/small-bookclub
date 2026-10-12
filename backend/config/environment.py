@@ -43,8 +43,14 @@ def configure(environ, base_dir):
         raise ImproperlyConfigured("DATABASE_PATH must not be blank")
     if database != ":memory:" and not Path(database).is_absolute():
         database = str(base_dir / database)
+    media_root = environ.get("MEDIA_ROOT", str(base_dir / "private_media"))
+    if not media_root.strip():
+        raise ImproperlyConfigured("MEDIA_ROOT must not be blank")
+    if not Path(media_root).is_absolute():
+        media_root = str(base_dir / media_root)
     return {
         "ENVIRONMENT": environment,
+        "MEDIA_ROOT": media_root,
         "SECRET_KEY": secret or "public-development-only-key-never-use-in-production",
         "DEBUG": debug,
         "ALLOWED_HOSTS": hosts or ["localhost", "127.0.0.1", "[::1]", "testserver"],

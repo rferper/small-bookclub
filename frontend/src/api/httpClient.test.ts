@@ -92,3 +92,25 @@ describe('HTTP allowlist adapters', () => {
     expect(send).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('HTTP own-profile adapters', () => {
+  it('reads the session-owned profile and sends one multipart save with CSRF', async () => {
+    const profile = { member: { id: 'fictional-member-1', displayName: 'Alba ficticia', avatarUrl: null }, bio: null, favouriteQuote: null, favouriteBooks: [], favouriteOptions: [] }
+    const send = vi.fn<typeof fetch>(async () => json(profile))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'c'.repeat(32)}` })
+    expect(await client.getMyProfile()).toEqual(profile)
+    const file = new File(['fictional-image'], 'avatar.png', { type: 'image/png' })
+    expect(await client.updateMyProfile({ displayName: 'Alba ficticia', bio: 'Bio', favouriteQuote: null, favouriteBookIds: [], avatar: { action: 'replace', file } })).toEqual(profile)
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/me/profile', '/api/me/profile'])
+    expect(send.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'PUT'])
+    const init = send.mock.calls[1][1]!
+    expect(new Headers(init.headers).get('X-CSRFToken')).toBe('c'.repeat(32))
+    expect(new Headers(init.headers).get('Content-Type')).toBeNull()
+    const form = init.body as FormData
+    expect([...form.keys()]).toEqual(['metadata', 'avatar'])
+    expect(JSON.parse(await (form.get('metadata') as Blob).text())).toEqual({
+      displayName: 'Alba ficticia', bio: 'Bio', favouriteQuote: null, favouriteBookIds: [], avatarAction: 'replace',
+    })
+    expect((form.get('avatar') as File).name).toBe('avatar.png')
+  })
+})

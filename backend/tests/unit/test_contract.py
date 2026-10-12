@@ -29,6 +29,9 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/admin/members (getAdminMembers)",
         "POST /api/admin/members (addMember)",
         "POST /api/admin/members/{memberId}/restore (restoreMember)",
+        "GET /api/me/profile (getMyProfile)",
+        "PUT /api/me/profile (updateMyProfile)",
+        "GET /api/media/avatars/{avatarId} (getAvatar)",
     ]
 
 
