@@ -42,6 +42,13 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/admin/book-metadata (searchBookMetadata)",
         "GET /api/books (listBooks)",
         "GET /api/books/{bookId} (getBook)",
+        "GET /api/admin/meetings (listAdminMeetings)",
+        "POST /api/admin/meetings (createMeeting)",
+        "GET /api/admin/meetings/{meetingId} (getAdminMeeting)",
+        "PUT /api/admin/meetings/{meetingId} (updateMeeting)",
+        "DELETE /api/admin/meetings/{meetingId} (deleteMeeting)",
+        "PUT /api/admin/meetings/{meetingId}/cancelled (setMeetingCancelled)",
+        "GET /api/admin/deletion-preview/{type}/{id} (getDeletionPreview)",
     ]
 
 

@@ -828,26 +828,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/meetings/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * deleteMeeting
-         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Soft removal retains linked business history and metadata for exactly 30 days; repeated/missing target 404. Never cascade purge; member projections suppress removed targets/dependent content.
-         */
-        delete: operations["deleteMeeting"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/quotes/{id}": {
         parameters: {
             query?: never;
@@ -1166,7 +1146,11 @@ export interface paths {
          */
         put: operations["updateMeeting"];
         post?: never;
-        delete?: never;
+        /**
+         * deleteMeeting
+         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Soft removal retains linked business history and metadata for exactly 30 days; repeated/missing target 404. Never cascade purge; member projections suppress removed targets/dependent content.
+         */
+        delete: operations["deleteMeeting"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3021,6 +3005,7 @@ export interface components {
         /**
          * @description Upcoming earliest first/past newest first by server time; cancellation does not change partition. Choices omit removed books/weeks and revoked members. No summary/highlight/rating content.
          * @example {
+         *       "clubTimezone": "Europe/Madrid",
          *       "upcoming": [],
          *       "past": [],
          *       "books": [],
@@ -3029,6 +3014,8 @@ export interface components {
          *     }
          */
         AdminMeetingCalendar: {
+            /** @description Server-configured IANA club timezone used for display and local-time input. */
+            clubTimezone: string;
             upcoming: components["schemas"]["AdminMeeting"][];
             past: components["schemas"]["AdminMeeting"][];
             books: {
@@ -5974,34 +5961,6 @@ export interface operations {
             503: components["responses"]["Error503"];
         };
     };
-    deleteMeeting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful approved-admin result. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example [] */
-                    "application/json": components["schemas"]["RecycleBinEntry"][];
-                };
-            };
-            401: components["responses"]["Error401"];
-            403: components["responses"]["Error403"];
-            404: components["responses"]["Error404"];
-            500: components["responses"]["Error500"];
-            503: components["responses"]["Error503"];
-        };
-    };
     updateLiteraryQuote: {
         parameters: {
             query?: never;
@@ -6859,6 +6818,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "clubTimezone": "Europe/Madrid",
                      *       "upcoming": [],
                      *       "past": [],
                      *       "books": [],
@@ -7012,6 +6972,34 @@ export interface operations {
             403: components["responses"]["Error403"];
             404: components["responses"]["Error404"];
             409: components["responses"]["Error409"];
+            500: components["responses"]["Error500"];
+            503: components["responses"]["Error503"];
+        };
+    };
+    deleteMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meetingId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful approved-admin result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example [] */
+                    "application/json": components["schemas"]["RecycleBinEntry"][];
+                };
+            };
+            401: components["responses"]["Error401"];
+            403: components["responses"]["Error403"];
+            404: components["responses"]["Error404"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };

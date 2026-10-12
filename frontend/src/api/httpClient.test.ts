@@ -178,3 +178,25 @@ describe('HTTP manual catalogue adapters', () => {
     expect(send).toHaveBeenCalledTimes(4)
   })
 })
+
+describe('HTTP admin calendar adapters', () => {
+  it('uses the contract JSON/status/cancellation/preview/delete paths and CSRF', async () => {
+    const input = { startsAt: '2026-01-15T19:30:00Z', bookId: null, weekId: null }
+    const send = vi.fn<typeof fetch>(async (_url, init) => json({}, init?.method === 'POST' ? 201 : 200))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'c'.repeat(32)}` })
+    await client.listAdminMeetings()
+    await client.getAdminMeeting('7')
+    await client.createMeeting(input)
+    await client.updateMeeting('7', input)
+    await client.setMeetingCancelled('7', true)
+    await client.getDeletionPreview('meeting', '7')
+    await client.deleteMeeting('7')
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/meetings', '/api/admin/meetings/7', '/api/admin/meetings', '/api/admin/meetings/7', '/api/admin/meetings/7/cancelled', '/api/admin/deletion-preview/meeting/7', '/api/admin/meetings/7'])
+    expect(send.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'GET', 'POST', 'PUT', 'PUT', 'GET', 'DELETE'])
+    expect(JSON.parse(send.mock.calls[2][1]?.body as string)).toEqual(input)
+    expect(JSON.parse(send.mock.calls[4][1]?.body as string)).toEqual({ cancelled: true })
+    for (const index of [2, 3, 4, 6]) expect(new Headers(send.mock.calls[index][1]?.headers).get('X-CSRFToken')).toBe('c'.repeat(32))
+    await expect(client.deleteMeeting('../session')).rejects.toMatchObject({ status: 500 })
+    expect(send).toHaveBeenCalledTimes(7)
+  })
+})

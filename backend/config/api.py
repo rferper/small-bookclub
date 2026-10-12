@@ -17,6 +17,22 @@ from books.catalogue import list_catalogue, read_book, save_book, serve_cover
 from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
+from meetings.calendar import (
+    deletion_preview,
+    list_calendar,
+    read_meeting,
+    remove_meeting,
+    save_meeting,
+    set_cancelled,
+)
+from meetings.schemas import (
+    AdminMeeting,
+    AdminMeetingCalendar,
+    CancelledInput,
+    DeletionPreview,
+    MeetingInput,
+    RecycleBinEntry,
+)
 from users.authentication import (
     DENIED_KEY,
     EXPORT_KEY,
@@ -532,3 +548,150 @@ def books(request):
 )
 def book_detail(request, bookId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(read_member_book, request, bookId)
+
+
+@api.get(
+    "/admin/meetings",
+    response={
+        200: AdminMeetingCalendar,
+        401: Error,
+        403: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="listAdminMeetings",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def admin_calendar(request):
+    return allowlist_result(list_calendar, request)
+
+
+@api.get(
+    "/admin/meetings/{meetingId}",
+    response={
+        200: AdminMeeting,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="getAdminMeeting",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def admin_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_meeting, request, meetingId)
+
+
+MEETING_REQUEST = {
+    "security": [{"sessionCookie": [], "csrfHeader": []}],
+    "requestBody": {
+        "required": True,
+        "content": {"application/json": {"schema": MeetingInput.model_json_schema()}},
+    },
+}
+
+
+@api.post(
+    "/admin/meetings",
+    response={
+        201: AdminMeeting,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="createMeeting",
+    openapi_extra=MEETING_REQUEST,
+)
+def create_meeting(request):
+    return allowlist_result(save_meeting, request)
+
+
+@api.put(
+    "/admin/meetings/{meetingId}",
+    response={
+        200: AdminMeeting,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="updateMeeting",
+    openapi_extra=MEETING_REQUEST,
+)
+def update_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(save_meeting, request, meetingId)
+
+
+@api.put(
+    "/admin/meetings/{meetingId}/cancelled",
+    response={
+        200: AdminMeeting,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="setMeetingCancelled",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {"schema": CancelledInput.model_json_schema()}
+            },
+        },
+    },
+)
+def cancel_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(set_cancelled, request, meetingId)
+
+
+@api.get(
+    "/admin/deletion-preview/{type}/{id}",
+    response={
+        200: DeletionPreview,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="getDeletionPreview",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def preview_deletion(
+    request,
+    type: Annotated[
+        str, Field(json_schema_extra={"enum": ["book", "meeting", "quote"]})
+    ],
+    id: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(deletion_preview, request, type, id)
+
+
+@api.delete(
+    "/admin/meetings/{meetingId}",
+    response={
+        200: list[RecycleBinEntry],
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="deleteMeeting",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def delete_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(remove_meeting, request, meetingId)
