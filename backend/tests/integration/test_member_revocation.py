@@ -1,8 +1,10 @@
 """Mounted revocation, persisted authorization and database-session guarantees."""
 
+from datetime import timedelta
 from functools import lru_cache
 
 import pytest
+from django.contrib.auth import SESSION_KEY
 from django.contrib.sessions.models import Session
 from django.test import Client
 from django.utils import timezone
@@ -244,6 +246,27 @@ def test_repeat_revocation_preserves_original_revocation_time(identities):
     before = snapshot()
     check(revoke(client, member.pk), 409)
     assert snapshot() == before
+
+
+@pytest.mark.parametrize("representation", ["integer", "padded"])
+def test_all_authenticated_native_session_key_forms_and_expired_sessions_are_deleted(
+    identities, representation
+):
+    admin, member, _ = identities
+    acting, target = browser(admin), browser(member)
+    session = target.session
+    session[SESSION_KEY] = (
+        member.pk if representation == "integer" else f"00{member.pk}"
+    )
+    session.save()
+    assert target.get("/api/session").json()["user"]["id"] == str(member.pk)
+    idle = browser(member)
+    keys = [target.cookies["sessionid"].value, idle.cookies["sessionid"].value]
+    Session.objects.filter(session_key=keys[1]).update(
+        expire_date=timezone.now() - timedelta(days=1)
+    )
+    check(revoke(acting, member.pk), 200)
+    assert not Session.objects.filter(session_key__in=keys).exists()
 
 
 def test_failure_after_session_deletion_rolls_back_both_mutation_and_sessions(

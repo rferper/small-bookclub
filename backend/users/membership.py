@@ -5,6 +5,7 @@ import unicodedata
 
 from django.contrib.auth import SESSION_KEY
 from django.contrib.sessions.models import Session
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -78,11 +79,16 @@ def admin_members_projection(actor):
 
 def invalidate_member_sessions(identity):
     """Delete every matching database session, including idle/expired browsers."""
-    keys = [
-        session.session_key
-        for session in Session.objects.all().iterator()
-        if session.get_decoded().get(SESSION_KEY) == str(identity.pk)
-    ]
+    keys = []
+    for session in Session.objects.all().iterator():
+        # Match Django auth's native primary-key conversion, including signed
+        # server sessions carrying an integer rather than its canonical string.
+        try:
+            owner = identity._meta.pk.to_python(session.get_decoded().get(SESSION_KEY))
+        except ValidationError:
+            continue
+        if owner == identity.pk:
+            keys.append(session.session_key)
     Session.objects.filter(session_key__in=keys).delete()
 
 

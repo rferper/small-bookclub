@@ -1275,7 +1275,7 @@ export interface paths {
         put?: never;
         /**
          * revokeMember
-         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Missing 404, signed-in admin/already revoked 409; clear curator if needed, retain contributions.
+         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Missing or nonnumeric native target ID 404; own account, already revoked or pending/unapproved target 409. Success revokes an approved member and atomically deletes all their existing authenticated database sessions. Old cookies cannot regain access after reapproval; a fresh Discord login is required. Refusals preserve timestamps and sessions. Retain identity, profile, role and contributions. At this stage no current-curator assignment is persisted; curator is null and all isCurator flags are false. Once assignment persistence exists, clear the current assignment atomically when its member is revoked.
          */
         post: operations["revokeMember"];
         delete?: never;
@@ -2923,7 +2923,7 @@ export interface components {
             isCurator: boolean;
         };
         /**
-         * @description Allowlist alone includes Discord identities/access status. Active first, then revoked, Spanish name order. No profile prose/ratings. Revoking curator clears assignment, preserves contributions; never change role.
+         * @description Allowlist alone includes exact Discord identities/access status. Include approved active rows and revoked rows only; omit pending/unapproved rows without revocation. Active first, then revoked, deterministic Spanish display-name order within each group. Native website identity/avatar and preserved role/addedAt; no profile prose/ratings/tokens/sessions. Until current-curator persistence exists, curator is null and every isCurator is false. Revoking a persisted current curator clears assignment atomically, preserves contributions; never change role.
          * @example {
          *       "members": [],
          *       "curator": null
