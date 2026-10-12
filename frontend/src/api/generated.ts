@@ -1487,8 +1487,8 @@ export interface components {
          *       "weekNumber": 1,
          *       "percentStart": 0,
          *       "percentEnd": 0,
-         *       "pageStart": 0,
-         *       "pageEnd": 0,
+         *       "pageStart": 1,
+         *       "pageEnd": 1,
          *       "meetingStartsAt": null,
          *       "completedByMe": false
          *     }
@@ -1637,8 +1637,8 @@ export interface components {
          *       "weekNumber": 1,
          *       "percentStart": 0,
          *       "percentEnd": 0,
-         *       "pageStart": 0,
-         *       "pageEnd": 0,
+         *       "pageStart": 1,
+         *       "pageEnd": 1,
          *       "dueDate": null,
          *       "meeting": null,
          *       "notes": null
