@@ -9,6 +9,7 @@ import { BOOK_STATUSES, BOOK_STATUS_LABELS } from '../lib/library'
 import { AVATAR_ACCEPT, avatarProblem, readAsDataUrl } from '../lib/profile'
 import { BookCover } from './BookCover'
 import { Card } from './Card'
+import { ConfirmDialog } from './ConfirmDialog'
 import { DeleteContentButton } from './DeleteContentButton'
 
 const buttonClass = 'rounded-lg border border-forest px-4 py-2 text-forest hover:bg-sage/40 disabled:opacity-60'
@@ -37,6 +38,7 @@ export function BookForm({ book }: { book?: AdminBook }) {
   const [readingFile, setReadingFile] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [pendingStatus, setPendingStatus] = useState<BookInput | null>(null)
   const [query, setQuery] = useState('')
   const [searchError, setSearchError] = useState('')
   const [searching, setSearching] = useState(false)
@@ -102,7 +104,7 @@ export function BookForm({ book }: { book?: AdminBook }) {
   }
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (running.current || filePending.current) return
+    if (running.current || filePending.current || pendingStatus) return
     const input: BookInput = { ...blankBookInput(), ...values,
       authors: values.authors.split('\n').map((a) => a.trim()).filter(Boolean),
       pageCount: values.pageCount.trim() ? Number(values.pageCount) : null, status, datesApproximate: approximate, cover }
@@ -110,6 +112,15 @@ export function BookForm({ book }: { book?: AdminBook }) {
     if (coverError) found.cover = coverError
     setErrors(found); setSaveError('')
     if (Object.keys(found).length) { focusNext.current = fieldId(Object.keys(found)[0]); return }
+    if (input.status !== (book?.status ?? 'propuesto')) {
+      setPendingStatus(input)
+      return
+    }
+    await persist(input)
+  }
+  const persist = async (input: BookInput) => {
+    if (running.current) return
+    setSaveError('')
     running.current = true; setSaving(true)
     try {
       const saved = book ? await api.updateBook(book.id, input) : await api.createBook(input)
@@ -162,9 +173,14 @@ export function BookForm({ book }: { book?: AdminBook }) {
           </div>
         </fieldset>
         {book?.originVote && <p className="text-bark">Votación de origen (solo lectura): <Link className="text-moss underline" to={`/votaciones/${encodeURIComponent(book.originVote.id)}`}>{book.originVote.label}</Link></p>}
-        {saveError && <p role="alert">{saveError}</p>}
-        <button type="submit" disabled={saving || readingFile} className="justify-self-start rounded-lg bg-forest px-5 py-2 text-parchment disabled:opacity-60">{saving ? 'Guardando…' : saveError ? 'Reintentar guardar' : 'Guardar libro'}</button>
+        {saveError && !pendingStatus && <p role="alert">{saveError}</p>}
+        <button id={fieldId('save')} type="submit" disabled={saving || readingFile} className="justify-self-start rounded-lg bg-forest px-5 py-2 text-parchment disabled:opacity-60">{saving ? 'Guardando…' : saveError ? 'Reintentar guardar' : 'Guardar libro'}</button>
       </form>
     </Card>
+    {pendingStatus && <ConfirmDialog title="Confirmar cambio de estado" confirmLabel="Confirmar y guardar" busy={saving} error={saveError || null}
+      onCancel={() => { if (!running.current) { setPendingStatus(null); focusNext.current = fieldId('save') } }}
+      onConfirm={() => { void persist(pendingStatus) }}>
+      <p>«{pendingStatus.title.trim()}» pasará de {BOOK_STATUS_LABELS[book?.status ?? 'propuesto']} a {BOOK_STATUS_LABELS[pendingStatus.status]}.</p>
+    </ConfirmDialog>}
   </div>
 }
