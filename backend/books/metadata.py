@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import uuid
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -63,7 +64,7 @@ def fetch_provider(url, limit, accept):
         if parsed.hostname == "covers.openlibrary.org" and error.code == 404:
             return None, None
         raise MetadataUnavailable("Provider refused request") from None
-    except (URLError, OSError, TimeoutError) as error:
+    except (URLError, OSError, TimeoutError, HTTPException) as error:
         raise MetadataUnavailable("Provider unavailable") from error
 
 
@@ -81,7 +82,7 @@ def map_result(document):
     if (
         not title
         or not isinstance(key, str)
-        or not re.fullmatch(r"(?:/works/)?OL[0-9]+W", key)
+        or not re.fullmatch(r"(?:/works/)?OL[0-9]{1,20}W", key)
     ):
         return None
     authors = document.get("author_name", [])

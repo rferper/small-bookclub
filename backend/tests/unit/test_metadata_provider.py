@@ -1,6 +1,7 @@
 """Bounded HTTP transport tests with no real network."""
 
 from email.message import Message
+from http.client import IncompleteRead
 from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
 
@@ -80,6 +81,7 @@ def test_provider_origin_restrictions_precede_network(monkeypatch, url):
     [
         URLError("Private"),
         TimeoutError("Private"),
+        IncompleteRead(b"partial"),
         HTTPError("https://openlibrary.org", 302, "Redirect", {}, None),
     ],
 )
