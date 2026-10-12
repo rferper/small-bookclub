@@ -1280,6 +1280,38 @@ paths:
                 contentType: application/json
               avatar:
                 contentType: image/jpeg, image/png, image/webp
+  /api/media/avatars/{avatarId}:
+    get:
+      operationId: getAvatar
+      summary: getAvatar
+      description: Private, re-encoded website avatar. A current approved member may read an active member's avatar. Unknown, removed, or revoked owners return the same 404.
+      tags:
+        - Member
+      parameters:
+        - name: avatarId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+      responses:
+        "200":
+          description: WebP image bytes.
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Error401"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
   /api/me/reviews:
     get:
       operationId: listMyReviews
