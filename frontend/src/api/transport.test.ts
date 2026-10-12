@@ -14,7 +14,7 @@ describe('central HTTP operation transport', () => {
     try {
       const client = createHttpClient()
       for (const name of Object.keys(client)) {
-        if (['getSession', 'startSignIn', 'signOut', 'getAdminMembers', 'addMember', 'revokeMember', 'restoreMember'].includes(name)) continue
+        if (['getSession', 'startSignIn', 'signOut', 'getAdminMembers', 'addMember', 'revokeMember', 'restoreMember', 'getMyProfile', 'updateMyProfile'].includes(name)) continue
         await expect(Reflect.apply(Reflect.get(client, name), client, [])).rejects.toMatchObject({ status: 503 })
       }
       expect(send).not.toHaveBeenCalled()
