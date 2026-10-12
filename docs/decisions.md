@@ -894,3 +894,7 @@ needed. #30 owns atomic clearing of its future assignment during revoke.
 ## 2026-10-12: Private member catalogue transport (#17)
 
 **Decision:** GET /api/books returns a closed retained-book metadata projection shared by existing bookshelf/timeline UI. Local view/filter/sort state remains in the browser URL and is never an authority or extra network query. Removed rows, operational metadata and review/count/mean data are absent; private cover reads reuse the guarded resource. No new schema shape, dependency or layout change. Book detail persistence is #19.
+
+## 2026-10-12: Timeline reuses native catalogue (#18)
+
+**Decision:** Keep the existing chronological LibraryPage presentation over the same GET /api/books payload as the bookshelf. Reading start/end fallback, approximate-year grouping and the final Fecha desconocida group are local presentation logic; filter/view state stays in the URL. No second API, schema, dependency or layout is needed after #17. Existing timeline and sorting tests verify this adoption; detail persistence follows in #19.
