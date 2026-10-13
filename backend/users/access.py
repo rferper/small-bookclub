@@ -79,6 +79,21 @@ def can_view_reviews(identity, *, personally_finished, own_review_submitted):
     )
 
 
+def can_view_meeting_record(
+    identity, *, cancelled, linked_week, week_removed, week_completed, marked_safe
+):
+    """Pure spoiler decision on persisted facts; admin member views share it."""
+    return (
+        is_effective_member(identity)
+        and cancelled is False
+        and week_removed is False
+        and (
+            (linked_week is True and week_completed is True)
+            or (linked_week is False and marked_safe is True)
+        )
+    )
+
+
 MEMBER_ACTIONS = frozenset({"sign_in", "view_club"})
 ADMIN_ACTIONS = frozenset(
     {

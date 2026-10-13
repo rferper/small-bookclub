@@ -9,3 +9,4 @@
 - #26: Native member meetings list and book meeting references implemented; 1,014 backend and 1,241 frontend tests pass, with independent security review PASS.
 - #27: Native meeting detail and retained attendance implemented; 1,027 backend and 1,243 frontend tests pass, with independent security review PASS.
 - #28: Native retained admin summary/highlight editing implemented; 1,056 backend and 1,244 frontend tests pass, with independent security review PASS.
+- #29: Central native weekly spoiler gating implemented; 1,083 backend and 1,244 frontend tests pass, with independent security review PASS.
