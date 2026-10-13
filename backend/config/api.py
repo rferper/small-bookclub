@@ -59,6 +59,8 @@ from meetings.schemas import (
     MeetingList,
     RecycleBinEntry,
 )
+from reviews.rubric import read_rubric, save_rubric
+from reviews.schemas import RatingRubric, RatingRubricInput
 from users.authentication import (
     DENIED_KEY,
     EXPORT_KEY,
@@ -988,11 +990,15 @@ RECORD_WRITE_ERRORS = {400: Error, **RECORD_ERRORS}
 
 
 def record_request(schema):
+    document = schema.model_json_schema()
+    if "$defs" in document:
+        document = resolve(document, document)
+        document.pop("$defs", None)
     return {
         "security": [{"sessionCookie": [], "csrfHeader": []}],
         "requestBody": {
             "required": True,
-            "content": {"application/json": {"schema": schema.model_json_schema()}},
+            "content": {"application/json": {"schema": document}},
         },
     }
 
@@ -1216,3 +1222,30 @@ def post_close_vote(request, voteId: Annotated[str, Field(min_length=1)]):
 )
 def post_tie_winner(request, voteId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(record_tie_winner, request, voteId)
+
+
+@api.get(
+    "/rating-rubric",
+    response={200: RatingRubric, 401: Error, 500: Error, 503: Error},
+    operation_id="getRatingRubric",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_rating_rubric(request):
+    return allowlist_result(read_rubric, request)
+
+
+@api.put(
+    "/admin/rating-rubric",
+    response={
+        200: RatingRubric,
+        400: Error,
+        401: Error,
+        403: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="saveRatingRubric",
+    openapi_extra=record_request(RatingRubricInput),
+)
+def put_rating_rubric(request):
+    return allowlist_result(save_rubric, request)
