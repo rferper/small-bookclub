@@ -6,6 +6,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db import transaction
 from django.utils import timezone
 
+from reviews.projections import own_review
 from users.access import permission_refusal, require_permission
 from users.membership import error_result, native_member_id
 from users.models import User
@@ -16,7 +17,7 @@ from .models import Book, BookCompletion
 
 
 def projection(book, actor):
-    # Review persistence/gating belongs to #36-#39. Finish alone never unlocks.
+    # Shared club exposure belongs to #38. Own review is always returned.
     return {
         "book": {
             "id": str(book.pk),
@@ -28,7 +29,7 @@ def projection(book, actor):
         "finishedByMe": book.completions.filter(
             member_id=actor.pk, completed_at__isnull=False
         ).exists(),
-        "myReview": None,
+        "myReview": own_review(book.reviews.filter(member=actor).first()),
         "club": {"status": "locked"},
     }
 
