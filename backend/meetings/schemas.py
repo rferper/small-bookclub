@@ -21,6 +21,49 @@ class MeetingList(ClosedSchema):
     past: list[MeetingListItem]
 
 
+class MeetingHighlight(ClosedSchema):
+    id: Id
+    text: str
+    kind: Literal["quote", "paraphrase"]
+    speakers: list[MemberSummary]
+
+
+class MeetingRecordVisible(ClosedSchema):
+    status: Literal["visible"] = Field(
+        json_schema_extra=lambda schema: schema.pop("type", None)
+    )
+    summary: str | None
+    highlights: list[MeetingHighlight]
+
+
+class MeetingRecordLockedWeekNotRead(ClosedSchema):
+    status: Literal["lockedWeekNotRead"] = Field(
+        json_schema_extra=lambda schema: schema.pop("type", None)
+    )
+    weekNumber: int = Field(ge=1)
+
+
+class MeetingRecordLockedNoWeek(ClosedSchema):
+    status: Literal["lockedNoWeek"] = Field(
+        json_schema_extra=lambda schema: schema.pop("type", None)
+    )
+
+
+class MeetingDetail(MeetingListItem):
+    upcoming: bool
+    attendance: list[MemberSummary] | None
+    record: Annotated[
+        MeetingRecordVisible
+        | MeetingRecordLockedWeekNotRead
+        | MeetingRecordLockedNoWeek,
+        Field(discriminator="status"),
+    ]
+
+
+class AttendanceInput(ClosedSchema):
+    memberIds: list[Id] = Field(json_schema_extra={"uniqueItems": True})
+
+
 @with_config(ConfigDict(extra="forbid"))
 class AdminMeeting(TypedDict):
     id: Id

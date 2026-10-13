@@ -4,6 +4,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from users.access import require_permission
+from users.directory import member_summary
+from users.membership import error_result, native_member_id, spanish_name_key
 
 from .models import Meeting, ReadingAssignment
 
@@ -75,3 +77,31 @@ def book_meetings(book):
             }
         )
     return result
+
+
+@require_permission("view_club")
+def read_meeting(request, meeting_id):
+    key = native_member_id(meeting_id)
+    meeting = visible_meetings().filter(pk=key).first() if key else None
+    if meeting is None:
+        return error_result(404)
+    now = timezone.now()
+    attendance = None
+    if (
+        meeting.starts_at < now
+        and not meeting.cancelled
+        and meeting.attendance_recorded
+    ):
+        attendance = [
+            member_summary(member)
+            for member in sorted(
+                meeting.attendees.all(),
+                key=lambda row: (spanish_name_key(row.display_name), row.pk),
+            )
+        ]
+    return 200, {
+        **projection(meeting),
+        "upcoming": meeting.starts_at >= now,
+        "attendance": attendance,
+        "record": {"status": "lockedNoWeek"},
+    }

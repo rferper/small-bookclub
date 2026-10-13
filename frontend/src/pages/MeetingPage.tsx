@@ -77,7 +77,7 @@ function MeetingView({ meeting }: { meeting: MeetingDetail }) {
         </div>
         {!meeting.cancelled && (
           <div className="grid min-w-0 gap-6">
-            <Record record={meeting.record} assignment={meeting.assignment} />
+            {import.meta.env.VITE_API_MODE === 'http' ? <Card title="Resumen y destacados"><EmptyState>Los resúmenes y destacados estarán disponibles más adelante.</EmptyState></Card> : <Record record={meeting.record} assignment={meeting.assignment} />}
           </div>
         )}
       </div>

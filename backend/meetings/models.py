@@ -31,7 +31,10 @@ class Meeting(SoftDeleteModel):
     record_safe = models.BooleanField(default=False)
     attendance_recorded = models.BooleanField(default=False)
     attendees = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="attended_meetings"
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="attended_meetings",
+        through="MeetingAttendance",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -64,6 +67,18 @@ class Meeting(SoftDeleteModel):
             raise ValidationError(
                 {"summary_text": "Un resumen publicado no puede estar vacío."}
             )
+
+
+class MeetingAttendance(models.Model):
+    meeting = models.ForeignKey(Meeting, on_delete=models.PROTECT)
+    member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["meeting", "member"], name="meeting_attendance_unique_pair"
+            )
+        ]
 
 
 class ReadingAssignment(SoftDeleteModel):

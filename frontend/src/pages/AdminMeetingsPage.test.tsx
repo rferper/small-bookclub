@@ -9,7 +9,7 @@ import { renderApp } from '../test/renderApp'
 const base = '/administracion/reuniones'
 const change = (name: string, value: string) => fireEvent.change(screen.getByLabelText(name), { target: { value } })
 describe('admin meeting calendar', () => {
-  it('uses the server timezone and stages unavailable live attendance editing', async () => {
+  it('uses the server timezone and enables live attendance editing', async () => {
     vi.stubEnv('VITE_API_MODE', 'http')
     try {
       const state = createClubState()
@@ -21,9 +21,8 @@ describe('admin meeting calendar', () => {
       const tracked = trackCalls({ ...api, listAdminMeetings: async () => ({ ...await api.listAdminMeetings(), clubTimezone: 'UTC' }) })
       renderApp({ path: `${base}/mt1/editar`, client: tracked.client })
       expect(await screen.findByText('Zona horaria del club: UTC')).toBeInTheDocument()
-      expect(screen.getByText('El registro de asistencia estará disponible más adelante.')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Guardar asistencia' })).not.toBeInTheDocument()
-      expect(tracked.calls).not.toContain('setMeetingAttendance')
+      await userEvent.setup().click(await screen.findByRole('button', { name: 'Guardar asistencia' }))
+      await waitFor(() => expect(tracked.calls).toContain('setMeetingAttendance'))
     } finally { vi.unstubAllEnvs() }
   })
   it('links the hub to both groups and all meeting editors', async () => {
