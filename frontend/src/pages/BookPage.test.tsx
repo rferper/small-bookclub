@@ -18,12 +18,19 @@ const region = (name: string) => screen.getByRole('region', { name })
 const items = (name: string) => within(region(name)).getAllByRole('listitem')
 
 describe('Book page', () => {
-  it('shows an honest live ratings placeholder without requesting unimplemented ratings', async () => {
+  it('uses live completion controls while staging review submission', async () => {
     vi.stubEnv('VITE_API_MODE', 'http')
     try {
       const { tracked } = await openBook('b3')
+      const finished = await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
       expect(region('Valoraciones')).toHaveTextContent('Las valoraciones estarán disponibles más adelante.')
-      expect(tracked.calls).not.toContain('getBookRatings')
+      expect(tracked.calls).toContain('getBookRatings')
+      await userEvent.setup().click(finished)
+      expect(finished).toBeChecked()
+      expect(tracked.calls).toContain('setBookFinished')
+      expect(within(region('Valoraciones')).queryByRole('link', { name: 'Valorar el libro' })).not.toBeInTheDocument()
+      await userEvent.setup().click(finished)
+      expect(finished).not.toBeChecked()
       const toggle = within(region('Plan de lectura')).getByRole('button', { name: 'Semana 5: Marcar como leído' })
       await userEvent.setup().click(toggle)
       expect(toggle).toHaveAttribute('aria-pressed', 'true')

@@ -202,6 +202,19 @@ describe('HTTP admin calendar adapters', () => {
 })
 
 describe('HTTP reading plan adapters', () => {
+  it('reads personal completion and writes only the session-owned finished flag', async () => {
+    const ratings = { book: { id: '8', title: 'Libro ficticio', authors: [], coverUrl: null }, ratable: true, finishedByMe: true, myReview: null, club: { status: 'locked' } }
+    const send = vi.fn<typeof fetch>(async () => json(ratings))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'w'.repeat(32)}` })
+    await expect(client.getBookRatings('8')).resolves.toEqual(ratings)
+    await expect(client.setBookFinished('8', true)).resolves.toEqual(ratings)
+    expect(send.mock.calls[0][0]).toBe('/api/books/8/ratings')
+    expect(send.mock.calls[0][1]?.method).toBe('GET')
+    expect(send.mock.calls[1][0]).toBe('/api/books/8/finished')
+    expect(send.mock.calls[1][1]?.method).toBe('PUT')
+    expect(JSON.parse(send.mock.calls[1][1]?.body as string)).toEqual({ finished: true })
+    expect(new Headers(send.mock.calls[1][1]?.headers).get('X-CSRFToken')).toBe('w'.repeat(32))
+  })
   it('changes only the session-owned week flag and accepts an empty 204', async () => {
     const send = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }))
     const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'w'.repeat(32)}` })
