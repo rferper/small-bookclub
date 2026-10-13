@@ -13,7 +13,7 @@ from books.models import Book, BookCompletion
 from config.contract import read_contract, resolve
 from reviews.constants import CRITERIA
 from reviews.models import Review
-from users.models import User
+from users.models import CuratorAssignment, User
 
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
 NOW = datetime(2026, 10, 14, 12, tzinfo=timezone.utc)
@@ -37,6 +37,7 @@ def world(monkeypatch):
     book = Book.objects.create(
         title="Fictional review book", authors=["A. Writer"], status="terminado"
     )
+    CuratorAssignment.objects.create(member=users[2])
     return users, book
 
 
@@ -154,7 +155,8 @@ def test_member_submits_and_edits_own_review_preserving_submission(world, monkey
     assert created["myReview"]["overall"] == 3.8
     assert created["myReview"]["text"] == "<b>Reseña ficticia</b>\nliteral"
     assert created["myReview"]["editedAt"] is None
-    assert created["club"] == {"status": "locked"}
+    assert created["club"]["status"] == "visible"
+    assert created["club"]["reviewCount"] == 1
     later = NOW.replace(hour=13)
     monkeypatch.setattr(django_timezone, "now", lambda: later)
     edited = submit(client, book.pk, {"scores": scores(4.5)})
@@ -255,3 +257,107 @@ def test_trimmed_text_limit_and_admin_cannot_edit_another_member(world):
     )
     assert Review.objects.get(book=book, member=users[1]).text == "x" * 5000
     assert Review.objects.get(book=book, member=users[1]).overall == 1
+
+
+def ratings(client, book, status=200):
+    response = client.get(f"/api/books/{book.pk}/ratings")
+    assert response.status_code == status, response.content
+    content = resolve(
+        DOC,
+        DOC["paths"]["/api/books/{bookId}/ratings"]["get"]["responses"][str(status)],
+    )
+    Draft202012Validator(content["content"]["application/json"]["schema"]).validate(
+        response.json()
+    )
+    return response.json()
+
+
+@pytest.mark.parametrize("actor_index", [0, 1, 2])
+@pytest.mark.parametrize(
+    "complete,submitted", [(False, False), (True, False), (False, True), (True, True)]
+)
+def test_every_role_requires_both_personal_completion_and_own_review(
+    world, actor_index, complete, submitted
+):
+    users, book = world
+    actor = users[actor_index]
+    foreign = users[(actor_index + 1) % 3]
+    Review.objects.create(
+        book=book, member=foreign, text="Foreign fictional spoiler", **scores(5)
+    )
+    if complete:
+        BookCompletion.objects.create(book=book, member=actor, completed_at=NOW)
+    if submitted:
+        Review.objects.create(
+            book=book, member=actor, text="Own fictional review", **scores(2)
+        )
+    result = ratings(browser(actor), book)
+    assert (result["myReview"] is not None) == submitted
+    if complete and submitted:
+        assert result["club"]["status"] == "visible"
+        assert result["club"]["reviewCount"] == 2
+        assert result["club"]["overallMean"] == 3.5
+        assert result["club"]["criterionMeans"] == scores(3.5)
+        assert sum(row["isMine"] for row in result["club"]["reviews"]) == 1
+    else:
+        assert result["club"] == {"status": "locked"}
+        assert "Foreign fictional spoiler" not in str(result)
+        assert "reviewCount" not in str(result) and "overallMean" not in str(result)
+        assert foreign.display_name not in str(result)
+
+
+def test_submission_unlocks_club_and_edit_recalculates_equal_weight_means(world):
+    users, book = world
+    Review.objects.create(
+        book=book, member=users[2], text="Foreign fictional review", **scores(5)
+    )
+    client = browser(users[1])
+    assert ratings(client, book)["club"] == {"status": "locked"}
+    assert finished(client, book, True)["club"] == {"status": "locked"}
+    unlocked = submit(client, book.pk, {"scores": scores(1)})
+    assert unlocked["club"]["overallMean"] == 3 and unlocked["club"]["reviewCount"] == 2
+    edited = submit(client, book.pk, {"scores": scores(4)})
+    assert edited["club"]["overallMean"] == 4.5
+    assert edited["club"]["criterionMeans"] == scores(4.5)
+    assert ratings(client, book)["club"] == edited["club"]
+    assert finished(client, book, True)["club"] == edited["club"]
+
+
+def test_existing_metadata_surfaces_never_leak_foreign_review_or_aggregate(world):
+    users, book = world
+    secret = "Foreign fictional spoiler sentinel"
+    Review.objects.create(book=book, member=users[2], text=secret, **scores(4.5))
+    for actor in users[:2]:
+        client = browser(actor)
+        for path in (
+            "/api/home",
+            "/api/books",
+            f"/api/books/{book.pk}",
+            "/api/members",
+            f"/api/members/{users[2].pk}",
+            "/api/meetings",
+            "/api/rating-rubric",
+        ):
+            response = client.get(path)
+            assert response.status_code == 200, response.content
+            body = response.content.decode()
+            assert (
+                secret not in body
+                and '"overallMean"' not in body
+                and '"criterionMeans"' not in body
+            )
+
+
+def test_removed_book_or_revoked_viewer_cannot_read_unlocked_ratings(world):
+    users, book = world
+    for actor in users[:2]:
+        BookCompletion.objects.create(book=book, member=actor, completed_at=NOW)
+        Review.objects.create(book=book, member=actor, **scores(4))
+    client = browser(users[1])
+    assert ratings(client, book)["club"]["status"] == "visible"
+    book.soft_delete(users[0])
+    ratings(client, book, 404)
+    book.restore(users[0])
+    assert ratings(client, book)["club"]["reviewCount"] == 2
+    User.objects.filter(pk=users[1].pk).update(approved=False, revoked_at=NOW)
+    ratings(client, book, 401)

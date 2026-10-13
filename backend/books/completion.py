@@ -6,7 +6,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db import transaction
 from django.utils import timezone
 
-from reviews.projections import own_review
+from reviews.projections import club_reviews, own_review
 from users.access import permission_refusal, require_permission
 from users.membership import error_result, native_member_id
 from users.models import User
@@ -17,7 +17,10 @@ from .models import Book, BookCompletion
 
 
 def projection(book, actor):
-    # Shared club exposure belongs to #38. Own review is always returned.
+    own = book.reviews.filter(member=actor).first()
+    finished = book.completions.filter(
+        member_id=actor.pk, completed_at__isnull=False
+    ).exists()
     return {
         "book": {
             "id": str(book.pk),
@@ -26,11 +29,9 @@ def projection(book, actor):
             "coverUrl": book.cover_path or None,
         },
         "ratable": book.status in {"leyendo", "terminado", "archivado"},
-        "finishedByMe": book.completions.filter(
-            member_id=actor.pk, completed_at__isnull=False
-        ).exists(),
-        "myReview": own_review(book.reviews.filter(member=actor).first()),
-        "club": {"status": "locked"},
+        "finishedByMe": finished,
+        "myReview": own_review(own),
+        "club": club_reviews(book, actor, finished=finished, own=own),
     }
 
 
