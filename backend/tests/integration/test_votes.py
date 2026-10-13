@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator
 from books.models import Book
 from config.contract import read_contract, resolve
 from users.models import CuratorAssignment, User
-from votes.models import Vote, VoteCandidate
+from votes.models import Vote, VoteApproval, VoteCandidate
 
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
 NOW = datetime(2026, 10, 13, 12, tzinfo=timezone.utc)
@@ -369,3 +369,161 @@ def test_nonnumeric_vote_id_is_not_found(world):
     client = browser(admin)
     checked(client.get(f"{VOTES}/abc"), 404, ONE)
     checked(call(client, "post", f"{VOTES}/abc/open"), 404, OPEN, "post")
+
+
+APPROVAL = "/api/votes/{voteId}/candidates/{bookId}/approval"
+
+
+def open_shortlist(world, count=4):
+    admin, curator, member, other, books, assignment = world
+    client = browser(curator)
+    vote = make_vote(client)
+    for book in books[:count]:
+        add(client, vote["id"], book)
+    call(client, "post", f"{VOTES}/{vote['id']}/open")
+    return vote["id"]
+
+
+def approve(client, vote_id, book, body, status=200):
+    if not isinstance(body, (dict, str)):
+        body = {"approved": body}
+    response = call(
+        client, "put", f"{VOTES}/{vote_id}/candidates/{book.pk}/approval", body
+    )
+    return checked(response, status, APPROVAL, "put")
+
+
+def totals(vote):
+    return [len(row["approvals"]) for row in vote["candidates"]]
+
+
+def test_each_selected_candidate_counts_exactly_one_public_approval(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    client = browser(member)
+    for book in books[:3]:
+        vote = approve(client, vote_id, book, True)
+    assert totals(vote) == [1, 1, 1, 0]
+    assert [row["approvedByMe"] for row in vote["candidates"]] == [
+        True,
+        True,
+        True,
+        False,
+    ]
+    # Repeating an approval is idempotent; it never counts twice.
+    vote = approve(client, vote_id, books[0], True)
+    assert totals(vote) == [1, 1, 1, 0] and VoteApproval.objects.count() == 3
+    approve(browser(other), vote_id, books[0], True)
+    # Public before closing: everyone sees live totals and voter names.
+    seen = checked(browser(admin).get(f"{VOTES}/{vote_id}"), path=ONE)
+    assert totals(seen) == [2, 1, 1, 0]
+    names = [voter["displayName"] for voter in seen["candidates"][0]["approvals"]]
+    assert names == ["Fictional reader 3", "Fictional reader 4"]
+    assert not any(row["approvedByMe"] for row in seen["candidates"])
+    listed = checked(browser(other).get(VOTES))["current"]
+    assert listed["candidates"][0]["approvedByMe"] is True
+    assert listed["candidates"][1]["approvedByMe"] is False
+
+
+def test_member_withdraws_only_own_approval_while_open(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    approve(browser(other), vote_id, books[1], True)
+    client = browser(member)
+    approve(client, vote_id, books[1], True)
+    vote = approve(client, vote_id, books[1], False)
+    assert totals(vote) == [0, 1, 0, 0]
+    assert vote["candidates"][1]["approvals"][0]["id"] == str(other.pk)
+    # Withdrawing an absent approval is also idempotent.
+    assert totals(approve(client, vote_id, books[1], False)) == [0, 1, 0, 0]
+
+
+def test_sql_constraint_rejects_duplicate_approval(world):
+    admin, curator, member, other, books, assignment = world
+    open_shortlist(world)
+    candidate = VoteCandidate.objects.first()
+    VoteApproval.objects.create(candidate=candidate, member=member, approved_at=NOW)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        VoteApproval.objects.create(candidate=candidate, member=member, approved_at=NOW)
+
+
+def test_approvals_refused_unless_vote_is_open(world):
+    admin, curator, member, other, books, assignment = world
+    client = browser(curator)
+    draft = make_vote(client)
+    add(client, draft["id"], books[0])
+    add(client, draft["id"], books[1])
+    approve(browser(member), draft["id"], books[0], True, 409)
+    call(client, "post", f"{VOTES}/{draft['id']}/open")
+    approve(browser(member), draft["id"], books[0], True)
+    Vote.objects.update(status="closed", closed_at=NOW)
+    for value in (True, False):
+        approve(browser(member), draft["id"], books[0], value, 409)
+    approve(browser(other), draft["id"], books[1], True, 409)
+    # The closed snapshot is unchanged.
+    assert VoteApproval.objects.count() == 1
+
+
+def test_approval_error_precedence_and_identity_from_session(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world, count=3)
+    client = browser(member)
+    anonymous = browser()
+    approve(anonymous, vote_id, books[0], True, 401)
+    for body in (
+        {"approved": True, "userId": str(other.pk)},
+        {"approved": True, "memberId": str(member.pk)},
+        {"approved": True, "Owner": str(other.pk)},
+    ):
+        approve(client, vote_id, books[0], body, 403)
+    approve(client, "999999", books[0], True, 404)
+    approve(client, "abc", books[0], True, 404)
+    approve(client, vote_id, books[3], True, 404)
+    for body in ({}, {"approved": "yes"}, {"approved": 1}, "[]", "nope"):
+        approve(client, vote_id, books[0], body, 400)
+    assert not VoteApproval.objects.exists()
+    without_csrf = call(
+        client,
+        "put",
+        f"{VOTES}/{vote_id}/candidates/{books[0].pk}/approval",
+        {"approved": True},
+        csrf=False,
+    )
+    assert without_csrf.status_code == 403 and not VoteApproval.objects.exists()
+
+
+def test_revoked_member_cannot_approve_but_history_keeps_their_vote(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    client = browser(member)
+    approve(client, vote_id, books[0], True)
+    User.objects.filter(pk=member.pk).update(revoked_at=NOW, approved=False)
+    approve(client, vote_id, books[1], True, 401)
+    seen = checked(browser(other).get(f"{VOTES}/{vote_id}"), path=ONE)
+    assert seen["candidates"][0]["approvals"][0]["id"] == str(member.pk)
+
+
+def test_admin_and_curator_vote_as_ordinary_members(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    approve(browser(admin), vote_id, books[2], True)
+    vote = approve(browser(curator), vote_id, books[2], True)
+    assert totals(vote) == [0, 0, 2, 0]
+    assert vote["candidates"][2]["approvedByMe"] is True
+
+
+def test_removing_candidate_removes_its_approvals_and_hidden_vote_refuses(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    approve(browser(member), vote_id, books[0], True)
+    approve(browser(member), vote_id, books[1], True)
+    removed = checked(
+        call(browser(curator), "delete", f"{VOTES}/{vote_id}/candidates/{books[0].pk}"),
+        path=REMOVE,
+        method="delete",
+    )
+    assert totals(removed) == [1, 0, 0]
+    assert VoteApproval.objects.count() == 1
+    books[1].soft_delete(admin)
+    approve(browser(member), vote_id, books[2], True, 409)
+    assert VoteApproval.objects.count() == 1

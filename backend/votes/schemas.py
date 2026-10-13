@@ -82,3 +82,7 @@ class CandidateInput(ClosedSchema):
 
 class CandidateOrderInput(ClosedSchema):
     bookIds: list[Id] = Field(json_schema_extra={"uniqueItems": True})
+
+
+class ApprovalInput(ClosedSchema):
+    approved: bool
