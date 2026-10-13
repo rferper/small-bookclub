@@ -2,6 +2,7 @@
 
 from datetime import date
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -130,3 +131,20 @@ class Book(SoftDeleteModel):
         ]:
             if isinstance(start, date) and isinstance(end, date) and end < start:
                 raise ValidationError("La fecha final no puede preceder a la inicial.")
+
+
+class BookCompletion(models.Model):
+    book = models.ForeignKey(Book, on_delete=models.PROTECT, related_name="completions")
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="book_completions",
+    )
+    completed_at = models.DateTimeField(null=True, blank=True, default=None)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["book", "member"], name="book_completion_unique_pair"
+            )
+        ]

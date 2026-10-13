@@ -56,6 +56,8 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "DELETE /api/admin/books/{bookId}/reading-plan/weeks/{weekId} "
         "(removeReadingWeek)",
         "PUT /api/weeks/{weekId}/completion (setWeekCompleted)",
+        "GET /api/books/{bookId}/ratings (getBookRatings)",
+        "PUT /api/books/{bookId}/finished (setBookFinished)",
     ]
 
 

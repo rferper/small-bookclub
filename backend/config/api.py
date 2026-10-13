@@ -14,9 +14,11 @@ from ninja import NinjaAPI, Schema, Status
 from pydantic import ConfigDict, Field
 
 from books.catalogue import list_catalogue, read_book, save_book, serve_cover
+from books.completion import read_completion, set_finished
 from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
+from books.schemas import BookRatings, FinishedInput
 from meetings.calendar import (
     deletion_preview,
     list_calendar,
@@ -847,3 +849,40 @@ def removeReadingWeek(
 )
 def set_week_completed(request, weekId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(set_completed, request, weekId)
+
+
+@api.get(
+    "/books/{bookId}/ratings",
+    response={200: BookRatings, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getBookRatings",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_book_ratings(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_completion, request, bookId)
+
+
+@api.put(
+    "/books/{bookId}/finished",
+    response={
+        200: BookRatings,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="setBookFinished",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {"schema": FinishedInput.model_json_schema()}
+            },
+        },
+    },
+)
+def set_book_finished(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(set_finished, request, bookId)

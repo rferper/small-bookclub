@@ -119,11 +119,7 @@ function BookView({ book }: { book: BookDetail }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Schedule weeks={book.schedule} />
         <Meetings meetings={book.meetings} />
-      {import.meta.env.VITE_API_MODE === 'http' ? (
-        <Card title="Valoraciones" className="min-w-0 lg:col-span-2">
-          <EmptyState>Las valoraciones estarán disponibles más adelante.</EmptyState>
-        </Card>
-      ) : <RatingsSection bookId={book.id} />}
+        <RatingsSection bookId={book.id} reviewsAvailable={import.meta.env.VITE_API_MODE !== 'http'} />
       </div>
     </div>
   )
