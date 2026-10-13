@@ -307,13 +307,18 @@ describe('HTTP vote shortlist adapters', () => {
     await client.removeCandidate('v1', 'b1')
     await client.openVote('v1')
     await client.setApproval('v1', 'b2', true)
+    await client.closeVote('v1')
+    await client.recordTieWinner('v1', 'b2', 'Acuerdo del club')
     expect(send.mock.calls.map(([url, init]) => `${init?.method} ${url}`)).toEqual([
       'GET /api/votes', 'POST /api/votes', 'GET /api/votes/v1',
       'POST /api/votes/v1/candidates', 'PUT /api/votes/v1/candidates/order',
       'DELETE /api/votes/v1/candidates/b1', 'POST /api/votes/v1/open',
       'PUT /api/votes/v1/candidates/b2/approval',
+      'POST /api/votes/v1/close', 'POST /api/votes/v1/tie-winner',
     ])
     expect(JSON.parse(send.mock.calls[7][1]?.body as string)).toEqual({ approved: true })
+    expect(send.mock.calls[8][1]?.body).toBeUndefined()
+    expect(JSON.parse(send.mock.calls[9][1]?.body as string)).toEqual({ bookId: 'b2', note: 'Acuerdo del club' })
     expect(JSON.parse(send.mock.calls[3][1]?.body as string)).toEqual({ bookId: 'b1' })
     expect(JSON.parse(send.mock.calls[4][1]?.body as string)).toEqual({ bookIds: ['b2', 'b1'] })
     expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBeNull()

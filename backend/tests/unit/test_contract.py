@@ -82,6 +82,8 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "DELETE /api/votes/{voteId}/candidates/{bookId} (removeCandidate)",
         "PUT /api/votes/{voteId}/candidates/{bookId}/approval (setApproval)",
         "POST /api/votes/{voteId}/open (openVote)",
+        "POST /api/votes/{voteId}/close (closeVote)",
+        "POST /api/votes/{voteId}/tie-winner (recordTieWinner)",
     ]
 
 

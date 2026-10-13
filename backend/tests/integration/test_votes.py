@@ -23,6 +23,8 @@ CANDIDATES = "/api/votes/{voteId}/candidates"
 ORDER = "/api/votes/{voteId}/candidates/order"
 REMOVE = "/api/votes/{voteId}/candidates/{bookId}"
 OPEN = "/api/votes/{voteId}/open"
+CLOSE = "/api/votes/{voteId}/close"
+TIE = "/api/votes/{voteId}/tie-winner"
 
 
 @pytest.fixture
@@ -527,3 +529,207 @@ def test_removing_candidate_removes_its_approvals_and_hidden_vote_refuses(world)
     books[1].soft_delete(admin)
     approve(browser(member), vote_id, books[2], True, 409)
     assert VoteApproval.objects.count() == 1
+
+
+@pytest.mark.parametrize("closer", [0, 1])
+def test_curator_or_admin_closes_clear_winner_without_other_transitions(world, closer):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world, count=3)
+    approve(browser(member), vote_id, books[1], True)
+    approve(browser(other), vote_id, books[1], True)
+    approve(browser(member), vote_id, books[0], True)
+    closed = checked(
+        call(browser(world[closer]), "post", f"{VOTES}/{vote_id}/close"),
+        path=CLOSE,
+        method="post",
+    )
+    assert closed["status"] == "closed"
+    assert datetime.fromisoformat(closed["closedAt"]) == NOW
+    assert closed["outcome"] == {
+        "status": "winner",
+        "winner": {
+            "id": str(books[1].pk),
+            "title": books[1].title,
+            "authors": books[1].authors,
+            "coverUrl": None,
+        },
+        "tieNote": None,
+    }
+    assert not closed["canManage"] and not closed["canRecordTieWinner"]
+    assert totals(closed) == [1, 2, 0]
+    assert (
+        checked(browser(member).get(f"{VOTES}/{vote_id}"), path=ONE)["outcome"]
+        == closed["outcome"]
+    )
+    assert set(Book.objects.values_list("status", flat=True)) == {"propuesto"}
+    assert CuratorAssignment.objects.get(current=True).pk == assignment.pk
+    approve(browser(member), vote_id, books[1], False, 409)
+    add(browser(curator), vote_id, books[3], 409)
+    checked(
+        call(browser(admin), "post", f"{VOTES}/{vote_id}/close"), 409, CLOSE, "post"
+    )
+
+
+@pytest.mark.parametrize("zero", [False, True])
+def test_tie_requires_admin_choice_of_top_candidate_and_preserves_snapshot(world, zero):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world, count=3)
+    if not zero:
+        approve(browser(member), vote_id, books[0], True)
+        approve(browser(member), vote_id, books[1], True)
+    closed = checked(
+        call(browser(curator), "post", f"{VOTES}/{vote_id}/close"),
+        path=CLOSE,
+        method="post",
+    )
+    assert closed["outcome"] == {
+        "status": "tiePending",
+        "tiedBookIds": [str(book.pk) for book in books[: 3 if zero else 2]],
+    }
+    assert closed["canRecordTieWinner"] is False
+    assert (
+        checked(browser(admin).get(f"{VOTES}/{vote_id}"), path=ONE)[
+            "canRecordTieWinner"
+        ]
+        is True
+    )
+    path = f"{VOTES}/{vote_id}/tie-winner"
+    for actor in (curator, member):
+        checked(
+            call(
+                browser(actor),
+                "post",
+                path,
+                {"bookId": str(books[0].pk), "note": "Discussion"},
+            ),
+            403,
+            TIE,
+            "post",
+        )
+    checked(
+        call(browser(admin), "post", path, {"bookId": str(books[3].pk), "note": ""}),
+        409,
+        TIE,
+        "post",
+    )
+    if not zero:
+        checked(
+            call(
+                browser(admin), "post", path, {"bookId": str(books[2].pk), "note": ""}
+            ),
+            409,
+            TIE,
+            "post",
+        )
+    winner = checked(
+        call(
+            browser(admin),
+            "post",
+            path,
+            {"bookId": str(books[1].pk), "note": "  Club discussion  "},
+        ),
+        path=TIE,
+        method="post",
+    )
+    assert winner["outcome"]["winner"]["id"] == str(books[1].pk)
+    assert winner["outcome"]["tieNote"] == "Club discussion"
+    assert winner["canRecordTieWinner"] is False
+    assert winner["closedAt"] == closed["closedAt"]
+    assert winner["candidates"] == closed["candidates"]
+    checked(
+        call(
+            browser(admin), "post", path, {"bookId": str(books[0].pk), "note": "Change"}
+        ),
+        409,
+        TIE,
+        "post",
+    )
+    assert set(Book.objects.values_list("status", flat=True)) == {"propuesto"}
+
+
+def test_close_and_tie_permission_lookup_csrf_and_lifecycle_precedence(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    for actor, close_status, tie_status in [
+        (None, 401, 401),
+        (member, 403, 403),
+        (curator, 404, 403),
+        (admin, 404, 404),
+    ]:
+        for suffix, template, status in [
+            ("close", CLOSE, close_status),
+            ("tie-winner", TIE, tie_status),
+        ]:
+            checked(
+                call(browser(actor), "post", f"{VOTES}/999999/{suffix}"),
+                status,
+                template,
+                "post",
+            )
+    for suffix in ("close", "tie-winner"):
+        assert (
+            call(
+                browser(admin), "post", f"{VOTES}/{vote_id}/{suffix}", csrf=False
+            ).status_code
+            == 403
+        )
+    checked(
+        call(
+            browser(admin),
+            "post",
+            f"{VOTES}/{vote_id}/tie-winner",
+            {"bookId": str(books[0].pk), "note": ""},
+        ),
+        409,
+        TIE,
+        "post",
+    )
+    stale = browser(curator)
+    assignment.current = False
+    assignment.ended_at = NOW
+    assignment.save()
+    CuratorAssignment.objects.create(member=other, assigned_at=NOW)
+    checked(call(stale, "post", f"{VOTES}/{vote_id}/close"), 403, CLOSE, "post")
+    revoked = browser(admin)
+    User.objects.filter(pk=admin.pk).update(approved=False, revoked_at=NOW)
+    for suffix, template in [("close", CLOSE), ("tie-winner", TIE)]:
+        checked(
+            call(revoked, "post", f"{VOTES}/{vote_id}/{suffix}"), 401, template, "post"
+        )
+    assert Vote.objects.get(pk=vote_id).status == "open"
+
+
+def test_tie_input_and_hidden_vote_refusals_are_atomic(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world)
+    path = f"{VOTES}/{vote_id}/tie-winner"
+    client = browser(admin)
+    books[0].soft_delete(admin)
+    checked(call(client, "post", f"{VOTES}/{vote_id}/close"), 409, CLOSE, "post")
+    books[0].restore(admin)
+    checked(call(client, "post", f"{VOTES}/{vote_id}/close"), path=CLOSE, method="post")
+    for body, status in [
+        ({"bookId": "999999", "note": ""}, 404),
+        ({"bookId": str(books[0].pk), "note": "a" * 1001}, 400),
+        ({"bookId": str(books[0].pk), "note": 1}, 400),
+        ({"bookId": str(books[0].pk)}, 400),
+        ({"bookId": str(books[0].pk), "note": "", "userId": str(member.pk)}, 400),
+        ("nope", 400),
+    ]:
+        checked(call(client, "post", path, body), status, TIE, "post")
+    assert Vote.objects.get(pk=vote_id).winning_book_id is None
+    books[0].soft_delete(admin)
+    checked(
+        call(client, "post", path, {"bookId": str(books[1].pk), "note": ""}),
+        409,
+        TIE,
+        "post",
+    )
+    checked(client.get(f"{VOTES}/{vote_id}"), 404, ONE)
+    books[0].restore(admin)
+    result = checked(
+        call(client, "post", path, {"bookId": str(books[0].pk), "note": " " * 1001}),
+        path=TIE,
+        method="post",
+    )
+    assert result["outcome"]["tieNote"] is None

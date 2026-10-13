@@ -86,3 +86,8 @@ class CandidateOrderInput(ClosedSchema):
 
 class ApprovalInput(ClosedSchema):
     approved: bool
+
+
+class TieWinnerInput(ClosedSchema):
+    bookId: Id
+    note: str = Field(json_schema_extra={"x-trimmedMaxLength": 1000})
