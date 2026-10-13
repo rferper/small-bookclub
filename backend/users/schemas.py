@@ -281,3 +281,7 @@ REDIRECT_RESPONSE = {
 
 def query_parameter(name, schema):
     return {"name": name, "in": "query", "required": False, "schema": schema}
+
+
+class CuratorInput(ClosedSchema):
+    memberId: str | None = Field(min_length=1)

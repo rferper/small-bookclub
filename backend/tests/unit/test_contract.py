@@ -73,6 +73,7 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "DELETE /api/admin/meetings/{meetingId}/record/highlights/{highlightId} "
         "(removeMeetingHighlight)",
         "PUT /api/admin/meetings/{meetingId}/record/safe (setMeetingRecordSafe)",
+        "PUT /api/admin/curator (setCurator)",
     ]
 
 

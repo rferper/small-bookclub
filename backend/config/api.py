@@ -66,6 +66,7 @@ from users.authentication import (
     PURPOSE_KEY,
     current_identity,
 )
+from users.curators import set_curator
 from users.directory import directory, member_profile
 from users.membership import (
     add_member,
@@ -82,6 +83,7 @@ from users.schemas import (
     AdminMembers,
     BookDetail,
     BookMetadataResult,
+    CuratorInput,
     Error,
     LibraryBook,
     MemberDirectory,
@@ -1051,3 +1053,21 @@ def remove_highlight(
 )
 def set_record_safe(request, meetingId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(mutate_record, request, meetingId, "safe")
+
+
+@api.put(
+    "/admin/curator",
+    response={
+        200: AdminMembers,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="setCurator",
+    openapi_extra=record_request(CuratorInput),
+)
+def set_current_curator(request):
+    return allowlist_result(set_curator, request)
