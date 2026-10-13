@@ -40,6 +40,14 @@ from meetings.reading_schemas import (
     WeekCompletionInput,
     write_schema,
 )
+from meetings.record_schemas import (
+    AdminMeetingRecord,
+    IdOrder,
+    MeetingHighlightInput,
+    MeetingSummaryInput,
+    SafeInput,
+)
+from meetings.records import mutate_record, read_record
 from meetings.schemas import (
     AdminMeeting,
     AdminMeetingCalendar,
@@ -951,3 +959,95 @@ def get_member_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
 )
 def set_meeting_attendance(request, meetingId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(set_attendance, request, meetingId)
+
+
+RECORD_ERRORS = {401: Error, 403: Error, 404: Error, 500: Error, 503: Error}
+RECORD_WRITE_ERRORS = {400: Error, **RECORD_ERRORS}
+
+
+def record_request(schema):
+    return {
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": schema.model_json_schema()}},
+        },
+    }
+
+
+@api.get(
+    "/admin/meetings/{meetingId}/record",
+    response={200: AdminMeetingRecord, **RECORD_ERRORS},
+    operation_id="getAdminMeetingRecord",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_admin_record(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_record, request, meetingId)
+
+
+@api.put(
+    "/admin/meetings/{meetingId}/record/summary",
+    response={200: AdminMeetingRecord, **RECORD_WRITE_ERRORS},
+    operation_id="saveMeetingSummary",
+    openapi_extra=record_request(MeetingSummaryInput),
+)
+def save_meeting_summary(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(mutate_record, request, meetingId, "summary")
+
+
+@api.post(
+    "/admin/meetings/{meetingId}/record/highlights",
+    response={201: AdminMeetingRecord, **RECORD_WRITE_ERRORS},
+    operation_id="createMeetingHighlight",
+    openapi_extra=record_request(MeetingHighlightInput),
+)
+def create_highlight(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(mutate_record, request, meetingId, "create")
+
+
+@api.put(
+    "/admin/meetings/{meetingId}/record/highlights/order",
+    response={200: AdminMeetingRecord, **RECORD_WRITE_ERRORS},
+    operation_id="reorderMeetingHighlights",
+    openapi_extra=record_request(IdOrder),
+)
+def reorder_highlights(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(mutate_record, request, meetingId, "order")
+
+
+@api.put(
+    "/admin/meetings/{meetingId}/record/highlights/{highlightId}",
+    response={200: AdminMeetingRecord, **RECORD_WRITE_ERRORS},
+    operation_id="updateMeetingHighlight",
+    openapi_extra=record_request(MeetingHighlightInput),
+)
+def update_highlight(
+    request,
+    meetingId: Annotated[str, Field(min_length=1)],
+    highlightId: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(mutate_record, request, meetingId, "update", highlightId)
+
+
+@api.delete(
+    "/admin/meetings/{meetingId}/record/highlights/{highlightId}",
+    response={200: AdminMeetingRecord, **RECORD_ERRORS},
+    operation_id="removeMeetingHighlight",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def remove_highlight(
+    request,
+    meetingId: Annotated[str, Field(min_length=1)],
+    highlightId: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(mutate_record, request, meetingId, "remove", highlightId)
+
+
+@api.put(
+    "/admin/meetings/{meetingId}/record/safe",
+    response={200: AdminMeetingRecord, 409: Error, **RECORD_WRITE_ERRORS},
+    operation_id="setMeetingRecordSafe",
+    openapi_extra=record_request(SafeInput),
+)
+def set_record_safe(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(mutate_record, request, meetingId, "safe")

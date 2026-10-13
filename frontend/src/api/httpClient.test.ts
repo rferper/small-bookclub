@@ -202,6 +202,30 @@ describe('HTTP admin calendar adapters', () => {
 })
 
 describe('HTTP reading plan adapters', () => {
+  it('routes all admin record operations with exact bodies and CSRF', async () => {
+    const send = vi.fn<typeof fetch>(async (_url, init) => json({}, init?.method === 'POST' ? 201 : 200))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'w'.repeat(32)}` })
+    const summary = { text: '<script>literal</script>', published: false }
+    const highlight = { text: 'Ficticio', published: true, kind: 'quote' as const, speakerIds: ['2'] }
+    await client.getAdminMeetingRecord('8')
+    await client.saveMeetingSummary('8', summary)
+    await client.createMeetingHighlight('8', highlight)
+    await client.reorderMeetingHighlights('8', ['3'])
+    await client.updateMeetingHighlight('8', '3', highlight)
+    await client.removeMeetingHighlight('8', '3')
+    await client.setMeetingRecordSafe('8', true)
+    const root = '/api/admin/meetings/8/record'
+    expect(send.mock.calls.map(([url, init]) => [url, init?.method])).toEqual([
+      [root, 'GET'], [root + '/summary', 'PUT'], [root + '/highlights', 'POST'],
+      [root + '/highlights/order', 'PUT'], [root + '/highlights/3', 'PUT'],
+      [root + '/highlights/3', 'DELETE'], [root + '/safe', 'PUT'],
+    ])
+    expect(JSON.parse(send.mock.calls[1][1]?.body as string)).toEqual(summary)
+    expect(JSON.parse(send.mock.calls[2][1]?.body as string)).toEqual(highlight)
+    expect(JSON.parse(send.mock.calls[3][1]?.body as string)).toEqual({ ids: ['3'] })
+    expect(JSON.parse(send.mock.calls[6][1]?.body as string)).toEqual({ safe: true })
+    for (const [, init] of send.mock.calls.slice(1)) expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('w'.repeat(32))
+  })
   it('reads meeting detail and writes attendance through guarded central routes', async () => {
     const send = vi.fn<typeof fetch>(async () => json({}))
     const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'w'.repeat(32)}` })

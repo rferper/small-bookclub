@@ -81,6 +81,40 @@ class MeetingAttendance(models.Model):
         ]
 
 
+class MeetingHighlight(SoftDeleteModel):
+    meeting = models.ForeignKey(
+        Meeting, on_delete=models.PROTECT, related_name="highlights"
+    )
+    position = models.PositiveBigIntegerField()
+    text = models.TextField(max_length=2000)
+    kind = models.CharField(
+        max_length=10, choices=[("quote", "Cita"), ("paraphrase", "Paráfrasis")]
+    )
+    published = models.BooleanField(default=False)
+    speakers = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
+
+    class Meta(SoftDeleteModel.Meta):
+        constraints = SoftDeleteModel.Meta.constraints + [
+            models.UniqueConstraint(
+                fields=["meeting", "position"],
+                condition=Q(deleted_at__isnull=True),
+                name="highlight_active_position",
+            ),
+            models.CheckConstraint(
+                condition=Q(position__gte=1, position__lte=MAX_SAFE_INTEGER),
+                name="highlight_positive_position",
+            ),
+            models.CheckConstraint(
+                condition=Q(kind__in=["quote", "paraphrase"]),
+                name="highlight_known_kind",
+            ),
+            models.CheckConstraint(
+                condition=Q(text__regex=r"(?s)\A(?=.*\S)[^\x00]{1,2000}\Z"),
+                name="highlight_nonblank_bounded_text",
+            ),
+        ]
+
+
 class ReadingAssignment(SoftDeleteModel):
     book = models.ForeignKey(
         "books.Book", on_delete=models.PROTECT, related_name="reading_assignments"
