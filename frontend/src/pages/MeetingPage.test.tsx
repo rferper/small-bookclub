@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createClubState } from '../api/mock/fixtures'
 import { createMockClient, type MockOptions } from '../api/mock/mockClient'
 import { holdCalls, trackCalls } from '../test/clients'
@@ -29,6 +29,15 @@ function expectNoBrokenValues(main: HTMLElement) {
 }
 
 describe('Meeting page', () => {
+  it('stages live records while showing meeting metadata and attendance', async () => {
+    vi.stubEnv('VITE_API_MODE', 'http')
+    try {
+      await openMeeting('mt1')
+      expect(screen.getByText('Los resúmenes y destacados estarán disponibles más adelante.')).toBeInTheDocument()
+      expect(region('Detalles')).toBeInTheDocument()
+      for (const text of recordTexts('mt1')) expect(screen.queryByText(text)).not.toBeInTheDocument()
+    } finally { vi.unstubAllEnvs() }
+  })
   it('shows the date with the year, the time, the book, the reading and a way back', async () => {
     const { main } = await openMeeting('mt1')
 

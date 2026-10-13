@@ -60,6 +60,8 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "PUT /api/books/{bookId}/finished (setBookFinished)",
         "GET /api/home (getHome)",
         "GET /api/meetings (listMeetings)",
+        "GET /api/meetings/{meetingId} (getMeeting)",
+        "PUT /api/admin/meetings/{meetingId}/attendance (setMeetingAttendance)",
     ]
 
 

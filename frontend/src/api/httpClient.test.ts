@@ -202,6 +202,17 @@ describe('HTTP admin calendar adapters', () => {
 })
 
 describe('HTTP reading plan adapters', () => {
+  it('reads meeting detail and writes attendance through guarded central routes', async () => {
+    const send = vi.fn<typeof fetch>(async () => json({}))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'w'.repeat(32)}` })
+    await client.getMeeting('8')
+    await client.setMeetingAttendance('8', ['2'])
+    expect(send.mock.calls[0][0]).toBe('/api/meetings/8')
+    expect(send.mock.calls[1][0]).toBe('/api/admin/meetings/8/attendance')
+    expect(send.mock.calls[1][1]?.method).toBe('PUT')
+    expect(JSON.parse(send.mock.calls[1][1]?.body as string)).toEqual({ memberIds: ['2'] })
+    expect(new Headers(send.mock.calls[1][1]?.headers).get('X-CSRFToken')).toBe('w'.repeat(32))
+  })
   it('loads the member calendar from the central meetings route', async () => {
     const meetings = { upcoming: [], past: [] }
     const send = vi.fn<typeof fetch>(async () => json(meetings))

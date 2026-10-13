@@ -62,7 +62,6 @@ function MeetingEditorLoader({ meetingId }: { meetingId?: string }) {
 function MeetingEditor({ calendar, meeting, reload }: { calendar: AdminMeetingCalendar; meeting?: AdminMeeting; reload: () => void }) {
   const api = useApi(), navigate = useNavigate(), { forbid } = useAdminAccess()
   const prefix = useId()
-  const liveHttp = import.meta.env.VITE_API_MODE === 'http'
   const [local, setLocal] = useState(() => meeting ? meetingLocalValues(meeting.startsAt, calendar.clubTimezone) : { date: '', time: '' })
   const [bookId, setBookId] = useState(meeting?.bookId ?? '')
   const [weekId, setWeekId] = useState(meeting?.weekId ?? '')
@@ -116,10 +115,10 @@ function MeetingEditor({ calendar, meeting, reload }: { calendar: AdminMeetingCa
       <Card title="Asistencia">
         <p className="mb-3 text-bark">{meeting.attendance === null ? 'Asistencia sin registrar' : meeting.attendance.length === 1 ? '1 asistente registrado' : `${meeting.attendance.length} asistentes registrados`}</p>
         {historical.length > 0 && <div className="mb-3"><h3 className="font-semibold">Historial de miembros sin acceso (solo lectura)</h3><ul>{historical.map((m) => <li key={m.id}>{m.displayName}</li>)}</ul></div>}
-        {meeting.attendanceEligible && !liveHttp ? <form onSubmit={(event) => { event.preventDefault(); void run(async () => { await api.setMeetingAttendance(meeting.id, selected); reload() }) }} className="grid gap-3">
+        {meeting.attendanceEligible ? <form onSubmit={(event) => { event.preventDefault(); void run(async () => { await api.setMeetingAttendance(meeting.id, selected); reload() }) }} className="grid gap-3">
           <fieldset disabled={busy} className="grid gap-2"><legend className="mb-2">Miembros con acceso</legend>{calendar.activeMembers.map((m) => <label key={m.id} className="flex items-center gap-2 break-words"><input type="checkbox" checked={selected.includes(m.id)} onChange={(e) => setSelected(e.target.checked ? [...selected, m.id] : selected.filter((id) => id !== m.id))} />{m.displayName}</label>)}</fieldset>
           <button className={buttonClass} disabled={busy}>Guardar asistencia</button>
-        </form> : <p>{meeting.attendanceEligible && liveHttp ? 'El registro de asistencia estará disponible más adelante.' : meeting.cancelled ? 'No se puede editar la asistencia de una reunión cancelada.' : 'La asistencia se puede registrar después del inicio de la reunión.'}</p>}
+        </form> : <p>{meeting.cancelled ? 'No se puede editar la asistencia de una reunión cancelada.' : 'La asistencia se puede registrar después del inicio de la reunión.'}</p>}
       </Card>
     </>}
     {error && !dialog && <p role="alert" className="text-bark">{error}</p>}

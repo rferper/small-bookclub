@@ -21,6 +21,7 @@ from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
 from books.schemas import BookRatings, FinishedInput
+from meetings.attendance import set_attendance
 from meetings.calendar import (
     deletion_preview,
     list_calendar,
@@ -31,6 +32,7 @@ from meetings.calendar import (
 )
 from meetings.completion import set_completed
 from meetings.member_calendar import list_meetings
+from meetings.member_calendar import read_meeting as read_member_meeting
 from meetings.reading_plan import read_plan, remove_week, reorder_weeks, save_week
 from meetings.reading_schemas import (
     AdminReadingPlan,
@@ -41,8 +43,10 @@ from meetings.reading_schemas import (
 from meetings.schemas import (
     AdminMeeting,
     AdminMeetingCalendar,
+    AttendanceInput,
     CancelledInput,
     DeletionPreview,
+    MeetingDetail,
     MeetingInput,
     MeetingList,
     RecycleBinEntry,
@@ -910,3 +914,40 @@ def get_home(request):
 )
 def list_member_meetings(request):
     return allowlist_result(list_meetings, request)
+
+
+@api.get(
+    "/meetings/{meetingId}",
+    response={200: MeetingDetail, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getMeeting",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_member_meeting(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_member_meeting, request, meetingId)
+
+
+@api.put(
+    "/admin/meetings/{meetingId}/attendance",
+    response={
+        200: AdminMeeting,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="setMeetingAttendance",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {"schema": AttendanceInput.model_json_schema()}
+            },
+        },
+    },
+)
+def set_meeting_attendance(request, meetingId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(set_attendance, request, meetingId)
