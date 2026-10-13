@@ -14,7 +14,7 @@ from users.directory import member_summary
 from users.membership import error_result, native_member_id, spanish_name_key
 from users.models import User
 
-from .models import Meeting, ReadingAssignment
+from .models import Meeting, MeetingHighlight, ReadingAssignment
 from .time_rules import attendance_eligible, parse_instant
 
 
@@ -212,6 +212,8 @@ def set_cancelled(request, meeting_id):
 
 
 def safe_label(kind, row):
+    if kind == "highlight":
+        return "Momento destacado"
     if kind == "book":
         return row.title
     if kind == "week":
@@ -221,6 +223,9 @@ def safe_label(kind, row):
 
 
 def dependencies(kind, row):
+    if kind == "highlight":
+        count = row.speakers.count()
+        return [f"{count} atribuciones conservadas"] if count else []
     if kind == "book":
         count = Meeting.all_objects.filter(book_id=row.pk).count()
         weeks = ReadingAssignment.all_objects.filter(book_id=row.pk).count()
@@ -234,8 +239,11 @@ def dependencies(kind, row):
         )
     count = row.attendees.count()
     weeks = ReadingAssignment.all_objects.filter(meeting_id=row.pk).count()
-    return ([f"{count} registros de asistencia conservados"] if count else []) + (
-        [f"{weeks} semanas vinculadas"] if weeks else []
+    highlights = MeetingHighlight.all_objects.filter(meeting_id=row.pk).count()
+    return (
+        ([f"{count} registros de asistencia conservados"] if count else [])
+        + ([f"{weeks} semanas vinculadas"] if weeks else [])
+        + ([f"{highlights} momentos destacados conservados"] if highlights else [])
     )
 
 
@@ -261,6 +269,7 @@ def bin_projection():
         ("book", Book),
         ("meeting", Meeting),
         ("week", ReadingAssignment),
+        ("highlight", MeetingHighlight),
     ]:
         for row in model.all_objects.filter(deleted_at__isnull=False).select_related(
             "deleted_by"

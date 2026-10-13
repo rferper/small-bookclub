@@ -62,6 +62,17 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/meetings (listMeetings)",
         "GET /api/meetings/{meetingId} (getMeeting)",
         "PUT /api/admin/meetings/{meetingId}/attendance (setMeetingAttendance)",
+        "GET /api/admin/meetings/{meetingId}/record (getAdminMeetingRecord)",
+        "PUT /api/admin/meetings/{meetingId}/record/summary (saveMeetingSummary)",
+        "POST /api/admin/meetings/{meetingId}/record/highlights "
+        "(createMeetingHighlight)",
+        "PUT /api/admin/meetings/{meetingId}/record/highlights/order "
+        "(reorderMeetingHighlights)",
+        "PUT /api/admin/meetings/{meetingId}/record/highlights/{highlightId} "
+        "(updateMeetingHighlight)",
+        "DELETE /api/admin/meetings/{meetingId}/record/highlights/{highlightId} "
+        "(removeMeetingHighlight)",
+        "PUT /api/admin/meetings/{meetingId}/record/safe (setMeetingRecordSafe)",
     ]
 
 

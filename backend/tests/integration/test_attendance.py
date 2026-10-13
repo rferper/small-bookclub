@@ -211,4 +211,5 @@ def test_forward_and_reverse_migration_preserve_legacy_attendance():
             .attendees.values_list("pk", flat=True)
         ) == [actor.pk]
     finally:
-        MigrationExecutor(connection).migrate(new)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
