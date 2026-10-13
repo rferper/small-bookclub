@@ -73,6 +73,8 @@ def set_finished(request, book_id):
         or type(value["finished"]) is not bool
     ):
         return error_result(400)
+    if not value["finished"] and book.reviews.filter(member=actor).exists():
+        return error_result(409)
     row, _created = BookCompletion.objects.get_or_create(book=book, member=actor)
     if value["finished"] != (row.completed_at is not None):
         row.completed_at = timezone.now() if value["finished"] else None
