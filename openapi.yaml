@@ -4397,6 +4397,8 @@ components:
     OriginVote:
       type: object
       additionalProperties: false
+      description: Server-owned first recorded winning election for this book; null in containing
+        projections while that election has any removed candidate. Later wins never replace the origin.
       properties:
         id:
           $ref: "#/components/schemas/Id"

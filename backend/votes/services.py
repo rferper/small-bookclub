@@ -151,8 +151,13 @@ def list_votes(request):
         "current": project_vote(pending, actor)
         if pending and is_visible(pending)
         else None,
-        # Historical overview belongs to #34; direct closed reads retain outcomes.
-        "history": [],
+        "history": [
+            project_history(vote)
+            for vote in Vote.objects.filter(status=Vote.Status.CLOSED)
+            .select_related("curator_assignment__member", "winning_book")
+            .order_by("-closed_at", "-pk")
+            if is_visible(vote)
+        ],
         "canCreateVote": assignment is not None
         and pending is None
         and can_manage_vote(actor, curator_id),
@@ -165,6 +170,25 @@ def read_vote(request, vote_id):
     if vote is None or not is_visible(vote):
         return error_result(404)
     return 200, project_vote(vote, request.user)
+
+
+def project_history(vote):
+    return {
+        "id": str(vote.pk),
+        "curator": member_summary(vote.curator_assignment.member),
+        "openedAt": vote.opened_at,
+        "closedAt": vote.closed_at,
+        "outcome": project_outcome(vote),
+        "candidateCount": vote.candidates.count(),
+    }
+
+
+def record_book_origin(vote):
+    """The first recorded win supplies a stable server-owned origin link."""
+    if vote.winning_book_id:
+        Book.objects.filter(pk=vote.winning_book_id, origin_vote__isnull=True).update(
+            origin_vote=vote
+        )
 
 
 def request_object(request):
@@ -356,6 +380,7 @@ def close_vote(request, vote_id):
     vote.closed_at = timezone.now()
     vote.winning_book_id = int(top[0]) if len(top) == 1 else None
     vote.save(update_fields=["status", "closed_at", "winning_book"])
+    record_book_origin(vote)
     return 200, project_vote(vote, request.user)
 
 
@@ -395,4 +420,5 @@ def record_tie_winner(request, vote_id):
     vote.winning_book = book
     vote.tie_note = note or None
     vote.save(update_fields=["winning_book", "tie_note"])
+    record_book_origin(vote)
     return 200, project_vote(vote, request.user)

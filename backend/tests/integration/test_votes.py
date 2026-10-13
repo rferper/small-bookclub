@@ -2,9 +2,12 @@
 
 import json
 from datetime import datetime, timezone
+from importlib import import_module
 
 import pytest
-from django.db import IntegrityError, transaction
+from django.apps import apps
+from django.db import IntegrityError, connection, transaction
+from django.db.models.deletion import ProtectedError
 from django.test import Client
 from django.utils import timezone as django_timezone
 from jsonschema import Draft202012Validator
@@ -733,3 +736,164 @@ def test_tie_input_and_hidden_vote_refusals_are_atomic(world):
         method="post",
     )
     assert result["outcome"]["tieNote"] is None
+
+
+def test_history_retains_losers_voters_notes_and_curator_cycle(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world, count=3)
+    approve(browser(member), vote_id, books[0], True)
+    approve(browser(member), vote_id, books[1], True)
+    checked(
+        call(browser(curator), "post", f"{VOTES}/{vote_id}/close"),
+        path=CLOSE,
+        method="post",
+    )
+    reader = browser(other)
+    pending = checked(reader.get(VOTES))["history"][0]
+    assert pending["id"] == vote_id and pending["candidateCount"] == 3
+    assert pending["outcome"]["status"] == "tiePending"
+    chosen = checked(
+        call(
+            browser(admin),
+            "post",
+            f"{VOTES}/{vote_id}/tie-winner",
+            {"bookId": str(books[0].pk), "note": "Decisión del club"},
+        ),
+        path=TIE,
+        method="post",
+    )
+    assignment.current = False
+    assignment.ended_at = NOW
+    assignment.save()
+    CuratorAssignment.objects.create(member=other, assigned_at=NOW)
+    User.objects.filter(pk=member.pk).update(approved=False, revoked_at=NOW)
+    User.objects.filter(pk=curator.pk).update(approved=False, revoked_at=NOW)
+    history = checked(reader.get(VOTES))["history"]
+    assert len(history) == 1
+    assert history[0]["curator"]["id"] == str(curator.pk)
+    assert history[0]["outcome"]["tieNote"] == "Decisión del club"
+    detail = checked(reader.get(f"{VOTES}/{vote_id}"), path=ONE)
+    assert detail["candidates"] == chosen["candidates"]
+    assert [row["book"]["id"] for row in detail["candidates"]] == [
+        str(book.pk) for book in books[:3]
+    ]
+    assert detail["candidates"][0]["approvals"][0]["id"] == str(member.pk)
+    assert not detail["canManage"] and not detail["canRecordTieWinner"]
+    overview = checked(reader.get(VOTES))
+    assert overview["current"] is None and overview["curator"]["id"] == str(other.pk)
+
+
+def test_history_newest_first_and_book_origin_survives_later_wins(world):
+    admin, curator, member, other, books, assignment = world
+    voter = browser(member)
+    manager = browser(curator)
+    closed_ids = []
+    for _ in range(2):
+        vote_id = open_shortlist(world, count=2)
+        approve(voter, vote_id, books[0], True)
+        checked(
+            call(manager, "post", f"{VOTES}/{vote_id}/close"), path=CLOSE, method="post"
+        )
+        closed_ids.append(vote_id)
+    assert [row["id"] for row in checked(voter.get(VOTES))["history"]] == list(
+        reversed(closed_ids)
+    )
+    books[0].refresh_from_db()
+    assert str(books[0].origin_vote_id) == closed_ids[0]
+    for client, path, template in [
+        (voter, f"/api/books/{books[0].pk}", "/api/books/{bookId}"),
+        (
+            browser(admin),
+            f"/api/admin/books/{books[0].pk}",
+            "/api/admin/books/{bookId}",
+        ),
+    ]:
+        book = checked(client.get(path), path=template)
+        assert book["originVote"] == {
+            "id": closed_ids[0],
+            "label": f"Votación de {curator.display_name}",
+        }
+    # Whole catalogue edits cannot receive or replace this server-owned field.
+    with pytest.raises(ProtectedError):
+        Vote.objects.get(pk=closed_ids[0]).delete()
+
+
+def test_pending_tie_has_no_book_origin_until_winner_is_recorded(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world, count=2)
+    checked(
+        call(browser(curator), "post", f"{VOTES}/{vote_id}/close"),
+        path=CLOSE,
+        method="post",
+    )
+    assert not Book.objects.filter(origin_vote__isnull=False).exists()
+    checked(
+        call(
+            browser(admin),
+            "post",
+            f"{VOTES}/{vote_id}/tie-winner",
+            {"bookId": str(books[1].pk), "note": ""},
+        ),
+        path=TIE,
+        method="post",
+    )
+    assert list(
+        Book.objects.filter(origin_vote__isnull=False).values_list("pk", flat=True)
+    ) == [books[1].pk]
+    assert Book.objects.get(pk=books[1].pk).origin_vote_id == int(vote_id)
+
+
+def test_hidden_history_and_origin_return_after_candidate_restore(world):
+    admin, curator, member, other, books, assignment = world
+    vote_id = open_shortlist(world, count=3)
+    approve(browser(member), vote_id, books[0], True)
+    checked(
+        call(browser(curator), "post", f"{VOTES}/{vote_id}/close"),
+        path=CLOSE,
+        method="post",
+    )
+    # A removed loser also hides the winner's origin link, never a partial election.
+    books[2].soft_delete(admin)
+    client = browser(member)
+    assert checked(client.get(VOTES))["history"] == []
+    checked(client.get(f"{VOTES}/{vote_id}"), 404, ONE)
+    result = checked(
+        client.get(f"/api/books/{books[0].pk}"), path="/api/books/{bookId}"
+    )
+    assert result["originVote"] is None
+    books[2].restore(admin)
+    assert checked(client.get(VOTES))["history"][0]["id"] == vote_id
+    result = checked(
+        client.get(f"/api/books/{books[0].pk}"), path="/api/books/{bookId}"
+    )
+    assert result["originVote"]["id"] == vote_id
+    for reader in (browser(), browser(other)):
+        if reader.session.get("_auth_user_id"):
+            User.objects.filter(pk=other.pk).update(approved=False, revoked_at=NOW)
+        checked(reader.get(VOTES), 401)
+        checked(reader.get(f"{VOTES}/{vote_id}"), 401, ONE)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_origin_backfill_keeps_earliest_closed_winner_and_includes_removed_books(world):
+    admin, curator, member, other, books, assignment = world
+    first = Vote.objects.create(
+        curator_assignment=assignment,
+        status="closed",
+        opened_at=NOW,
+        closed_at=NOW,
+        winning_book=books[0],
+    )
+    Vote.objects.create(
+        curator_assignment=assignment,
+        status="closed",
+        opened_at=NOW,
+        closed_at=NOW,
+        winning_book=books[0],
+    )
+    books[0].soft_delete(admin)
+    migration = import_module("books.migrations.0003_book_origin_vote")
+    with connection.schema_editor() as editor:
+        migration.backfill_origins(apps, editor)
+        migration.backfill_origins(apps, editor)
+    assert Book.all_objects.get(pk=books[0].pk).origin_vote_id == first.pk

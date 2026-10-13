@@ -1671,6 +1671,7 @@ export interface components {
             weekNumber: number | null;
         };
         /**
+         * @description Server-owned first recorded winning election for this book; null in containing projections while that election has any removed candidate. Later wins never replace the origin.
          * @example {
          *       "id": "book-fiction-1",
          *       "label": "Texto ficticio"
