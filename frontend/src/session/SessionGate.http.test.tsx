@@ -48,11 +48,12 @@ describe('session gate using the HTTP session adapters', () => {
     expectNoClubContent()
   })
 
-  it('shows the member shell while club APIs stay unavailable, then logs out and rechecks session', async () => {
+  it('keeps the member shell when the native homepage fails, then logs out and rechecks session', async () => {
     const user = userEvent.setup()
     let session: Session = signedIn
     const send = vi.fn<typeof fetch>(async (url, init) => {
       if (url === '/api/session') return json(session)
+      if (url === '/api/home') return json({ code: 'service_unavailable', message: 'El servicio no está disponible. Inténtalo de nuevo.' }, 503)
       if (url === '/api/auth/logout' && init?.method === 'POST') {
         session = anonymous
         return new Response(null, { status: 204 })
@@ -64,12 +65,12 @@ describe('session gate using the HTTP session adapters', () => {
     expect(screen.queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Reintentar' })).toBeVisible()
     expect(screen.queryByText('La Regenta')).not.toBeInTheDocument()
-    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/session'])
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/session', '/api/home'])
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
     expect(await screen.findByRole('button', { name: 'Entrar con Discord' })).toBeVisible()
     expect(screen.getByRole('status')).toHaveTextContent('Has cerrado sesión. ¡Hasta pronto!')
-    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/session', '/api/auth/logout', '/api/session'])
-    expect(new Headers(send.mock.calls[1][1]?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/session', '/api/home', '/api/auth/logout', '/api/session'])
+    expect(new Headers(send.mock.calls[2][1]?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
     expectNoClubContent()
   })
 
