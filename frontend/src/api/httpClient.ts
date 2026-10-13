@@ -56,7 +56,7 @@ export function createHttpClient(options: {
     },
     startDemoSignIn: unavailable,
     signOut: () => request<'signOut'>({ method: 'POST', path: '/api/auth/logout', successStatus: 204 }),
-    getHome: unavailable,
+    getHome: () => request<'getHome'>({ method: 'GET', path: '/api/home', successStatus: 200 }),
     setWeekCompleted: (weekId, completed) => request<'setWeekCompleted'>({ method: 'PUT', path: '/api/weeks/{weekId}/completion', pathParams: { weekId }, body: { completed }, successStatus: 204 }),
     listBooks: () => request<'listBooks'>({ method: 'GET', path: '/api/books', successStatus: 200 }),
     getBook: (bookId) => request<'getBook'>({ method: 'GET', path: '/api/books/{bookId}', pathParams: { bookId }, successStatus: 200 }),

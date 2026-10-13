@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createClubState, createEmptyState } from '../api/mock/fixtures'
 import { createMockClient } from '../api/mock/mockClient'
 import { renderApp } from '../test/renderApp'
@@ -14,6 +14,19 @@ function progressEntries() {
 }
 
 describe('Inicio', () => {
+  it('enables live current reading and stages the next-meeting and social cards', async () => {
+    vi.stubEnv('VITE_API_MODE', 'http')
+    try {
+      renderApp()
+      await screen.findByRole('heading', { name: 'La Regenta' })
+      const reading = screen.getByRole('region', { name: 'Lectura de esta semana' })
+      const toggle = within(reading).getByRole('button', { name: 'Marcar como leído' })
+      await userEvent.setup().click(toggle)
+      await waitFor(() => expect(within(screen.getByRole('region', { name: 'Lectura de esta semana' })).getByRole('button', { name: 'Desmarcar' })).toHaveAttribute('aria-pressed', 'true'))
+      expect(screen.getByRole('region', { name: 'Próxima reunión' })).toHaveTextContent('Las próximas reuniones estarán disponibles más adelante.')
+      expect(screen.getByRole('region', { name: 'Cómo va el club esta semana' })).toHaveTextContent('El progreso del club estará disponible más adelante.')
+    } finally { vi.unstubAllEnvs() }
+  })
   it('shows a loading message until the data arrives', async () => {
     renderApp()
 

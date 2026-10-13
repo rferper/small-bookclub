@@ -29,8 +29,10 @@ export function HomePage() {
       <h1 className="sr-only">Inicio</h1>
       <CurrentBook data={data} />
       <ThisWeek week={data.currentWeek} onChanged={home.reload} />
-      <NextMeetingCard data={data} />
-      <MemberProgressCard data={data} />
+      {import.meta.env.VITE_API_MODE === 'http' ? <>
+        <Card title="Próxima reunión"><EmptyState>Las próximas reuniones estarán disponibles más adelante.</EmptyState></Card>
+        <Card title="Cómo va el club esta semana"><EmptyState>El progreso del club estará disponible más adelante.</EmptyState></Card>
+      </> : <><NextMeetingCard data={data} /><MemberProgressCard data={data} /></>}
       <ActivityCard data={data} />
       <StatsCard data={data} />
       {data.quote && (
