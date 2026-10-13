@@ -327,3 +327,16 @@ describe('HTTP vote shortlist adapters', () => {
     }
   })
 })
+
+describe('HTTP rubric adapters', () => {
+  it('reads all anchors and saves the whole rubric with CSRF', async () => {
+    const rubric = { disfrute: { 1: null, 2: null, 3: null, 4: null, 5: null }, estilo: { 1: null, 2: null, 3: null, 4: null, 5: null }, personajes: { 1: null, 2: null, 3: null, 4: null, 5: null }, trama: { 1: null, 2: null, 3: null, 4: null, 5: null }, huella: { 1: null, 2: null, 3: null, 4: null, 5: null } }
+    const send = vi.fn<typeof fetch>(async () => json(rubric))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'a'.repeat(32)}` })
+    await expect(client.getRatingRubric()).resolves.toEqual(rubric)
+    await expect(client.saveRatingRubric(rubric)).resolves.toEqual(rubric)
+    expect(send.mock.calls.map(([url, init]) => `${init?.method} ${url}`)).toEqual(['GET /api/rating-rubric', 'PUT /api/admin/rating-rubric'])
+    expect(JSON.parse(send.mock.calls[1][1]?.body as string)).toEqual(rubric)
+    expect(new Headers(send.mock.calls[1][1]?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
+  })
+})
