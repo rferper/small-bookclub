@@ -93,7 +93,13 @@ from users.schemas import (
     Session,
     query_parameter,
 )
-from votes.schemas import CandidateInput, CandidateOrderInput, Vote, VotesOverview
+from votes.schemas import (
+    ApprovalInput,
+    CandidateInput,
+    CandidateOrderInput,
+    Vote,
+    VotesOverview,
+)
 from votes.services import (
     add_candidate,
     create_vote,
@@ -102,6 +108,7 @@ from votes.services import (
     read_vote,
     remove_candidate,
     reorder_candidates,
+    set_approval,
 )
 
 from .contract import normalize_schema, read_contract, resolve
@@ -1162,6 +1169,20 @@ def delete_candidate(
     bookId: Annotated[str, Field(min_length=1)],
 ):
     return allowlist_result(remove_candidate, request, voteId, bookId)
+
+
+@api.put(
+    "/votes/{voteId}/candidates/{bookId}/approval",
+    response={200: Vote, 400: Error, **VOTE_MANAGE_ERRORS},
+    operation_id="setApproval",
+    openapi_extra=record_request(ApprovalInput),
+)
+def put_approval(
+    request,
+    voteId: Annotated[str, Field(min_length=1)],
+    bookId: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(set_approval, request, voteId, bookId)
 
 
 @api.post(

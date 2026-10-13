@@ -64,7 +64,7 @@ export function createHttpClient(options: {
     getMeeting: (meetingId) => request<'getMeeting'>({ method: 'GET', path: '/api/meetings/{meetingId}', pathParams: { meetingId }, successStatus: 200 }),
     getVotes: () => request<'getVotes'>({ method: 'GET', path: '/api/votes', successStatus: 200 }),
     getVote: (voteId) => request<'getVote'>({ method: 'GET', path: '/api/votes/{voteId}', pathParams: { voteId }, successStatus: 200 }),
-    setApproval: unavailable,
+    setApproval: (voteId, bookId, approved) => request<'setApproval'>({ method: 'PUT', path: '/api/votes/{voteId}/candidates/{bookId}/approval', pathParams: { voteId, bookId }, body: { approved }, successStatus: 200 }),
     createVote: () => request<'createVote'>({ method: 'POST', path: '/api/votes', successStatus: 201 }),
     addCandidate: (voteId, bookId) => request<'addCandidate'>({ method: 'POST', path: '/api/votes/{voteId}/candidates', pathParams: { voteId }, body: { bookId }, successStatus: 200 }),
     removeCandidate: (voteId, bookId) => request<'removeCandidate'>({ method: 'DELETE', path: '/api/votes/{voteId}/candidates/{bookId}', pathParams: { voteId, bookId }, successStatus: 200 }),

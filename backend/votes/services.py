@@ -4,23 +4,26 @@ Management authority comes from the central policy (``nominate_books``): the
 *current* curator assignment or an admin, always decided on persisted rows and
 before any vote or book lookup. A vote keeps the retained curator cycle it was
 created under, so changing the current curator never rewrites its curator.
-Approvals, closing and tie resolution belong to later issues; until then every
-candidate has no approvals and no vote can be closed.
+Approvals are public: every approved member sees each candidate's voters and
+totals, and each member adds or withdraws only their own approval while the vote
+is open. Closing and tie resolution belong to later issues.
 """
 
 import json
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError, transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from books.models import Book
-from users.access import can_manage_vote, require_permission
+from users.access import can_manage_vote, permission_refusal, require_permission
 from users.directory import member_summary
 from users.membership import error_result, native_member_id
-from users.models import CuratorAssignment
+from users.models import CuratorAssignment, User
+from users.profile import OWNER_KEYS
 
-from .models import Vote, VoteCandidate
+from .models import Vote, VoteApproval, VoteCandidate
 
 
 def current_assignment(lock=False):
@@ -67,6 +70,22 @@ def project_book(book):
     }
 
 
+def candidates(vote):
+    approvals = VoteApproval.objects.select_related("member")
+    return vote.candidates.select_related("book").prefetch_related(
+        Prefetch("approvals", queryset=approvals)
+    )
+
+
+def project_candidate(row, actor):
+    voters = [approval.member for approval in row.approvals.all()]
+    return {
+        "book": project_book(row.book),
+        "approvals": [member_summary(voter) for voter in voters],
+        "approvedByMe": any(voter.pk == actor.pk for voter in voters),
+    }
+
+
 def project_vote(vote, actor):
     assignment = current_assignment()
     current_curator_id = assignment.member_id if assignment else None
@@ -76,10 +95,7 @@ def project_vote(vote, actor):
         "curator": member_summary(vote.curator_assignment.member),
         "openedAt": vote.opened_at,
         "closedAt": vote.closed_at,
-        "candidates": [
-            {"book": project_book(row.book), "approvals": [], "approvedByMe": False}
-            for row in vote.candidates.select_related("book")
-        ],
+        "candidates": [project_candidate(row, actor) for row in candidates(vote)],
         "outcome": None,
         "canManage": vote.status != Vote.Status.CLOSED
         and can_manage_vote(actor, current_curator_id),
@@ -202,7 +218,8 @@ def remove_candidate(request, vote_id, book_id):
         return error_result(409)
     if vote.status == Vote.Status.OPEN and vote.candidates.count() <= 2:
         return error_result(409)
-    # Later issues attach approvals to the candidate; they must go with it.
+    # Approvals go with their candidate in the same transaction, never by cascade.
+    row.approvals.all().delete()
     row.delete()
     renumber(vote)
     return 200, project_vote(vote, request.user)
@@ -240,3 +257,39 @@ def open_vote(request, vote_id):
     vote.opened_at = timezone.now()
     vote.save(update_fields=["status", "opened_at"])
     return 200, project_vote(vote, request.user)
+
+
+def own_vote_context(request, *args, **kwargs):
+    return {"owner_id": request.user.pk}
+
+
+@transaction.atomic
+@require_permission("cast_own_vote", context=own_vote_context)
+def set_approval(request, vote_id, book_id):
+    """Add or withdraw the session member's own approval; idempotent."""
+    # Lock the member row so a concurrent revocation cannot interleave.
+    actor = User.objects.select_for_update().filter(pk=request.user.pk).first()
+    refusal = permission_refusal(actor, "cast_own_vote", owner_id=request.user.pk)
+    if refusal:
+        return error_result(refusal)
+    request.user = actor
+    body = request_object(request)
+    # Identity comes only from the session; smuggled owner keys are forbidden.
+    if body is not None and any(key.casefold() in OWNER_KEYS for key in body):
+        return error_result(403)
+    vote = lookup_vote(vote_id, lock=True)
+    key = native_member_id(book_id)
+    row = vote.candidates.filter(book_id=key).first() if vote and key else None
+    if row is None:
+        return error_result(404)
+    if not is_visible(vote) or vote.status != Vote.Status.OPEN:
+        return error_result(409)
+    if body is None or set(body) != {"approved"} or type(body["approved"]) is not bool:
+        return error_result(400)
+    if body["approved"]:
+        VoteApproval.objects.get_or_create(
+            candidate=row, member=actor, defaults={"approved_at": timezone.now()}
+        )
+    else:
+        VoteApproval.objects.filter(candidate=row, member=actor).delete()
+    return 200, project_vote(vote, actor)

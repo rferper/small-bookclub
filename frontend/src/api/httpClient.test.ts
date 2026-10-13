@@ -306,11 +306,14 @@ describe('HTTP vote shortlist adapters', () => {
     await client.reorderCandidates('v1', ['b2', 'b1'])
     await client.removeCandidate('v1', 'b1')
     await client.openVote('v1')
+    await client.setApproval('v1', 'b2', true)
     expect(send.mock.calls.map(([url, init]) => `${init?.method} ${url}`)).toEqual([
       'GET /api/votes', 'POST /api/votes', 'GET /api/votes/v1',
       'POST /api/votes/v1/candidates', 'PUT /api/votes/v1/candidates/order',
       'DELETE /api/votes/v1/candidates/b1', 'POST /api/votes/v1/open',
+      'PUT /api/votes/v1/candidates/b2/approval',
     ])
+    expect(JSON.parse(send.mock.calls[7][1]?.body as string)).toEqual({ approved: true })
     expect(JSON.parse(send.mock.calls[3][1]?.body as string)).toEqual({ bookId: 'b1' })
     expect(JSON.parse(send.mock.calls[4][1]?.body as string)).toEqual({ bookIds: ['b2', 'b1'] })
     expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBeNull()

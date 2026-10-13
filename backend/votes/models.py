@@ -77,3 +77,28 @@ class VoteCandidate(models.Model):
                 fields=["vote", "book"], name="vote_candidate_unique_book"
             ),
         ]
+
+
+class VoteApproval(models.Model):
+    """One equal-weight approval by one member for one shortlisted book.
+
+    The candidate row is unique per (vote, book), so the unique pair below is
+    the spec's unique (vote, book, user) at the SQL level. Rows are written
+    only while the vote is open and retained after closing as its snapshot.
+    """
+
+    candidate = models.ForeignKey(
+        VoteCandidate, on_delete=models.PROTECT, related_name="approvals"
+    )
+    member = models.ForeignKey(
+        "users.User", on_delete=models.PROTECT, related_name="vote_approvals"
+    )
+    approved_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["approved_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["candidate", "member"], name="vote_approval_unique_member"
+            ),
+        ]
