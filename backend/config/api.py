@@ -60,7 +60,8 @@ from meetings.schemas import (
     RecycleBinEntry,
 )
 from reviews.rubric import read_rubric, save_rubric
-from reviews.schemas import RatingRubric, RatingRubricInput
+from reviews.schemas import RatingRubric, RatingRubricInput, ReviewInput
+from reviews.services import save_review
 from users.authentication import (
     DENIED_KEY,
     EXPORT_KEY,
@@ -1249,3 +1250,22 @@ def get_rating_rubric(request):
 )
 def put_rating_rubric(request):
     return allowlist_result(save_rubric, request)
+
+
+@api.put(
+    "/books/{bookId}/my-review",
+    response={
+        200: BookRatings,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="saveMyReview",
+    openapi_extra=record_request(ReviewInput),
+)
+def put_my_review(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(save_review, request, bookId)

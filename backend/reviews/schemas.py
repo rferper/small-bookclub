@@ -4,6 +4,7 @@ from typing import Annotated
 
 from pydantic import Field, create_model
 
+from books.schemas import CriterionScores
 from users.schemas import ClosedSchema
 
 from .models import CRITERIA
@@ -31,3 +32,13 @@ RatingRubricInput = create_model(
     __base__=ClosedSchema,
     **{criterion: (RubricInputAnchors, ...) for criterion in CRITERIA},
 )
+
+
+ReviewText = Annotated[str, Field(json_schema_extra={"x-trimmedMaxLength": 5000})]
+
+
+class ReviewInput(ClosedSchema):
+    scores: CriterionScores
+    text: ReviewText | None = Field(
+        default=None, json_schema_extra=lambda schema: schema.pop("default", None)
+    )

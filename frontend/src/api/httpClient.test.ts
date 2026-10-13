@@ -340,3 +340,17 @@ describe('HTTP rubric adapters', () => {
     expect(new Headers(send.mock.calls[1][1]?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
   })
 })
+
+describe('HTTP own-review adapter', () => {
+  it('sends only scores and optional text to the current-session review route', async () => {
+    const ratings = { book: { id: 'b1', title: 'Libro ficticio', authors: [], coverUrl: null }, ratable: true, finishedByMe: true, myReview: null, club: { status: 'locked' } }
+    const send = vi.fn<typeof fetch>(async () => json(ratings))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'b'.repeat(32)}` })
+    const input = { scores: { disfrute: 5, estilo: 4.5, personajes: 3, trama: 4, huella: 2.5 }, text: 'Reseña ficticia' }
+    await expect(client.saveMyReview('b1', input)).resolves.toEqual(ratings)
+    expect(send.mock.calls[0][0]).toBe('/api/books/b1/my-review')
+    expect(send.mock.calls[0][1]?.method).toBe('PUT')
+    expect(JSON.parse(send.mock.calls[0][1]?.body as string)).toEqual(input)
+    expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBe('b'.repeat(32))
+  })
+})
