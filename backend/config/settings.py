@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     "core",
     "books",
     "meetings",
+    "votes",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

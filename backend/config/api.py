@@ -94,6 +94,17 @@ from users.schemas import (
     query_parameter,
 )
 
+from votes.schemas import CandidateInput, CandidateOrderInput, Vote, VotesOverview
+from votes.services import (
+    add_candidate,
+    create_vote,
+    list_votes,
+    open_vote,
+    read_vote,
+    remove_candidate,
+    reorder_candidates,
+)
+
 from .contract import normalize_schema, read_contract, resolve
 
 PROFILE_MULTIPART_SCHEMA = resolve(
@@ -1071,3 +1082,94 @@ def set_record_safe(request, meetingId: Annotated[str, Field(min_length=1)]):
 )
 def set_current_curator(request):
     return allowlist_result(set_curator, request)
+
+
+@api.get(
+    "/votes",
+    response={200: VotesOverview, 401: Error, 500: Error, 503: Error},
+    operation_id="getVotes",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_votes(request):
+    return allowlist_result(list_votes, request)
+
+
+@api.post(
+    "/votes",
+    response={
+        201: Vote,
+        401: Error,
+        403: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="createVote",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def post_vote(request):
+    return allowlist_result(create_vote, request)
+
+
+@api.get(
+    "/votes/{voteId}",
+    response={200: Vote, 401: Error, 404: Error, 500: Error, 503: Error},
+    operation_id="getVote",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_vote(request, voteId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(read_vote, request, voteId)
+
+
+VOTE_MANAGE_ERRORS = {
+    401: Error,
+    403: Error,
+    404: Error,
+    409: Error,
+    500: Error,
+    503: Error,
+}
+
+
+@api.post(
+    "/votes/{voteId}/candidates",
+    response={200: Vote, 400: Error, **VOTE_MANAGE_ERRORS},
+    operation_id="addCandidate",
+    openapi_extra=record_request(CandidateInput),
+)
+def post_candidate(request, voteId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(add_candidate, request, voteId)
+
+
+@api.put(
+    "/votes/{voteId}/candidates/order",
+    response={200: Vote, 400: Error, **VOTE_MANAGE_ERRORS},
+    operation_id="reorderCandidates",
+    openapi_extra=record_request(CandidateOrderInput),
+)
+def put_candidate_order(request, voteId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(reorder_candidates, request, voteId)
+
+
+@api.delete(
+    "/votes/{voteId}/candidates/{bookId}",
+    response={200: Vote, **VOTE_MANAGE_ERRORS},
+    operation_id="removeCandidate",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def delete_candidate(
+    request,
+    voteId: Annotated[str, Field(min_length=1)],
+    bookId: Annotated[str, Field(min_length=1)],
+):
+    return allowlist_result(remove_candidate, request, voteId, bookId)
+
+
+@api.post(
+    "/votes/{voteId}/open",
+    response={200: Vote, **VOTE_MANAGE_ERRORS},
+    operation_id="openVote",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def post_open_vote(request, voteId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(open_vote, request, voteId)
