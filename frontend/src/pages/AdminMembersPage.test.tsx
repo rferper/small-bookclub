@@ -67,6 +67,7 @@ describe('Live HTTP allowlist', () => {
             ? { ...entry, status: 'active', revokedAt: null } : entry) }
           return new Response(JSON.stringify(members), { headers: { 'Content-Type': 'application/json' } })
         }
+        if (url === '/api/votes') return new Response(JSON.stringify({ curator: members.curator, current: null, history: [], canCreateVote: false }), { headers: { 'Content-Type': 'application/json' } })
         if (url === '/api/admin/curator') {
           const input = JSON.parse(init?.body as string) as { memberId: string | null }
           members = { ...members, curator: members.members.find(entry => entry.member.id === input.memberId)?.member ?? null, members: members.members.map(entry => ({ ...entry, isCurator: entry.member.id === input.memberId })) }
@@ -89,7 +90,7 @@ describe('Live HTTP allowlist', () => {
       await user.click(screen.getByRole('button', { name: 'Devolver el acceso a Tomás' }))
       await waitFor(() => expect(names(activeGroup())).toContain('Tomás'))
       expect(sent.mock.calls.map(([url]) => url)).toEqual([
-        '/api/session', '/api/admin/members', '/api/admin/members', '/api/admin/curator', '/api/admin/members/m8/restore',
+        '/api/session', '/api/admin/members', '/api/votes', '/api/admin/members', '/api/admin/curator', '/api/admin/members/m8/restore',
       ])
     } finally { vi.unstubAllEnvs() }
   })

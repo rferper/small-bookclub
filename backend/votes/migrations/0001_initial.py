@@ -5,58 +5,162 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('books', '0002_bookcompletion'),
-        ('users', '0002_curatorassignment'),
+        ("books", "0002_bookcompletion"),
+        ("users", "0002_curatorassignment"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Vote',
+            name="Vote",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('draft', 'Borrador'), ('open', 'Abierta'), ('closed', 'Cerrada')], default='draft', max_length=6)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('opened_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('closed_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('tie_note', models.TextField(blank=True, default=None, max_length=1000, null=True)),
-                ('curator_assignment', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='votes', to='users.curatorassignment')),
-                ('winning_book', models.ForeignKey(blank=True, default=None, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='won_votes', to='books.book')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("draft", "Borrador"),
+                            ("open", "Abierta"),
+                            ("closed", "Cerrada"),
+                        ],
+                        default="draft",
+                        max_length=6,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "opened_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                (
+                    "closed_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                (
+                    "tie_note",
+                    models.TextField(
+                        blank=True, default=None, max_length=1000, null=True
+                    ),
+                ),
+                (
+                    "curator_assignment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="votes",
+                        to="users.curatorassignment",
+                    ),
+                ),
+                (
+                    "winning_book",
+                    models.ForeignKey(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="won_votes",
+                        to="books.book",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='VoteCandidate',
+            name="VoteCandidate",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('position', models.PositiveIntegerField()),
-                ('book', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='vote_candidacies', to='books.book')),
-                ('vote', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='candidates', to='votes.vote')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("position", models.PositiveIntegerField()),
+                (
+                    "book",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="vote_candidacies",
+                        to="books.book",
+                    ),
+                ),
+                (
+                    "vote",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="candidates",
+                        to="votes.vote",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['position', 'id'],
+                "ordering": ["position", "id"],
             },
         ),
         migrations.AddConstraint(
-            model_name='vote',
-            constraint=models.UniqueConstraint(models.Value(1), condition=models.Q(('status__in', ['draft', 'open'])), name='vote_one_unclosed'),
+            model_name="vote",
+            constraint=models.UniqueConstraint(
+                models.Value(1),
+                condition=models.Q(("status__in", ["draft", "open"])),
+                name="vote_one_unclosed",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='vote',
-            constraint=models.CheckConstraint(condition=models.Q(('status__in', ['draft', 'open', 'closed'])), name='vote_known_status'),
+            model_name="vote",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("status__in", ["draft", "open", "closed"])),
+                name="vote_known_status",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='vote',
-            constraint=models.CheckConstraint(condition=models.Q(models.Q(('closed_at__isnull', True), ('opened_at__isnull', True), ('status', 'draft')), models.Q(('closed_at__isnull', True), ('opened_at__isnull', False), ('status', 'open')), models.Q(('closed_at__isnull', False), ('opened_at__isnull', False), ('status', 'closed')), _connector='OR'), name='vote_status_dates_consistent'),
+            model_name="vote",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    models.Q(
+                        ("closed_at__isnull", True),
+                        ("opened_at__isnull", True),
+                        ("status", "draft"),
+                    ),
+                    models.Q(
+                        ("closed_at__isnull", True),
+                        ("opened_at__isnull", False),
+                        ("status", "open"),
+                    ),
+                    models.Q(
+                        ("closed_at__isnull", False),
+                        ("opened_at__isnull", False),
+                        ("status", "closed"),
+                    ),
+                    _connector="OR",
+                ),
+                name="vote_status_dates_consistent",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='vote',
-            constraint=models.CheckConstraint(condition=models.Q(('winning_book__isnull', True), ('status', 'closed'), _connector='OR'), name='vote_winner_only_closed'),
+            model_name="vote",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("winning_book__isnull", True),
+                    ("status", "closed"),
+                    _connector="OR",
+                ),
+                name="vote_winner_only_closed",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='votecandidate',
-            constraint=models.UniqueConstraint(fields=('vote', 'book'), name='vote_candidate_unique_book'),
+            model_name="votecandidate",
+            constraint=models.UniqueConstraint(
+                fields=("vote", "book"), name="vote_candidate_unique_book"
+            ),
         ),
     ]

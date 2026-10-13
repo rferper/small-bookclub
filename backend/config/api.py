@@ -93,7 +93,6 @@ from users.schemas import (
     Session,
     query_parameter,
 )
-
 from votes.schemas import CandidateInput, CandidateOrderInput, Vote, VotesOverview
 from votes.services import (
     add_candidate,

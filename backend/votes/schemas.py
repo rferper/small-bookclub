@@ -37,9 +37,7 @@ class VoteOutcomeTiePending(ClosedSchema):
     status: Literal["tiePending"] = Field(
         json_schema_extra=lambda schema: schema.pop("type", None)
     )
-    tiedBookIds: list[Id] = Field(
-        min_length=2, json_schema_extra={"uniqueItems": True}
-    )
+    tiedBookIds: list[Id] = Field(min_length=2, json_schema_extra={"uniqueItems": True})
 
 
 class Vote(ClosedSchema):
@@ -50,7 +48,9 @@ class Vote(ClosedSchema):
     closedAt: datetime | None
     candidates: list[VoteCandidate]
     outcome: (
-        Annotated[VoteOutcomeWinner | VoteOutcomeTiePending, Field(discriminator="status")]
+        Annotated[
+            VoteOutcomeWinner | VoteOutcomeTiePending, Field(discriminator="status")
+        ]
         | None
     )
     canManage: bool

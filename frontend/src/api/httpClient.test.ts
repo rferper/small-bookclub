@@ -292,3 +292,30 @@ describe('HTTP reading plan adapters', () => {
     expect(send).toHaveBeenCalledTimes(5)
   })
 })
+
+describe('HTTP vote shortlist adapters', () => {
+  it('maps shortlist operations to their routes, bodies and CSRF header', async () => {
+    const vote = { id: 'v1', status: 'draft', curator: { id: 'm1', displayName: 'Alba ficticia', avatarUrl: null }, openedAt: null, closedAt: null, candidates: [], outcome: null, canManage: true, canRecordTieWinner: false, curatedByMe: true }
+    const overview = { curator: null, current: null, history: [], canCreateVote: false }
+    const send = vi.fn<typeof fetch>(async (url, init) => (url === '/api/votes' && init?.method === 'GET' ? json(overview) : json(vote, init?.method === 'POST' && url === '/api/votes' ? 201 : 200)))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'d'.repeat(32)}` })
+    await expect(client.getVotes()).resolves.toEqual(overview)
+    await expect(client.createVote()).resolves.toEqual(vote)
+    await expect(client.getVote('v1')).resolves.toEqual(vote)
+    await client.addCandidate('v1', 'b1')
+    await client.reorderCandidates('v1', ['b2', 'b1'])
+    await client.removeCandidate('v1', 'b1')
+    await client.openVote('v1')
+    expect(send.mock.calls.map(([url, init]) => `${init?.method} ${url}`)).toEqual([
+      'GET /api/votes', 'POST /api/votes', 'GET /api/votes/v1',
+      'POST /api/votes/v1/candidates', 'PUT /api/votes/v1/candidates/order',
+      'DELETE /api/votes/v1/candidates/b1', 'POST /api/votes/v1/open',
+    ])
+    expect(JSON.parse(send.mock.calls[3][1]?.body as string)).toEqual({ bookId: 'b1' })
+    expect(JSON.parse(send.mock.calls[4][1]?.body as string)).toEqual({ bookIds: ['b2', 'b1'] })
+    expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBeNull()
+    for (const call of send.mock.calls.slice(1).filter(([, init]) => init?.method !== 'GET')) {
+      expect(new Headers(call[1]?.headers).get('X-CSRFToken')).toBe('d'.repeat(32))
+    }
+  })
+})

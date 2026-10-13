@@ -79,6 +79,7 @@ def test_custom_identity_precedes_auth_and_sessions_without_admin_apps(settings)
         "core",
         "books",
         "meetings",
+        "votes",
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.sessions",
