@@ -4000,17 +4000,17 @@ components:
         percentStart:
           type: number
           minimum: 0
-          maximum: 100
         percentEnd:
           type: number
           minimum: 0
-          maximum: 100
         pageStart:
           type: integer
-          minimum: 0
+          minimum: 1
+          maximum: 9007199254740991
         pageEnd:
           type: integer
-          minimum: 0
+          minimum: 1
+          maximum: 9007199254740991
       required:
         - weekNumber
         - percentStart
@@ -4021,8 +4021,8 @@ components:
         - weekNumber: 1
           percentStart: 0
           percentEnd: 0
-          pageStart: 0
-          pageEnd: 0
+          pageStart: 1
+          pageEnd: 1
     ReadingWeek:
       type: object
       additionalProperties: false
