@@ -15,6 +15,8 @@ from pydantic import ConfigDict, Field
 
 from books.catalogue import list_catalogue, read_book, save_book, serve_cover
 from books.completion import read_completion, set_finished
+from books.home import read_home
+from books.home_schemas import HomeData
 from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
@@ -886,3 +888,13 @@ def get_book_ratings(request, bookId: Annotated[str, Field(min_length=1)]):
 )
 def set_book_finished(request, bookId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(set_finished, request, bookId)
+
+
+@api.get(
+    "/home",
+    response={200: HomeData, 401: Error, 500: Error, 503: Error},
+    operation_id="getHome",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_home(request):
+    return allowlist_result(read_home, request)

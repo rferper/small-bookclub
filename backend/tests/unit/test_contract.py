@@ -58,6 +58,7 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "PUT /api/weeks/{weekId}/completion (setWeekCompleted)",
         "GET /api/books/{bookId}/ratings (getBookRatings)",
         "PUT /api/books/{bookId}/finished (setBookFinished)",
+        "GET /api/home (getHome)",
     ]
 
 

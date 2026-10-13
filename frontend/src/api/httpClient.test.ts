@@ -202,6 +202,13 @@ describe('HTTP admin calendar adapters', () => {
 })
 
 describe('HTTP reading plan adapters', () => {
+  it('loads the native current-book and reading target from the home route', async () => {
+    const home = { currentBook: null, currentWeek: null, nextMeeting: null, memberProgress: [], recentActivity: [], quote: null, stats: { booksCompleted: 0, reviews: 0, members: 0 } }
+    const send = vi.fn<typeof fetch>(async () => json(home))
+    await expect(createHttpClient({ fetch: send }).getHome()).resolves.toEqual(home)
+    expect(send.mock.calls[0][0]).toBe('/api/home')
+    expect(send.mock.calls[0][1]?.method).toBe('GET')
+  })
   it('reads personal completion and writes only the session-owned finished flag', async () => {
     const ratings = { book: { id: '8', title: 'Libro ficticio', authors: [], coverUrl: null }, ratable: true, finishedByMe: true, myReview: null, club: { status: 'locked' } }
     const send = vi.fn<typeof fetch>(async () => json(ratings))
