@@ -97,7 +97,9 @@ def test_home_projects_exact_native_ranges_and_only_own_week_flag(setup, role):
         "meetingStartsAt": "2026-10-25T01:30:00Z",
         "completedByMe": False,
     }
-    assert result["nextMeeting"] is None and result["memberProgress"] == []
+    assert result["nextMeeting"]["id"] == str(meeting.pk)
+    assert result["nextMeeting"]["assignment"]["percentEnd"] == 125.5
+    assert len(result["memberProgress"]) == 2
     assert result["recentActivity"] == [] and result["quote"] is None
     assert result["stats"] == {"booksCompleted": 0, "reviews": 0, "members": 2}
     response = client.put(
@@ -201,3 +203,132 @@ def test_removed_parent_meeting_cannot_supplant_current_target(setup):
     Meeting.objects.create(starts_at=NOW, book=old)
     old.soft_delete(admin)
     assert home(browser(member))["currentWeek"]["id"] == str(week.pk)
+
+
+def checked_get(client, url, path, status=200):
+    response = client.get(url)
+    assert response.status_code == status, response.content
+    schema = resolve(DOC, DOC["paths"][path]["get"]["responses"][str(status)])[
+        "content"
+    ]["application/json"]["schema"]
+    result = response.json()
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(result)
+    return result
+
+
+@pytest.mark.parametrize("viewer", ["admin", "member"])
+def test_social_progress_is_active_only_name_order_and_agrees_with_directory_profiles(
+    setup, viewer
+):
+    admin, member, book, meeting, week = setup
+    User.objects.filter(pk=admin.pk).update(display_name="Óscar")
+    User.objects.filter(pk=member.pk).update(display_name="Nora")
+    extra = [
+        User.objects.create_user(
+            f"1000000000000000{index:02d}", approved=True, display_name=name
+        )
+        for index, name in [(3, "Ñora"), (4, "Álba")]
+    ]
+    revoked = User.objects.create_user(
+        "100000000000000005",
+        approved=False,
+        revoked_at=NOW,
+        display_name="PRIVATE_REVOKED_SENTINEL",
+    )
+    User.objects.create_user(
+        "100000000000000006", approved=False, display_name="PRIVATE_PENDING_SENTINEL"
+    )
+    for reader in [admin, extra[1], revoked]:
+        ReadingCompletion.objects.create(
+            assignment=week, member=reader, completed_at=NOW
+        )
+    client = browser(admin if viewer == "admin" else member)
+    result = home(client)
+    assert [row["member"]["displayName"] for row in result["memberProgress"]] == [
+        "Álba",
+        "Nora",
+        "Ñora",
+        "Óscar",
+    ]
+    assert [row["completed"] for row in result["memberProgress"]] == [
+        True,
+        False,
+        False,
+        True,
+    ]
+    assert result["stats"]["members"] == 4
+    directory = checked_get(client, "/api/members", "/api/members")
+    assert directory["currentWeekNumber"] == week.week_number
+    assert [
+        {"member": row["member"], "completed": row["completedCurrentWeek"]}
+        for row in directory["members"]
+    ] == result["memberProgress"]
+    for row in directory["members"]:
+        profile = checked_get(
+            client, f"/api/members/{row['member']['id']}", "/api/members/{memberId}"
+        )
+        assert profile["currentWeek"] == {
+            "weekNumber": week.week_number,
+            "completed": row["completedCurrentWeek"],
+        }
+        assert set(row["member"]) == {"id", "displayName", "avatarUrl"}
+    checked_get(client, f"/api/members/{revoked.pk}", "/api/members/{memberId}", 404)
+    # No existing row means an explicit toggle must create the pair.
+    response = client.put(
+        f"/api/weeks/{week.pk}/completion",
+        json.dumps({"completed": True}),
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value,
+    )
+    assert response.status_code == 204
+    updated = home(client)
+    mine = next(
+        row
+        for row in updated["memberProgress"]
+        if row["member"]["id"] == str(admin.pk if viewer == "admin" else member.pk)
+    )
+    assert mine["completed"] is True
+    changed_directory = checked_get(client, "/api/members", "/api/members")
+    assert (
+        next(row for row in changed_directory["members"] if row["isMe"])[
+            "completedCurrentWeek"
+        ]
+        is True
+    )
+    own_id = admin.pk if viewer == "admin" else member.pk
+    assert (
+        checked_get(client, f"/api/members/{own_id}", "/api/members/{memberId}")[
+            "currentWeek"
+        ]["completed"]
+        is True
+    )
+
+
+@pytest.mark.parametrize("change", ["remove_week", "finish_book", "unlinked_meeting"])
+def test_next_meeting_survives_without_current_target_and_never_exposes_record(
+    setup, change
+):
+    admin, member, book, meeting, week = setup
+    if change == "remove_week":
+        week.soft_delete(admin)
+    elif change == "finish_book":
+        Book.objects.filter(pk=book.pk).update(status="terminado")
+    else:
+        ReadingAssignment.objects.filter(pk=week.pk).update(meeting=None)
+        Meeting.objects.filter(pk=meeting.pk).update(book=None)
+    result = home(browser(member))
+    assert result["currentWeek"] is None and result["memberProgress"] == []
+    assert result["nextMeeting"]["id"] == str(meeting.pk)
+    assert (result["nextMeeting"]["assignment"] is None) == (change != "finish_book")
+    assert (result["nextMeeting"]["book"] is None) == (change == "unlinked_meeting")
+    assert set(result["nextMeeting"]) == {"id", "startsAt", "book", "assignment"}
+    client = browser(member)
+    assert (
+        checked_get(client, "/api/members", "/api/members")["currentWeekNumber"] is None
+    )
+    assert (
+        checked_get(client, f"/api/members/{member.pk}", "/api/members/{memberId}")[
+            "currentWeek"
+        ]
+        is None
+    )

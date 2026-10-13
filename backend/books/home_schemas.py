@@ -21,10 +21,10 @@ class ReadingWeek(ClosedSchema):
 
 class MeetingAssignment(ClosedSchema):
     weekNumber: int = Field(ge=1)
-    percentStart: float = Field(ge=0, le=100)
-    percentEnd: float = Field(ge=0, le=100)
-    pageStart: int = Field(ge=0)
-    pageEnd: int = Field(ge=0)
+    percentStart: float = Field(ge=0)
+    percentEnd: float = Field(ge=0)
+    pageStart: int = Field(ge=1, le=9007199254740991)
+    pageEnd: int = Field(ge=1, le=9007199254740991)
 
 
 class NextMeeting(ClosedSchema):

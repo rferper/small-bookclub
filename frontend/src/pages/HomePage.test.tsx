@@ -14,7 +14,7 @@ function progressEntries() {
 }
 
 describe('Inicio', () => {
-  it('enables live current reading and stages the next-meeting and social cards', async () => {
+  it('enables live reading, next-meeting and social progress cards', async () => {
     vi.stubEnv('VITE_API_MODE', 'http')
     try {
       renderApp()
@@ -23,8 +23,8 @@ describe('Inicio', () => {
       const toggle = within(reading).getByRole('button', { name: 'Marcar como leído' })
       await userEvent.setup().click(toggle)
       await waitFor(() => expect(within(screen.getByRole('region', { name: 'Lectura de esta semana' })).getByRole('button', { name: 'Desmarcar' })).toHaveAttribute('aria-pressed', 'true'))
-      expect(screen.getByRole('region', { name: 'Próxima reunión' })).toHaveTextContent('Las próximas reuniones estarán disponibles más adelante.')
-      expect(screen.getByRole('region', { name: 'Cómo va el club esta semana' })).toHaveTextContent('El progreso del club estará disponible más adelante.')
+      expect(within(screen.getByRole('region', { name: 'Próxima reunión' })).getByRole('link', { name: 'Ver reunión' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Cómo va el club esta semana' })).toHaveTextContent('Leído')
     } finally { vi.unstubAllEnvs() }
   })
   it('shows a loading message until the data arrives', async () => {
