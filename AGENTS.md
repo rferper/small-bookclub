@@ -44,6 +44,7 @@ The frontend exists; backend commands work once `backend/` is created.
 - Every permission and spoiler rule is enforced in the backend, using the central helpers. The API never returns data the user may not see; hiding it in the frontend is never enough.
 - Use fictional data in tests, fixtures and the public demo; never invent real club data.
 - Commit to git regularly, after each meaningful step, so any bad change is easy to roll back.
+- When leaving a local preview running, include its clickable URL in the user-facing handoff.
 - A change is done only when its tests pass. Never claim something works without running it.
 - Stay inside the issue you were given. If you find other needed work, say so in an issue comment instead of doing it.
 - Default issue workflow: one implementer reads and grooms the issue as needed, implements and tests it, and posts a GitHub handoff. Use a brief independent security review when authentication, permissions or spoilers warrant one. The full PM → engineer → QA loop is a fallback, not mandatory; see `docs/process.md`.
