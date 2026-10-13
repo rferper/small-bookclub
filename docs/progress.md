@@ -5,3 +5,4 @@
 
 - #23: Independent personal book completion implemented; 987 backend and 1,238 frontend tests pass, with independent security review PASS.
 - #24: Native homepage current book/weekly target implemented; 1,001 backend and 1,240 frontend tests pass, with independent security review PASS.
+- #25: Native next meeting and shared active-member weekly progress implemented; 1,006 backend and 1,240 frontend tests pass, with independent security review PASS.
