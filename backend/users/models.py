@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import is_password_usable, make_password
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
 from django.db import models
+from django.utils import timezone
 
 from .managers import UserManager
 from .validators import (
@@ -99,3 +100,33 @@ class User(AbstractBaseUser):
             raise ValidationError(
                 {"password": "Las contraseñas locales están desactivadas."}
             )
+
+
+class CuratorAssignment(models.Model):
+    """A retained cycle identity, never an account role."""
+
+    member = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="curator_assignments"
+    )
+    assigned_at = models.DateTimeField(default=timezone.now)
+    ended_at = models.DateTimeField(null=True, blank=True, default=None)
+    current = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["current"],
+                condition=models.Q(current=True),
+                name="curator_one_current",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(current=True, ended_at__isnull=True)
+                | models.Q(current=False, ended_at__isnull=False),
+                name="curator_current_end_consistent",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(ended_at__isnull=True)
+                | models.Q(ended_at__gte=models.F("assigned_at")),
+                name="curator_date_order",
+            ),
+        ]

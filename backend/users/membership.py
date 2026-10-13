@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from .access import approved_admin_refusal, is_effective_member
 from .authentication import current_identity
-from .models import User
+from .models import CuratorAssignment, User
 from .validators import validate_discord_id, validate_display_name
 
 ERRORS = {
@@ -48,6 +48,14 @@ def spanish_name_key(name):
 
 
 def admin_members_projection(actor):
+    assignment = (
+        CuratorAssignment.objects.filter(
+            current=True, member__approved=True, member__revoked_at__isnull=True
+        )
+        .select_related("member")
+        .first()
+    )
+    curator = assignment.member if assignment else None
     rows = User.objects.filter(
         models.Q(approved=True, revoked_at=None) | models.Q(revoked_at__isnull=False)
     )
@@ -73,11 +81,17 @@ def admin_members_projection(actor):
                 "addedAt": row.created_at,
                 "revokedAt": row.revoked_at,
                 "isMe": row.pk == actor.pk,
-                "isCurator": False,
+                "isCurator": row.pk == curator.pk if curator else False,
             }
             for row in rows
         ],
-        "curator": None,
+        "curator": {
+            "id": str(curator.pk),
+            "displayName": curator.display_name,
+            "avatarUrl": curator.avatar_path or None,
+        }
+        if curator
+        else None,
     }
 
 
@@ -182,6 +196,8 @@ def restore_member(request, member_id):
 def revoke_member(request, member_id):
     # Re-read the caller within the operation; request/browser role claims are inert.
     actor = current_identity(request)
+    if actor is not None:
+        actor = User.objects.select_for_update().filter(pk=actor.pk).first()
     refusal = approved_admin_refusal(actor)
     if refusal:
         return error_result(refusal)
@@ -198,5 +214,8 @@ def revoke_member(request, member_id):
     target.approved = False
     target.revoked_at = timezone.now()
     target.save(update_fields=["approved", "revoked_at", "updated_at"])
+    CuratorAssignment.objects.filter(current=True, member=target).update(
+        current=False, ended_at=target.revoked_at
+    )
     invalidate_member_sessions(target)
     return 200, admin_members_projection(actor)

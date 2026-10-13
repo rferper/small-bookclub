@@ -87,6 +87,6 @@ export function createHttpClient(options: {
     addMember: (body) => request<'addMember'>({ method: 'POST', path: '/api/admin/members', body, successStatus: 201 }),
     revokeMember: (memberId) => request<'revokeMember'>({ method: 'POST', path: '/api/admin/members/{memberId}/revoke', pathParams: { memberId }, successStatus: 200 }),
     restoreMember: (memberId) => request<'restoreMember'>({ method: 'POST', path: '/api/admin/members/{memberId}/restore', pathParams: { memberId }, successStatus: 200 }),
-    setCurator: unavailable,
+    setCurator: (memberId) => request<'setCurator'>({ method: 'PUT', path: '/api/admin/curator', body: { memberId }, successStatus: 200 }),
   }
 }

@@ -43,7 +43,7 @@ const saveCurator = () => screen.getByRole('button', { name: 'Guardar curaduría
 const status = (name: string) => within(region(name)).getAllByRole('status').find((s) => s.textContent)?.textContent
 
 describe('Live HTTP allowlist', () => {
-  it('uses server projections for mutations and keeps the future curator action absent', async () => {
+  it('uses server projections for allowlist and curator mutations', async () => {
     vi.stubEnv('VITE_API_MODE', 'http')
     try {
       const source = createMockClient()
@@ -67,21 +67,29 @@ describe('Live HTTP allowlist', () => {
             ? { ...entry, status: 'active', revokedAt: null } : entry) }
           return new Response(JSON.stringify(members), { headers: { 'Content-Type': 'application/json' } })
         }
+        if (url === '/api/admin/curator') {
+          const input = JSON.parse(init?.body as string) as { memberId: string | null }
+          members = { ...members, curator: members.members.find(entry => entry.member.id === input.memberId)?.member ?? null, members: members.members.map(entry => ({ ...entry, isCurator: entry.member.id === input.memberId })) }
+          return new Response(JSON.stringify(members), { headers: { 'Content-Type': 'application/json' } })
+        }
         throw Error(`Unexpected request: ${url}`)
       })
       const user = userEvent.setup()
       await openPage({ client: createHttpClient({ fetch: sent, cookie: () => `csrftoken=${'a'.repeat(32)}` }) })
-      expect(region('Curaduría')).toHaveTextContent('La asignación estará disponible más adelante.')
-      expect(screen.queryByRole('button', { name: 'Guardar curaduría' })).not.toBeInTheDocument()
+      expect(region('Curaduría')).toHaveTextContent('Ahora no hay nadie en la curaduría.')
+      expect(screen.getByRole('button', { name: 'Guardar curaduría' })).toBeInTheDocument()
       await user.type(idField(), '000000000000000199')
       await user.type(nameField(), 'Nora')
       await user.click(addButton())
       expect(await screen.findByText('Nora ya puede entrar al club con Discord.')).toBeInTheDocument()
       expect(names(activeGroup())).toContain('Nora')
+      await user.selectOptions(curatorSelect(), 'native-9')
+      await user.click(saveCurator())
+      expect(await screen.findByText('La curaduría es ahora de Nora.')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Devolver el acceso a Tomás' }))
       await waitFor(() => expect(names(activeGroup())).toContain('Tomás'))
       expect(sent.mock.calls.map(([url]) => url)).toEqual([
-        '/api/session', '/api/admin/members', '/api/admin/members', '/api/admin/members/m8/restore',
+        '/api/session', '/api/admin/members', '/api/admin/members', '/api/admin/curator', '/api/admin/members/m8/restore',
       ])
     } finally { vi.unstubAllEnvs() }
   })
