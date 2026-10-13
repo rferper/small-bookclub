@@ -42,7 +42,9 @@ def projection(book):
             **facts(row),
             "id": str(row.pk),
             "weekNumber": row.week_number,
-            "completionCount": 0,
+            "completionCount": row.completions.filter(
+                completed_at__isnull=False
+            ).count(),
         }
         if row.meeting_id and row.meeting.deleted_at is not None:
             value["removedMeeting"] = True
@@ -216,7 +218,7 @@ def remove_week(request, book_id, week_id):
     return 200, projection(book)
 
 
-def schedule(book):
+def schedule(book, actor):
     result = []
     for row in active_weeks(book):
         meeting = (
@@ -226,7 +228,9 @@ def schedule(book):
             {
                 "id": str(row.pk),
                 "weekNumber": row.week_number,
-                "completedByMe": False,
+                "completedByMe": row.completions.filter(
+                    member_id=actor.pk, completed_at__isnull=False
+                ).exists(),
                 "percentStart": row.percent_start,
                 "percentEnd": row.percent_end,
                 "pageStart": row.page_start,

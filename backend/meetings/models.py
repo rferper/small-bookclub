@@ -138,3 +138,22 @@ class ReadingAssignment(SoftDeleteModel):
         self.notes = clean["notes"]
         if self.meeting_id and self.meeting.book_id != self.book_id:
             raise ValidationError("La reunión debe pertenecer al mismo libro.")
+
+
+class ReadingCompletion(models.Model):
+    assignment = models.ForeignKey(
+        ReadingAssignment, on_delete=models.PROTECT, related_name="completions"
+    )
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="reading_completions",
+    )
+    completed_at = models.DateTimeField(null=True, blank=True, default=None)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assignment", "member"], name="reading_completion_unique_pair"
+            )
+        ]

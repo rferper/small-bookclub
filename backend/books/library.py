@@ -30,4 +30,8 @@ def read_book(request, book_id):
     book = lookup(book_id)
     if book is None:
         return error_result(404)
-    return 200, {**projection(book), "schedule": schedule(book), "meetings": []}
+    return 200, {
+        **projection(book),
+        "schedule": schedule(book, request.user),
+        "meetings": [],
+    }

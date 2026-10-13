@@ -202,6 +202,15 @@ describe('HTTP admin calendar adapters', () => {
 })
 
 describe('HTTP reading plan adapters', () => {
+  it('changes only the session-owned week flag and accepts an empty 204', async () => {
+    const send = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'w'.repeat(32)}` })
+    await expect(client.setWeekCompleted('8', true)).resolves.toBeUndefined()
+    expect(send.mock.calls[0][0]).toBe('/api/weeks/8/completion')
+    expect(send.mock.calls[0][1]?.method).toBe('PUT')
+    expect(JSON.parse(send.mock.calls[0][1]?.body as string)).toEqual({ completed: true })
+    expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBe('w'.repeat(32))
+  })
   it('submits exact independent facts, acknowledgement and order using CSRF', async () => {
     const input = { percentStart: 101.5, percentEnd: 120, pageStart: 2, pageEnd: 80, dueDate: null, notes: 'manual', meetingId: '7' }
     const send = vi.fn<typeof fetch>(async (_url, init) => json({}, init?.method === 'POST' ? 201 : 200))

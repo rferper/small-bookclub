@@ -25,10 +25,12 @@ from meetings.calendar import (
     save_meeting,
     set_cancelled,
 )
+from meetings.completion import set_completed
 from meetings.reading_plan import read_plan, remove_week, reorder_weeks, save_week
 from meetings.reading_schemas import (
     AdminReadingPlan,
     ReadingWeekOrder,
+    WeekCompletionInput,
     write_schema,
 )
 from meetings.schemas import (
@@ -819,3 +821,29 @@ def removeReadingWeek(
     weekId: Annotated[str, Field(min_length=1)],
 ):
     return allowlist_result(remove_week, request, bookId, weekId)
+
+
+@api.put(
+    "/weeks/{weekId}/completion",
+    response={
+        204: None,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="setWeekCompleted",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {"schema": WeekCompletionInput.model_json_schema()}
+            },
+        },
+    },
+)
+def set_week_completed(request, weekId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(set_completed, request, weekId)
