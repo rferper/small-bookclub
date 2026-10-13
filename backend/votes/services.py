@@ -6,18 +6,24 @@ before any vote or book lookup. A vote keeps the retained curator cycle it was
 created under, so changing the current curator never rewrites its curator.
 Approvals are public: every approved member sees each candidate's voters and
 totals, and each member adds or withdraws only their own approval while the vote
-is open. Closing and tie resolution belong to later issues.
+is open. Closure freezes approvals; only an admin records a pending tie winner.
 """
 
 import json
 
 from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 from django.utils import timezone
 
+from books.home import book_summary
 from books.models import Book
-from users.access import can_manage_vote, permission_refusal, require_permission
+from users.access import (
+    can_manage_vote,
+    is_admin,
+    permission_refusal,
+    require_permission,
+)
 from users.directory import member_summary
 from users.membership import error_result, native_member_id
 from users.models import CuratorAssignment, User
@@ -96,12 +102,38 @@ def project_vote(vote, actor):
         "openedAt": vote.opened_at,
         "closedAt": vote.closed_at,
         "candidates": [project_candidate(row, actor) for row in candidates(vote)],
-        "outcome": None,
+        "outcome": project_outcome(vote),
         "canManage": vote.status != Vote.Status.CLOSED
         and can_manage_vote(actor, current_curator_id),
-        "canRecordTieWinner": False,
+        "canRecordTieWinner": vote.status == Vote.Status.CLOSED
+        and vote.winning_book_id is None
+        and len(leading_book_ids(vote)) >= 2
+        and is_admin(actor),
         "curatedByMe": actor.pk == vote.curator_assignment.member_id,
     }
+
+
+def leaders(counts):
+    """Return all maximum-count IDs in shortlist order, including zero votes."""
+    maximum = max((count for _, count in counts), default=0)
+    return [key for key, count in counts if count == maximum]
+
+
+def leading_book_ids(vote):
+    rows = vote.candidates.annotate(total=Count("approvals"))
+    return leaders([(str(row.book_id), row.total) for row in rows])
+
+
+def project_outcome(vote):
+    if vote.status != Vote.Status.CLOSED:
+        return None
+    if vote.winning_book_id:
+        return {
+            "status": "winner",
+            "winner": book_summary(vote.winning_book),
+            "tieNote": vote.tie_note,
+        }
+    return {"status": "tiePending", "tiedBookIds": leading_book_ids(vote)}
 
 
 @require_permission("view_club")
@@ -119,7 +151,7 @@ def list_votes(request):
         "current": project_vote(pending, actor)
         if pending and is_visible(pending)
         else None,
-        # Closed elections and their outcomes arrive with closing (later issue).
+        # Historical overview belongs to #34; direct closed reads retain outcomes.
         "history": [],
         "canCreateVote": assignment is not None
         and pending is None
@@ -293,3 +325,74 @@ def set_approval(request, vote_id, book_id):
     else:
         VoteApproval.objects.filter(candidate=row, member=actor).delete()
     return 200, project_vote(vote, actor)
+
+
+def locked_actor(request, action, **facts):
+    """Refresh authority under lock before committing a lifecycle mutation."""
+    actor = User.objects.select_for_update().filter(pk=request.user.pk).first()
+    refusal = permission_refusal(actor, action, **facts)
+    if refusal:
+        return error_result(refusal)
+    request.user = actor
+    return None
+
+
+@transaction.atomic
+@require_permission("close_vote", context=curator_context)
+def close_vote(request, vote_id):
+    assignment = current_assignment(lock=True)
+    refusal = locked_actor(
+        request, "close_vote", curator_id=assignment.member_id if assignment else None
+    )
+    if refusal:
+        return refusal
+    vote, failure = managed_vote(vote_id)
+    if failure:
+        return failure
+    if vote.status != Vote.Status.OPEN or vote.candidates.count() < 2:
+        return error_result(409)
+    top = leading_book_ids(vote)
+    vote.status = Vote.Status.CLOSED
+    vote.closed_at = timezone.now()
+    vote.winning_book_id = int(top[0]) if len(top) == 1 else None
+    vote.save(update_fields=["status", "closed_at", "winning_book"])
+    return 200, project_vote(vote, request.user)
+
+
+@transaction.atomic
+@require_permission("record_tie_winner")
+def record_tie_winner(request, vote_id):
+    refusal = locked_actor(request, "record_tie_winner")
+    if refusal:
+        return refusal
+    vote, failure = managed_vote(vote_id)
+    if failure:
+        return failure
+    body = request_object(request)
+    if (
+        body is None
+        or set(body) != {"bookId", "note"}
+        or not isinstance(body["bookId"], str)
+        or not body["bookId"]
+        or not isinstance(body["note"], str)
+    ):
+        return error_result(400)
+    key = native_member_id(body["bookId"])
+    book = Book.objects.filter(pk=key).first() if key else None
+    if book is None:
+        return error_result(404)
+    top = leading_book_ids(vote)
+    if (
+        vote.status != Vote.Status.CLOSED
+        or vote.winning_book_id is not None
+        or len(top) < 2
+        or str(book.pk) not in top
+    ):
+        return error_result(409)
+    note = body["note"].strip()
+    if len(note) > 1000:
+        return error_result(400)
+    vote.winning_book = book
+    vote.tie_note = note or None
+    vote.save(update_fields=["winning_book", "tie_note"])
+    return 200, project_vote(vote, request.user)

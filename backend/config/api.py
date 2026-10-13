@@ -97,15 +97,18 @@ from votes.schemas import (
     ApprovalInput,
     CandidateInput,
     CandidateOrderInput,
+    TieWinnerInput,
     Vote,
     VotesOverview,
 )
 from votes.services import (
     add_candidate,
+    close_vote,
     create_vote,
     list_votes,
     open_vote,
     read_vote,
+    record_tie_winner,
     remove_candidate,
     reorder_candidates,
     set_approval,
@@ -1193,3 +1196,23 @@ def put_approval(
 )
 def post_open_vote(request, voteId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(open_vote, request, voteId)
+
+
+@api.post(
+    "/votes/{voteId}/close",
+    response={200: Vote, **VOTE_MANAGE_ERRORS},
+    operation_id="closeVote",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def post_close_vote(request, voteId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(close_vote, request, voteId)
+
+
+@api.post(
+    "/votes/{voteId}/tie-winner",
+    response={200: Vote, 400: Error, **VOTE_MANAGE_ERRORS},
+    operation_id="recordTieWinner",
+    openapi_extra=record_request(TieWinnerInput),
+)
+def post_tie_winner(request, voteId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(record_tie_winner, request, voteId)
