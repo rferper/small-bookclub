@@ -42,8 +42,26 @@ def projection(book):
     return {
         "id": str(book.pk),
         "coverUrl": book.cover_path or None,
-        "originVote": None,
+        "originVote": project_origin(book),
         **{wire: getattr(book, field) for wire, field in METADATA_FIELDS.items()},
+    }
+
+
+def project_origin(book):
+    # Local import avoids the catalogue/vote model and service import cycle.
+    from votes.services import is_visible
+
+    vote = book.origin_vote
+    if (
+        vote is None
+        or vote.status != "closed"
+        or vote.winning_book_id != book.pk
+        or not is_visible(vote)
+    ):
+        return None
+    return {
+        "id": str(vote.pk),
+        "label": f"Votación de {vote.curator_assignment.member.display_name}",
     }
 
 

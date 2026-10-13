@@ -200,6 +200,15 @@ def test_initial_book_migration_on_fresh_disposable_database(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     with sqlite3.connect(database) as connection:
+        columns = connection.execute("PRAGMA table_info(books_book)").fetchall()
+        assert any(column[1] == "origin_vote_id" for column in columns)
+        foreign_keys = connection.execute(
+            "PRAGMA foreign_key_list(books_book)"
+        ).fetchall()
+        assert any(
+            row[2] == "votes_vote" and row[3] == "origin_vote_id"
+            for row in foreign_keys
+        )
         indexes = connection.execute("PRAGMA index_list(books_book)").fetchall()
         assert any(
             index[1] == "book_one_active_reading" and index[2] == 1 and index[4] == 1

@@ -47,6 +47,14 @@ class Book(SoftDeleteModel):
         validators=[MinValueValidator(1), MaxValueValidator(MAX_SAFE_INTEGER)],
     )
     external_ids = models.JSONField(default=dict, blank=True)
+    origin_vote = models.ForeignKey(
+        "votes.Vote",
+        null=True,
+        blank=True,
+        default=None,
+        on_delete=models.PROTECT,
+        related_name="origin_books",
+    )
     status = models.CharField(max_length=9, choices=Status, default=Status.PROPOSED)
     reading_start_date = models.DateField(null=True, blank=True, default=None)
     reading_end_date = models.DateField(null=True, blank=True, default=None)
