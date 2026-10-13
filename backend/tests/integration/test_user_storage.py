@@ -183,7 +183,9 @@ def test_profile_update_preserves_identity_creation_and_login(user, monkeypatch)
     assert user.avatar_path == "avatars/fictional.webp"
 
 
-def test_initial_migration_installs_only_custom_identity_and_is_repeatable(tmp_path):
+def test_user_migrations_install_custom_identity_and_curator_and_are_repeatable(
+    tmp_path,
+):
     backend = Path(__file__).resolve().parents[2]
     database = tmp_path / "issue-2-empty.sqlite3"
     environment = os.environ | {"BOOKCLUB_ENV": "test", "DATABASE_PATH": str(database)}
@@ -222,9 +224,13 @@ def test_initial_migration_installs_only_custom_identity_and_is_repeatable(tmp_p
         ]:
             assert constraint in sql
         migrations = database_connection.execute(
-            "SELECT app, name FROM django_migrations WHERE app='users'"
+            "SELECT app, name FROM django_migrations WHERE app='users' ORDER BY name"
         ).fetchall()
-        assert migrations == [("users", "0001_initial")]
+        assert migrations == [
+            ("users", "0001_initial"),
+            ("users", "0002_curatorassignment"),
+        ]
+        assert "users_curatorassignment" in tables
 
 
 def test_database_has_no_independent_active_column(user):
