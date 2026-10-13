@@ -15,11 +15,9 @@ def validated_scores(scores):
             raise ValueError("Numeric scores are required")
         try:
             value = Decimal(str(raw))
-            if (
-                not value.is_finite()
-                or not 1 <= value <= 5
-                or value * 2 != (value * 2).to_integral_value()
-            ):
+            if not value.is_finite() or value not in {
+                Decimal(n) / 2 for n in range(2, 11)
+            }:
                 raise ValueError("Scores must be 1–5 in half-star steps")
         except InvalidOperation as exc:
             raise ValueError("Invalid score") from exc

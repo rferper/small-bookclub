@@ -32,7 +32,19 @@ def test_club_mean_weights_each_submitted_member_equally_and_updates_after_edit(
 
 
 @pytest.mark.parametrize(
-    "bad", [None, True, "3", 0, 5.5, 3.25, float("nan"), float("inf"), Decimal("NaN")]
+    "bad",
+    [
+        None,
+        True,
+        "3",
+        0,
+        5.5,
+        3.25,
+        float("nan"),
+        float("inf"),
+        Decimal("NaN"),
+        Decimal("4.0000000000000000000000000001"),
+    ],
 )
 def test_invalid_values_are_rejected(bad):
     value = scores()
