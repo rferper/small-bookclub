@@ -74,6 +74,13 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "(removeMeetingHighlight)",
         "PUT /api/admin/meetings/{meetingId}/record/safe (setMeetingRecordSafe)",
         "PUT /api/admin/curator (setCurator)",
+        "GET /api/votes (getVotes)",
+        "POST /api/votes (createVote)",
+        "GET /api/votes/{voteId} (getVote)",
+        "POST /api/votes/{voteId}/candidates (addCandidate)",
+        "PUT /api/votes/{voteId}/candidates/order (reorderCandidates)",
+        "DELETE /api/votes/{voteId}/candidates/{bookId} (removeCandidate)",
+        "POST /api/votes/{voteId}/open (openVote)",
     ]
 
 
