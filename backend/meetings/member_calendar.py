@@ -1,9 +1,9 @@
-"""Member-visible calendar metadata, with no substantive meeting records."""
+"""Member calendar metadata and centrally gated published meeting records."""
 
 from django.db.models import Q
 from django.utils import timezone
 
-from users.access import require_permission
+from users.access import can_view_meeting_record, require_permission
 from users.directory import member_summary
 from users.membership import error_result, native_member_id, spanish_name_key
 
@@ -79,6 +79,62 @@ def book_meetings(book):
     return result
 
 
+def record_projection(meeting, actor):
+    # Retained links prevent a removed assignment from becoming safe/unlinked.
+    week = ReadingAssignment.all_objects.filter(meeting=meeting).first()
+    invalid_week = bool(
+        week
+        and (
+            week.deleted_at is not None
+            or week.book.deleted_at is not None
+            or week.book_id != meeting.book_id
+        )
+    )
+    completed = bool(
+        week
+        and not invalid_week
+        and week.completions.filter(
+            member_id=actor.pk, completed_at__isnull=False
+        ).exists()
+    )
+    allowed = can_view_meeting_record(
+        actor,
+        cancelled=meeting.cancelled,
+        linked_week=week is not None,
+        week_removed=invalid_week,
+        week_completed=completed,
+        marked_safe=meeting.record_safe,
+    )
+    if not allowed:
+        if week and not invalid_week and not meeting.cancelled:
+            return {"status": "lockedWeekNotRead", "weekNumber": week.week_number}
+        return {"status": "lockedNoWeek"}
+    return {
+        "status": "visible",
+        "summary": meeting.summary_text if meeting.summary_published else None,
+        "highlights": [
+            {
+                "id": str(row.pk),
+                "text": row.text,
+                "kind": row.kind,
+                "speakers": [
+                    member_summary(speaker)
+                    for speaker in sorted(
+                        row.speakers.all(),
+                        key=lambda speaker: (
+                            spanish_name_key(speaker.display_name),
+                            speaker.pk,
+                        ),
+                    )
+                ],
+            }
+            for row in meeting.highlights.filter(published=True).order_by(
+                "position", "pk"
+            )
+        ],
+    }
+
+
 @require_permission("view_club")
 def read_meeting(request, meeting_id):
     key = native_member_id(meeting_id)
@@ -103,5 +159,5 @@ def read_meeting(request, meeting_id):
         **projection(meeting),
         "upcoming": meeting.starts_at >= now,
         "attendance": attendance,
-        "record": {"status": "lockedNoWeek"},
+        "record": record_projection(meeting, request.user),
     }

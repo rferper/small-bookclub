@@ -426,7 +426,7 @@ def test_member_projections_never_receive_drafts_or_published_content_before_gat
 ):
     admin, member, _, book, meeting = setup
     Meeting.objects.filter(pk=meeting.pk).update(
-        summary_text="PRIVATE_SUMMARY", summary_published=True, record_safe=True
+        summary_text="PRIVATE_SUMMARY", summary_published=True, record_safe=False
     )
     MeetingHighlight.objects.create(
         meeting=meeting, position=1, text="PRIVATE_DRAFT", kind="quote"
