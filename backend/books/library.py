@@ -1,5 +1,6 @@
 """Spoiler-free retained catalogue projection for bookshelf and timeline."""
 
+from meetings.member_calendar import book_meetings
 from meetings.reading_plan import schedule
 from users.access import require_permission
 from users.membership import error_result
@@ -33,5 +34,5 @@ def read_book(request, book_id):
     return 200, {
         **projection(book),
         "schedule": schedule(book, request.user),
-        "meetings": [],
+        "meetings": book_meetings(book),
     }

@@ -30,6 +30,7 @@ from meetings.calendar import (
     set_cancelled,
 )
 from meetings.completion import set_completed
+from meetings.member_calendar import list_meetings
 from meetings.reading_plan import read_plan, remove_week, reorder_weeks, save_week
 from meetings.reading_schemas import (
     AdminReadingPlan,
@@ -43,6 +44,7 @@ from meetings.schemas import (
     CancelledInput,
     DeletionPreview,
     MeetingInput,
+    MeetingList,
     RecycleBinEntry,
 )
 from users.authentication import (
@@ -898,3 +900,13 @@ def set_book_finished(request, bookId: Annotated[str, Field(min_length=1)]):
 )
 def get_home(request):
     return allowlist_result(read_home, request)
+
+
+@api.get(
+    "/meetings",
+    response={200: MeetingList, 401: Error, 500: Error, 503: Error},
+    operation_id="listMeetings",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def list_member_meetings(request):
+    return allowlist_result(list_meetings, request)

@@ -202,6 +202,13 @@ describe('HTTP admin calendar adapters', () => {
 })
 
 describe('HTTP reading plan adapters', () => {
+  it('loads the member calendar from the central meetings route', async () => {
+    const meetings = { upcoming: [], past: [] }
+    const send = vi.fn<typeof fetch>(async () => json(meetings))
+    await expect(createHttpClient({ fetch: send }).listMeetings()).resolves.toEqual(meetings)
+    expect(send.mock.calls[0][0]).toBe('/api/meetings')
+    expect(send.mock.calls[0][1]?.method).toBe('GET')
+  })
   it('loads the native current-book and reading target from the home route', async () => {
     const home = { currentBook: null, currentWeek: null, nextMeeting: null, memberProgress: [], recentActivity: [], quote: null, stats: { booksCompleted: 0, reviews: 0, members: 0 } }
     const send = vi.fn<typeof fetch>(async () => json(home))

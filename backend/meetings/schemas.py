@@ -5,10 +5,20 @@ from typing import Annotated, Literal, NotRequired, TypedDict
 
 from pydantic import ConfigDict, Field, with_config
 
+from books.home_schemas import NextMeeting
 from users.schemas import ClosedSchema, MemberSummary
 
 Id = Annotated[str, Field(min_length=1)]
 SafeOrdinal = Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
+class MeetingListItem(NextMeeting):
+    cancelled: bool
+
+
+class MeetingList(ClosedSchema):
+    upcoming: list[MeetingListItem]
+    past: list[MeetingListItem]
 
 
 @with_config(ConfigDict(extra="forbid"))
