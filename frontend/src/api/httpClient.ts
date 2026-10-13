@@ -60,7 +60,7 @@ export function createHttpClient(options: {
     setWeekCompleted: (weekId, completed) => request<'setWeekCompleted'>({ method: 'PUT', path: '/api/weeks/{weekId}/completion', pathParams: { weekId }, body: { completed }, successStatus: 204 }),
     listBooks: () => request<'listBooks'>({ method: 'GET', path: '/api/books', successStatus: 200 }),
     getBook: (bookId) => request<'getBook'>({ method: 'GET', path: '/api/books/{bookId}', pathParams: { bookId }, successStatus: 200 }),
-    listMeetings: unavailable,
+    listMeetings: () => request<'listMeetings'>({ method: 'GET', path: '/api/meetings', successStatus: 200 }),
     getMeeting: unavailable,
     getVotes: unavailable,
     getVote: unavailable,
