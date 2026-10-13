@@ -21,6 +21,20 @@ The orchestrator picks one issue (see Backlog) and assigns one implementer. The 
 
 Issue bodies and comments carry handoffs and review findings. Do not cancel a review already in progress when adopting this workflow.
 
+## Token budget
+
+Keep the lean flow cheap without weakening its checks:
+
+- **Batch related issues.** One implementer may take a cluster of related issues (e.g. voting #31–#34, reviews #35–#39, statistics #40–#42 and #44, recycle bin #46–#47, export and audit #49–#50) in one session. Each issue still gets its own commits, handoff and closing comment.
+- **Groom ahead.** Stale backend issues may be groomed in one pass before implementation, so implementers do not re-groom.
+- **Model tiers.** Sonnet for grooming, routine CRUD, statistics, infra and docs. Opus for authentication, permission and spoiler logic, and for any security review. Haiku only for mechanical tasks (listing, formatting, simple doc edits).
+- **Tests.** Run targeted tests while developing; run the full backend and frontend suites once before merge. Reviewers read the diff and the relevant tests and do not rerun the full suites unless something looks wrong.
+- **Short handoffs.** `## Implementation` and review comments stay around 10 lines: criteria covered, checks run, assumptions, branch and commit.
+
+### Escalation
+
+If the lean flow fails on an issue (a check fails after a fix attempt, a review finds a blocking defect, or the criteria turn out ambiguous), stop and recommend the full-loop fallback for that issue to the user, rather than repeating cheap attempts.
+
 ## Full-loop fallback
 
 Use the former PM → engineer → QA loop when the user requests it or defects/rework show the lean flow is insufficient. A PM grooms the issue (`docs/team/pm.md`), an engineer implements and tests it (`docs/team/software-engineer.md`), and an independent QA engineer checks every criterion (`docs/team/qa-engineer.md`). The orchestrator coordinates those roles, sends QA failures back for fixes, and merges/closes only after `## QA: PASS`. After three QA FAIL rounds on one issue, ask the user how to proceed. Role-specific restrictions in those documents apply when the full loop is invoked.
