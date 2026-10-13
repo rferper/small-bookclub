@@ -228,7 +228,10 @@ def dependencies(kind, row):
             [f"{weeks} semanas vinculadas"] if weeks else []
         )
     if kind == "week":
-        return ["Reunión vinculada conservada"] if row.meeting_id else []
+        count = row.completions.count()
+        return (["Reunión vinculada conservada"] if row.meeting_id else []) + (
+            [f"{count} registros de lectura conservados"] if count else []
+        )
     count = row.attendees.count()
     weeks = ReadingAssignment.all_objects.filter(meeting_id=row.pk).count()
     return ([f"{count} registros de asistencia conservados"] if count else []) + (

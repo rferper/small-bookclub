@@ -36,6 +36,10 @@ class ReadingWeekOrder(ClosedSchema):
     acknowledged: bool
 
 
+class WeekCompletionInput(ClosedSchema):
+    completed: bool
+
+
 @with_config(ConfigDict(extra="forbid"))
 class AdminReadingWeek(TypedDict):
     percentStart: Percent
