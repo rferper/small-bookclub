@@ -79,7 +79,7 @@ def book_meetings(book):
     return result
 
 
-def record_projection(meeting, actor):
+def record_access(meeting, actor):
     # Retained links prevent a removed assignment from becoming safe/unlinked.
     week = ReadingAssignment.all_objects.filter(meeting=meeting).first()
     invalid_week = bool(
@@ -105,6 +105,11 @@ def record_projection(meeting, actor):
         week_completed=completed,
         marked_safe=meeting.record_safe,
     )
+    return allowed, week, invalid_week
+
+
+def record_projection(meeting, actor):
+    allowed, week, invalid_week = record_access(meeting, actor)
     if not allowed:
         if week and not invalid_week and not meeting.cancelled:
             return {"status": "lockedWeekNotRead", "weekNumber": week.week_number}

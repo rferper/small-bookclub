@@ -1,5 +1,6 @@
 """Closed native homepage reading projection; substantive records stay gated."""
 
+from core.activity import recent_activity
 from core.quotes import random_quote
 from meetings.current_reading import current_reading
 from meetings.models import ReadingAssignment
@@ -82,7 +83,7 @@ def read_home(request):
         ]
         if week
         else [],
-        "recentActivity": [],
+        "recentActivity": recent_activity(request.user),
         "quote": random_quote(),
         "stats": {
             "booksCompleted": Book.objects.filter(status="terminado").count(),
