@@ -259,3 +259,18 @@ class PurgeRecord(models.Model):
                 name="purge_native_id",
             ),
         ]
+
+
+class CoverErasure(models.Model):
+    """Opaque validated file keys awaiting retry; never substantive content."""
+
+    key = models.CharField(primary_key=True, max_length=32)
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(key__regex=r"\A[0-9a-f]{32}\Z"),
+                name="cover_erasure_valid_key",
+            )
+        ]

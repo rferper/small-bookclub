@@ -4,14 +4,20 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.utils import timezone
 
-from books.catalogue import cover_key, delete_old_cover
+from books.catalogue import COVER_URL, cover_file, cover_key
 from books.models import Book
 from meetings.calendar import bin_projection, locked_actor_refusal
 from meetings.models import Meeting, MeetingHighlight, ReadingAssignment
 from users.access import require_permission
 from users.membership import error_result, native_member_id
 
-from .models import ActivityEvent, LiteraryQuote, PurgeRecord, RestoreExpired
+from .models import (
+    ActivityEvent,
+    CoverErasure,
+    LiteraryQuote,
+    PurgeRecord,
+    RestoreExpired,
+)
 
 MODELS = {
     "book": Book,
@@ -169,7 +175,26 @@ def purge_target(kind, row, actor):
             row.speakers.clear()
         row.hard_delete()
         if key:
-            transaction.on_commit(lambda: delete_old_cover(key))
+            CoverErasure.objects.get_or_create(key=key)
+            transaction.on_commit(lambda: erase_cover(key), robust=True)
+    return True
+
+
+@transaction.atomic
+def erase_cover(key):
+    """Retry only committed erasure requests; retain failures and shared covers."""
+    if cover_key(COVER_URL + key) != key:
+        return False
+    pending = CoverErasure.objects.select_for_update().filter(pk=key).first()
+    if pending is None:
+        return False
+    if Book.all_objects.filter(cover_path=COVER_URL + key).exists():
+        return False
+    try:
+        cover_file(key).unlink(missing_ok=True)
+    except OSError:
+        return False
+    pending.delete()
     return True
 
 
