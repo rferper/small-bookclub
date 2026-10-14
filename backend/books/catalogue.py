@@ -210,6 +210,7 @@ def save_book(request, book_id=None):
             )
             if book is None:
                 return error_result(404)
+            previously_proposed = book.status == "propuesto"
             for field, value in values.items():
                 setattr(book, field, value)
             if external_ids is not None:
@@ -234,6 +235,14 @@ def save_book(request, book_id=None):
                 book.cover_path = COVER_URL + new_key
             book.full_clean(validate_constraints=False)
             book.save()
+            if previously_proposed and book.status in {"elegido", "leyendo"}:
+                from core.activity import record_event
+                from core.models import ActivityEvent
+
+                if not ActivityEvent.objects.filter(
+                    kind="book_selected", book=book
+                ).exists():
+                    record_event("book_selected", current_actor, book=book)
             result = projection(book)
             if action != "keep" and old_key and old_key != new_key:
                 transaction.on_commit(lambda: delete_old_cover(old_key))

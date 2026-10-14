@@ -71,4 +71,8 @@ def save_review(request, book_id):
     except (ValueError, ValidationError):
         return error_result(400)
     row.save()
+    if not editing:
+        from core.activity import record_event
+
+        record_event("review_available", actor, book=book)
     return 200, projection(book, actor)

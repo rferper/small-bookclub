@@ -13,6 +13,65 @@ const sessions: Session[] = [
   { status: 'signedIn', user: { id: 'fictional-website-7', displayName: 'Alba ficticia', avatarUrl: null, role: 'member' } },
 ]
 
+describe('HTTP taste compatibility adapter', () => {
+  it('uses the central session transport and preserves the server comparison union', async () => {
+    const body = { minSharedBooks: 3, members: [{ member: { id: '2', displayName: 'Lector ficticio', avatarUrl: null }, sharedBookCount: 2, comparison: { status: 'insufficient' as const } }] }
+    const send = vi.fn<typeof fetch>(async () => json(body))
+    expect(await createHttpClient({ fetch: send }).getTasteCompatibility()).toEqual(body)
+    expect(send.mock.calls[0]).toEqual(['/api/statistics/compatibility', expect.objectContaining({ method: 'GET', credentials: 'same-origin', body: undefined })])
+  })
+
+  it('preserves authentication errors', async () => {
+    const client = createHttpClient({ fetch: async () => json({ code: 'unauthenticated', message: 'Debes iniciar sesión.' }, 401) })
+    await expect(client.getTasteCompatibility()).rejects.toMatchObject({ status: 401, code: 'unauthenticated' })
+  })
+})
+
+describe('HTTP statistics adapter', () => {
+  it('returns the server empty union and explicit independent counts through the central transport', async () => {
+    const body = { booksRead: 4, meetingsHeld: 2, thresholds: { bookRatings: 3, memberRatings: 3 }, ratings: { status: 'empty' as const } }
+    const send = vi.fn<typeof fetch>(async () => json(body))
+    expect(await createHttpClient({ fetch: send }).getStatistics()).toEqual(body)
+    expect(send.mock.calls[0]).toEqual(['/api/statistics', expect.objectContaining({ method: 'GET', credentials: 'same-origin', body: undefined })])
+  })
+})
+
+describe('HTTP literary quote adapters', () => {
+  it('lists, creates, updates and soft-removes through the contract paths and current CSRF cookie', async () => {
+    const input = { text: 'Cita ficticia.', author: null, source: null, active: true }
+    const quote = { id: '8', ...input }
+    const send = vi.fn<typeof fetch>(async (_url, init) => json(init?.method === 'GET' ? [quote] : init?.method === 'DELETE' ? [] : quote, init?.method === 'POST' ? 201 : 200))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'q'.repeat(32)}` })
+    expect(await client.listAdminQuotes()).toEqual([quote])
+    expect(await client.addLiteraryQuote(input)).toEqual(quote)
+    expect(await client.updateLiteraryQuote('8', input)).toEqual(quote)
+    expect(await client.deleteLiteraryQuote('8')).toEqual([])
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/quotes', '/api/admin/quotes', '/api/admin/quotes/8', '/api/admin/quotes/8'])
+    for (const [, init] of send.mock.calls.slice(1)) expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('q'.repeat(32))
+    expect(JSON.parse(send.mock.calls[1][1]!.body as string)).toEqual(input)
+    expect(JSON.parse(send.mock.calls[2][1]!.body as string)).toEqual(input)
+    expect(send.mock.calls[3][1]?.body).toBeUndefined()
+  })
+})
+
+describe('HTTP recycle-bin adapters', () => {
+  it('uses canonical paths and CSRF for native delete, restore and purge without sending content', async () => {
+    const send = vi.fn<typeof fetch>(async () => json([]))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'r'.repeat(32)}` })
+    expect(await client.getRecycleBin()).toEqual([])
+    expect(await client.deleteBook('9')).toEqual([])
+    expect(await client.restoreDeleted('week', '4')).toEqual([])
+    expect(await client.purgeDeleted('quote', '5')).toEqual([])
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/bin', '/api/admin/books/9', '/api/admin/bin/week/4/restore', '/api/admin/bin/quote/5'])
+    expect(send.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'DELETE', 'POST', 'DELETE'])
+    for (const [, init] of send.mock.calls) {
+      expect(init?.body).toBeUndefined()
+      expect(init?.credentials).toBe('same-origin')
+    }
+    for (const [, init] of send.mock.calls.slice(1)) expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('r'.repeat(32))
+  })
+})
+
 describe('HTTP session adapters', () => {
   it.each(sessions)('reads the $status session using the central same-origin transport', async session => {
     const send = vi.fn<typeof fetch>(async () => json(session))

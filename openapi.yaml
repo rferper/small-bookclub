@@ -1706,8 +1706,8 @@ paths:
         metadata only, not independently removed descendants; required parent first. One leyendo,
         quote uniqueness and canonical same-book/one-to-one link checks 409. Meeting restoration
         allowed with removed linked week (gate remains locked). Purge is dependency-blocked 409,
-        never cascades: book weeks/meetings/reviews/finished/favourites/votes; meeting
-        reservations/attendance/highlights; week completions/links. Quote/highlight eligible
+        never cascades: book weeks/meetings/reviews/finished/favourites/votes/origin/activity; meeting
+        reservations/attendance/highlights/activity; week completions/links. Quote/highlight eligible
         independently. 30-day deadline does not promise automatic job. #12/#46/#47 refine production
         erasure first."
       x-access:
@@ -1766,8 +1766,8 @@ paths:
         metadata only, not independently removed descendants; required parent first. One leyendo,
         quote uniqueness and canonical same-book/one-to-one link checks 409. Meeting restoration
         allowed with removed linked week (gate remains locked). Purge is dependency-blocked 409,
-        never cascades: book weeks/meetings/reviews/finished/favourites/votes; meeting
-        reservations/attendance/highlights; week completions/links. Quote/highlight eligible
+        never cascades: book weeks/meetings/reviews/finished/favourites/votes/origin/activity; meeting
+        reservations/attendance/highlights/activity; week completions/links. Quote/highlight eligible
         independently. 30-day deadline does not promise automatic job. #12/#46/#47 refine production
         erasure first."
       x-access:
@@ -1808,52 +1808,6 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/DeletedType"
-        - name: id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Id"
-  /api/admin/books/{id}:
-    delete:
-      operationId: deleteBook
-      summary: deleteBook
-      tags:
-        - Admin
-      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
-        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
-        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
-        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
-        repeated/missing target 404. Never cascade purge; member projections suppress removed
-        targets/dependent content.
-      x-access:
-        approvedAdmin: true
-        anonymous: 401
-        member: 403
-        curator: 403
-      responses:
-        "200":
-          description: Successful approved-admin result.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RecycleBinEntry"
-              example: []
-        "401":
-          $ref: "#/components/responses/Error401"
-        "403":
-          $ref: "#/components/responses/Error403"
-        "404":
-          $ref: "#/components/responses/Error404"
-        "500":
-          $ref: "#/components/responses/Error500"
-        "503":
-          $ref: "#/components/responses/Error503"
-      security:
-        - sessionCookie: []
-          csrfHeader: []
-      parameters:
         - name: id
           in: path
           required: true
@@ -3529,6 +3483,51 @@ paths:
                 contentType: application/json
               cover:
                 contentType: image/jpeg, image/png, image/webp
+    delete:
+      operationId: deleteBook
+      summary: deleteBook
+      tags:
+        - Admin
+      description: Effective approved admin only; recheck allowlist and role on server. 401 before 403;
+        both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods.
+        Atomic refusal changes nothing; member/own-profile gates apply to admin outside these
+        endpoints. Soft removal retains linked business history and metadata for exactly 30 days;
+        repeated/missing target 404. Never cascade purge; member projections suppress removed
+        targets/dependent content.
+      x-access:
+        approvedAdmin: true
+        anonymous: 401
+        member: 403
+        curator: 403
+      responses:
+        "200":
+          description: Successful approved-admin result.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecycleBinEntry"
+              example: []
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "500":
+          $ref: "#/components/responses/Error500"
+        "503":
+          $ref: "#/components/responses/Error503"
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
   /api/admin/book-metadata:
     get:
       operationId: searchBookMetadata

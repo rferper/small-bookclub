@@ -21,6 +21,9 @@ from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
 from books.schemas import BookRatings, FinishedInput
+from core.quote_schemas import AdminLiteraryQuote, LiteraryQuoteInput
+from core.quotes import list_quotes, remove_quote, save_quote
+from core.recycle import list_bin, purge_deleted, remove_book, restore_deleted
 from meetings.attendance import set_attendance
 from meetings.calendar import (
     deletion_preview,
@@ -62,6 +65,8 @@ from meetings.schemas import (
 from reviews.rubric import read_rubric, save_rubric
 from reviews.schemas import RatingRubric, RatingRubricInput, ReviewInput
 from reviews.services import save_review
+from reviews.statistics_schemas import Statistics, TasteCompatibility
+from reviews.statistics_services import read_compatibility, read_statistics
 from users.authentication import (
     DENIED_KEY,
     EXPORT_KEY,
@@ -1269,3 +1274,163 @@ def put_rating_rubric(request):
 )
 def put_my_review(request, bookId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(save_review, request, bookId)
+
+
+@api.get(
+    "/statistics/compatibility",
+    response={200: TasteCompatibility, 401: Error, 500: Error, 503: Error},
+    operation_id="getTasteCompatibility",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_compatibility(request):
+    return allowlist_result(read_compatibility, request)
+
+
+@api.get(
+    "/statistics",
+    response={200: Statistics, 401: Error, 500: Error, 503: Error},
+    operation_id="getStatistics",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_statistics(request):
+    return allowlist_result(read_statistics, request)
+
+
+@api.get(
+    "/admin/quotes",
+    response={
+        200: list[AdminLiteraryQuote],
+        401: Error,
+        403: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="listAdminQuotes",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_quotes(request):
+    return allowlist_result(list_quotes, request)
+
+
+@api.post(
+    "/admin/quotes",
+    response={
+        201: AdminLiteraryQuote,
+        400: Error,
+        401: Error,
+        403: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="addLiteraryQuote",
+    openapi_extra=record_request(LiteraryQuoteInput),
+)
+def post_quote(request):
+    return allowlist_result(save_quote, request)
+
+
+@api.put(
+    "/admin/quotes/{id}",
+    response={
+        200: AdminLiteraryQuote,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+        409: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="updateLiteraryQuote",
+    openapi_extra=record_request(LiteraryQuoteInput),
+)
+def put_quote(request, id: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(save_quote, request, id)
+
+
+@api.delete(
+    "/admin/quotes/{id}",
+    response={
+        200: list[RecycleBinEntry],
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="deleteLiteraryQuote",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def delete_quote(request, id: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(remove_quote, request, id)
+
+
+BIN_ERRORS = {
+    400: Error,
+    401: Error,
+    403: Error,
+    404: Error,
+    409: Error,
+    500: Error,
+    503: Error,
+}
+DeletedKind = Annotated[
+    str,
+    Field(
+        json_schema_extra={"enum": ["book", "meeting", "quote", "week", "highlight"]}
+    ),
+]
+
+
+@api.get(
+    "/admin/bin",
+    response={
+        200: list[RecycleBinEntry],
+        401: Error,
+        403: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="getRecycleBin",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_bin(request):
+    return allowlist_result(list_bin, request)
+
+
+@api.post(
+    "/admin/bin/{type}/{id}/restore",
+    response={200: list[RecycleBinEntry], **BIN_ERRORS},
+    operation_id="restoreDeleted",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def restore_bin(request, type: DeletedKind, id: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(restore_deleted, request, type, id)
+
+
+@api.delete(
+    "/admin/bin/{type}/{id}",
+    response={200: list[RecycleBinEntry], **BIN_ERRORS},
+    operation_id="purgeDeleted",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def purge_bin(request, type: DeletedKind, id: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(purge_deleted, request, type, id)
+
+
+@api.delete(
+    "/admin/books/{bookId}",
+    response={
+        200: list[RecycleBinEntry],
+        401: Error,
+        403: Error,
+        404: Error,
+        500: Error,
+        503: Error,
+    },
+    operation_id="deleteBook",
+    openapi_extra={"security": [{"sessionCookie": [], "csrfHeader": []}]},
+)
+def delete_book(request, bookId: Annotated[str, Field(min_length=1)]):
+    return allowlist_result(remove_book, request, bookId)

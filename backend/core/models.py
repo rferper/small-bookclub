@@ -1,14 +1,19 @@
 """Reusable soft deletion; domain services own cascades and purge policy."""
 
 from datetime import timedelta
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, router, transaction
+from django.db.models.functions import Length
+from django.db.models.lookups import GreaterThanOrEqual, LessThanOrEqual
 from django.utils import timezone
 
 from users.access import is_admin
+
+from .quote_rules import normalize_quote, quote_key
 
 RETENTION = timedelta(days=30)
 
@@ -130,3 +135,127 @@ class SoftDeleteModel(models.Model):
 
     def validate_restore(self):
         """Override for parent/lifecycle validation inside the transaction."""
+
+
+class LiteraryQuote(SoftDeleteModel):
+    text = models.TextField(max_length=1000)
+    author = models.CharField(max_length=200, null=True, blank=True, default=None)
+    source = models.CharField(max_length=200, null=True, blank=True, default=None)
+    active = models.BooleanField(default=True)
+    normalized_text = models.CharField(max_length=1000, unique=True, editable=False)
+
+    class Meta(SoftDeleteModel.Meta):
+        constraints = SoftDeleteModel.Meta.constraints + [
+            models.CheckConstraint(
+                condition=GreaterThanOrEqual(Length("text"), 1)
+                & LessThanOrEqual(Length("text"), 1000),
+                name="quote_text_length",
+            ),
+            *[
+                models.CheckConstraint(
+                    condition=models.Q(**{f"{field}__isnull": True})
+                    | LessThanOrEqual(Length(field), 200),
+                    name=f"quote_{field}_length",
+                )
+                for field in ("author", "source")
+            ],
+        ]
+
+    def normalize(self):
+        try:
+            values = normalize_quote(
+                {
+                    field: getattr(self, field)
+                    for field in ("text", "author", "source", "active")
+                }
+            )
+        except (ValueError, UnicodeError) as exc:
+            raise ValidationError("Los datos de la cita no son válidos.") from exc
+        for field, value in values.items():
+            setattr(self, field, value)
+        self.normalized_text = quote_key(self.text)
+
+    def clean_fields(self, exclude=None):
+        self.normalize()
+        super().clean_fields(exclude=exclude)
+
+    def save(self, *args, **kwargs):
+        self.normalize()
+        if kwargs.get("update_fields") and "text" in kwargs["update_fields"]:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "normalized_text"}
+        return super().save(*args, **kwargs)
+
+
+class ActivityEvent(models.Model):
+    """Protected typed subjects; payload can never carry substantive content."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    kind = models.CharField(max_length=20)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    book = models.ForeignKey("books.Book", null=True, on_delete=models.PROTECT)
+    meeting = models.ForeignKey("meetings.Meeting", null=True, on_delete=models.PROTECT)
+    vote = models.ForeignKey("votes.Vote", null=True, on_delete=models.PROTECT)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    payload = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(payload={}), name="activity_empty_payload"
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        kind__in=["book_selected", "review_available"],
+                        book__isnull=False,
+                        meeting__isnull=True,
+                        vote__isnull=True,
+                    )
+                    | models.Q(
+                        kind="nomination_added",
+                        book__isnull=False,
+                        meeting__isnull=True,
+                        vote__isnull=False,
+                    )
+                    | models.Q(
+                        kind__in=["vote_opened", "vote_closed"],
+                        book__isnull=True,
+                        meeting__isnull=True,
+                        vote__isnull=False,
+                    )
+                    | models.Q(
+                        kind="summary_published",
+                        book__isnull=True,
+                        meeting__isnull=False,
+                        vote__isnull=True,
+                    )
+                ),
+                name="activity_typed_subject",
+            ),
+        ]
+
+
+class PurgeRecord(models.Model):
+    """Minimal proof of erasure: no subject payload or live subject relation."""
+
+    kind = models.CharField(max_length=9)
+    resource_id = models.CharField(max_length=20)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    purged_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["kind", "resource_id"], name="purge_unique_target"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    kind__in=["book", "meeting", "week", "highlight", "quote"]
+                ),
+                name="purge_known_kind",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(resource_id__regex=r"\A[1-9][0-9]{0,19}\Z"),
+                name="purge_native_id",
+            ),
+        ]
