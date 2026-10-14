@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      BOOKCLUB_ENV: development
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-local-compose-only-key-never-deploy}
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend
+      CLUB_TIMEZONE: ${CLUB_TIMEZONE:-Europe/Madrid}
+      DATABASE_PATH: /data/club.sqlite3
+      MEDIA_ROOT: /data/private_media
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI:-http://localhost:8080/api/auth/discord/callback}
+    volumes:
+      - club_data:/data
+    init: true
+    restart: unless-stopped
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        CLUB_TIMEZONE: ${CLUB_TIMEZONE:-Europe/Madrid}
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+    ports:
+      - "127.0.0.1:${BOOKCLUB_PORT:-8080}:8080"
+    init: true
+    restart: unless-stopped
+
+volumes:
+  club_data:
