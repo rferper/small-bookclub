@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import pytest
 
+from config import contract as contract_module
 from config.api import api
 from config.contract import (
     check_schema,
@@ -14,6 +15,26 @@ from config.contract import (
 
 def documents():
     return deepcopy(read_contract()), json.loads(json.dumps(api.get_openapi_schema()))
+
+
+def test_cached_contract_reads_cannot_mutate_later_documents(tmp_path, monkeypatch):
+    path = tmp_path / "contract.yaml"
+    path.write_text("paths: {example: {values: [original]}}", encoding="utf-8")
+    monkeypatch.setattr(contract_module, "CONTRACT_PATH", path)
+    first = read_contract()
+    first["paths"]["example"]["values"].append("changed")
+    first["extra"] = True
+    assert read_contract() == {"paths": {"example": {"values": ["original"]}}}
+
+
+def test_cached_contract_invalidates_when_file_contents_change(tmp_path, monkeypatch):
+    path = tmp_path / "contract.yaml"
+    path.write_text("value: first", encoding="utf-8")
+    monkeypatch.setattr(contract_module, "CONTRACT_PATH", path)
+    assert read_contract() == {"value": "first"}
+    # Same length deliberately rules out size-only invalidation.
+    path.write_text("value: later", encoding="utf-8")
+    assert read_contract() == {"value": "later"}
 
 
 def test_every_real_registered_operation_matches_contract_without_future_stubs():
