@@ -328,3 +328,70 @@ def test_statistics_empty_is_identical_with_no_reviews_or_only_locked_reviews(wo
     assert (
         client.get("/api/statistics", {"viewerId": str(users[1].pk)}).json() == expected
     )
+
+
+@pytest.mark.parametrize("actor_index", [0, 1, 2])
+@pytest.mark.parametrize(
+    "finished,submitted", [(False, False), (True, False), (False, True), (True, True)]
+)
+def test_home_review_count_requires_both_flags_for_every_role_without_loading_scores(
+    world, actor_index, finished, submitted
+):
+    users, books = world
+    actor = users[actor_index]
+    other = next(member for member in users if member != actor)
+    rate(books[3], other, 1)
+    if submitted:
+        rate(books[3], actor, 5)
+    if finished:
+        unlock(books[3], actor)
+    with CaptureQueriesContext(connection) as captured:
+        result = get(browser(actor), path="/api/home")
+    assert result["stats"] == {
+        "booksCompleted": 4,
+        "members": 4,
+        "reviews": 2 if finished and submitted else 0,
+    }
+    assert "SECRET_BOOK" not in str(result) and "SECRET_REVIEW_TEXT" not in str(result)
+    assert not any(
+        '"reviews_review"."disfrute"' in q["sql"] for q in captured.captured_queries
+    )
+
+
+def test_home_counts_match_permitted_statistics_reviews_with_history_and_removal(world):
+    users, books = world
+    client = browser(users[0])
+    books[0].status = "archivado"
+    books[0].save(update_fields=["status"])
+    for book in books[:2]:
+        unlock(book, users[0])
+        rate(book, users[0], 5)
+        rate(book, users[1], 2)
+    rate(books[3], users[2], 1)
+    unlock(books[3], users[0])  # Finished without an own review never counts.
+    User.objects.filter(pk=users[1].pk).update(approved=False, revoked_at=NOW)
+    assert get(client, path="/api/home")["stats"] == {
+        "booksCompleted": 3,
+        "members": 3,
+        "reviews": 4,
+    }
+    assert get(client, path="/api/statistics")["ratings"]["reviewCount"] == 4
+    # Editing scores affects means, not the visible review denominator.
+    Review.objects.filter(book=books[0], member=users[1]).update(
+        **dict.fromkeys(CRITERIA, 5)
+    )
+    assert get(client, path="/api/home")["stats"]["reviews"] == 4
+    books[1].soft_delete(users[0])
+    assert get(client, path="/api/home")["stats"] == {
+        "booksCompleted": 2,
+        "members": 3,
+        "reviews": 2,
+    }
+    books[1].restore(users[0])
+    assert get(client, path="/api/home")["stats"]["reviews"] == 4
+    BookCompletion.objects.filter(book=books[0], member=users[0]).update(
+        completed_at=None
+    )
+    assert get(client, path="/api/home")["stats"]["reviews"] == 2
+    User.objects.filter(pk=users[1].pk).update(approved=True, revoked_at=None)
+    assert get(client, path="/api/home")["stats"]["members"] == 4
