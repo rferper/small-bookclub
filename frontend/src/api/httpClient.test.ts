@@ -36,6 +36,24 @@ describe('HTTP statistics adapter', () => {
   })
 })
 
+describe('HTTP literary quote adapters', () => {
+  it('lists, creates, updates and soft-removes through the contract paths and current CSRF cookie', async () => {
+    const input = { text: 'Cita ficticia.', author: null, source: null, active: true }
+    const quote = { id: '8', ...input }
+    const send = vi.fn<typeof fetch>(async (_url, init) => json(init?.method === 'GET' ? [quote] : init?.method === 'DELETE' ? [] : quote, init?.method === 'POST' ? 201 : 200))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'q'.repeat(32)}` })
+    expect(await client.listAdminQuotes()).toEqual([quote])
+    expect(await client.addLiteraryQuote(input)).toEqual(quote)
+    expect(await client.updateLiteraryQuote('8', input)).toEqual(quote)
+    expect(await client.deleteLiteraryQuote('8')).toEqual([])
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/quotes', '/api/admin/quotes', '/api/admin/quotes/8', '/api/admin/quotes/8'])
+    for (const [, init] of send.mock.calls.slice(1)) expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('q'.repeat(32))
+    expect(JSON.parse(send.mock.calls[1][1]!.body as string)).toEqual(input)
+    expect(JSON.parse(send.mock.calls[2][1]!.body as string)).toEqual(input)
+    expect(send.mock.calls[3][1]?.body).toBeUndefined()
+  })
+})
+
 describe('HTTP session adapters', () => {
   it.each(sessions)('reads the $status session using the central same-origin transport', async session => {
     const send = vi.fn<typeof fetch>(async () => json(session))

@@ -89,6 +89,10 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "PUT /api/books/{bookId}/my-review (saveMyReview)",
         "GET /api/statistics/compatibility (getTasteCompatibility)",
         "GET /api/statistics (getStatistics)",
+        "GET /api/admin/quotes (listAdminQuotes)",
+        "POST /api/admin/quotes (addLiteraryQuote)",
+        "PUT /api/admin/quotes/{id} (updateLiteraryQuote)",
+        "DELETE /api/admin/quotes/{id} (deleteLiteraryQuote)",
     ]
 
 
