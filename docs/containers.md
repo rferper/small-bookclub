@@ -68,3 +68,21 @@ containers/volumes. Images/build caches can remain for future builds.
 Build references: [uv Docker](https://docs.astral.sh/uv/guides/integration/docker/),
 [Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/),
 [unprivileged Nginx](https://github.com/nginx/docker-nginx-unprivileged).
+
+## Verification record (2026-10-14)
+
+Built both images and started project `bookclub-verify-73` on loopback port 18873.
+Both services became healthy. Proxy checks passed for health/session, SPA fallback,
+privacy headers, private 401, missing-CSRF 403 and same-origin token-authenticated
+logout 204. A fictional member/book, server session and private native WebP avatar
+survived force recreation. Runtime UIDs were 10001 and 101. Terminal Playwright
+rendered the actual HTTP-mode sign-in and authenticated library at desktop/mobile
+widths; screenshots were inspected with no overflow, page errors or failed requests.
+The disposable containers/network/volume were removed afterwards.
+
+Backend: 1,574 passed, one existing Windows symlink skip (366.45 seconds).
+Frontend: 1,271 passed; lint/build passed. Backend lint/format and missing-migration
+checks passed. Independent runtime/proxy security review and follow-up passed.
+Gunicorn's unused control socket is explicitly disabled for the non-root runtime;
+the backend health timing allows slower Docker Desktop startup. Proxy dependency
+restart keeps upstream resolution current after explicit backend recreation.
