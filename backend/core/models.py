@@ -4,11 +4,15 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, router, transaction
+from django.db.models.functions import Length
+from django.db.models.lookups import GreaterThanOrEqual, LessThanOrEqual
 from django.utils import timezone
 
 from users.access import is_admin
+
+from .quote_rules import normalize_quote, quote_key
 
 RETENTION = timedelta(days=30)
 
@@ -130,3 +134,52 @@ class SoftDeleteModel(models.Model):
 
     def validate_restore(self):
         """Override for parent/lifecycle validation inside the transaction."""
+
+
+class LiteraryQuote(SoftDeleteModel):
+    text = models.TextField(max_length=1000)
+    author = models.CharField(max_length=200, null=True, blank=True, default=None)
+    source = models.CharField(max_length=200, null=True, blank=True, default=None)
+    active = models.BooleanField(default=True)
+    normalized_text = models.CharField(max_length=1000, unique=True, editable=False)
+
+    class Meta(SoftDeleteModel.Meta):
+        constraints = SoftDeleteModel.Meta.constraints + [
+            models.CheckConstraint(
+                condition=GreaterThanOrEqual(Length("text"), 1)
+                & LessThanOrEqual(Length("text"), 1000),
+                name="quote_text_length",
+            ),
+            *[
+                models.CheckConstraint(
+                    condition=models.Q(**{f"{field}__isnull": True})
+                    | LessThanOrEqual(Length(field), 200),
+                    name=f"quote_{field}_length",
+                )
+                for field in ("author", "source")
+            ],
+        ]
+
+    def normalize(self):
+        try:
+            values = normalize_quote(
+                {
+                    field: getattr(self, field)
+                    for field in ("text", "author", "source", "active")
+                }
+            )
+        except (ValueError, UnicodeError) as exc:
+            raise ValidationError("Los datos de la cita no son válidos.") from exc
+        for field, value in values.items():
+            setattr(self, field, value)
+        self.normalized_text = quote_key(self.text)
+
+    def clean_fields(self, exclude=None):
+        self.normalize()
+        super().clean_fields(exclude=exclude)
+
+    def save(self, *args, **kwargs):
+        self.normalize()
+        if kwargs.get("update_fields") and "text" in kwargs["update_fields"]:
+            kwargs["update_fields"] = {*kwargs["update_fields"], "normalized_text"}
+        return super().save(*args, **kwargs)

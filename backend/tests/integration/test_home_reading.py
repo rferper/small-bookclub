@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from books.models import Book, BookCompletion
 from config.contract import read_contract, resolve
+from core.models import LiteraryQuote
 from meetings.models import Meeting, ReadingAssignment, ReadingCompletion
 from users.models import User
 
@@ -20,6 +21,7 @@ DOC = read_contract()
 
 @pytest.fixture
 def setup(monkeypatch):
+    LiteraryQuote.objects.update(active=False)
     monkeypatch.setattr(django_timezone, "now", lambda: NOW)
     admin = User.objects.create_user(
         "100000000000000001",

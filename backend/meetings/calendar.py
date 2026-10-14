@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from books.models import Book
+from core.models import LiteraryQuote
 from users.access import approved_admin_refusal, require_permission
 from users.directory import member_summary
 from users.membership import error_result, native_member_id, spanish_name_key
@@ -212,6 +213,8 @@ def set_cancelled(request, meeting_id):
 
 
 def safe_label(kind, row):
+    if kind == "quote":
+        return "Cita literaria"
     if kind == "highlight":
         return "Momento destacado"
     if kind == "book":
@@ -223,6 +226,8 @@ def safe_label(kind, row):
 
 
 def dependencies(kind, row):
+    if kind == "quote":
+        return []
     if kind == "highlight":
         count = row.speakers.count()
         return [f"{count} atribuciones conservadas"] if count else []
@@ -252,7 +257,7 @@ def deletion_preview(request, kind, resource_id):
     if kind not in {"book", "meeting", "quote"}:
         return error_result(400)
     key = native_member_id(resource_id)
-    model = {"book": Book, "meeting": Meeting}.get(kind)
+    model = {"book": Book, "meeting": Meeting, "quote": LiteraryQuote}.get(kind)
     row = model.objects.filter(pk=key).first() if model and key else None
     if row is None:
         return error_result(404)
@@ -270,6 +275,7 @@ def bin_projection():
         ("meeting", Meeting),
         ("week", ReadingAssignment),
         ("highlight", MeetingHighlight),
+        ("quote", LiteraryQuote),
     ]:
         for row in model.all_objects.filter(deleted_at__isnull=False).select_related(
             "deleted_by"

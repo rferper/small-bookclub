@@ -1,5 +1,6 @@
 """Closed native homepage reading projection; substantive records stay gated."""
 
+from core.quotes import random_quote
 from meetings.current_reading import current_reading
 from meetings.models import ReadingAssignment
 from users.access import require_permission
@@ -81,7 +82,7 @@ def read_home(request):
         if week
         else [],
         "recentActivity": [],
-        "quote": None,
+        "quote": random_quote(),
         "stats": {
             "booksCompleted": Book.objects.filter(status="terminado").count(),
             "reviews": 0,
