@@ -3,6 +3,7 @@
 from core.quotes import random_quote
 from meetings.current_reading import current_reading
 from meetings.models import ReadingAssignment
+from reviews.statistics_services import permitted_review_count
 from users.access import require_permission
 from users.directory import member_summary
 from users.membership import spanish_name_key
@@ -85,7 +86,7 @@ def read_home(request):
         "quote": random_quote(),
         "stats": {
             "booksCompleted": Book.objects.filter(status="terminado").count(),
-            "reviews": 0,
+            "reviews": permitted_review_count(request.user),
             "members": User.objects.filter(approved=True, revoked_at=None).count(),
         },
     }

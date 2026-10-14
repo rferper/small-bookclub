@@ -19,7 +19,7 @@ from .statistics import (
 )
 
 
-def permitted_rating_inputs(actor):
+def permitted_book_ids(actor):
     finished = set(
         BookCompletion.objects.filter(
             member=actor, completed_at__isnull=False, book__deleted_at__isnull=True
@@ -30,13 +30,24 @@ def permitted_rating_inputs(actor):
             "book_id", flat=True
         )
     )
-    permitted = [
+    return [
         book_id
         for book_id in own
         if can_view_reviews(
             actor, personally_finished=book_id in finished, own_review_submitted=True
         )
     ]
+
+
+def permitted_review_count(actor):
+    """Lightweight Home count after the same central book gate as statistics."""
+    return Review.objects.filter(
+        book_id__in=permitted_book_ids(actor), book__deleted_at__isnull=True
+    ).count()
+
+
+def permitted_rating_inputs(actor):
+    permitted = permitted_book_ids(actor)
     books = [
         {
             "id": str(book.pk),
