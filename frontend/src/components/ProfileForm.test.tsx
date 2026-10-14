@@ -221,7 +221,7 @@ describe('Profile form: avatar', () => {
     expect(saves()).toBe(0)
   })
 
-  it('drops a pending image with «Mantener la foto actual», and removes one with «Quitar foto»', async () => {
+  it('discards an unsaved image without promising to delete a saved photo', async () => {
     const user = userEvent.setup()
     await openForm()
     await user.upload(fileInput(), png())
@@ -233,7 +233,9 @@ describe('Profile form: avatar', () => {
     await screen.findByRole('img', { name: 'Vista previa de tu nueva foto' })
     await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
     expect(screen.queryByRole('img', { name: 'Vista previa de tu nueva foto' })).not.toBeInTheDocument()
-    expect(screen.getByText('Tu foto se quitará al pulsar «Guardar cambios».')).toBeInTheDocument()
+    expect(screen.queryByText('Tu foto se quitará al pulsar «Guardar cambios».')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mantener la foto actual' })).not.toBeInTheDocument()
+    expect(fileInput()).toHaveFocus()
   })
 })
 
