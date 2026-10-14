@@ -24,9 +24,9 @@ docker compose -p bookclub-demo exec backend python manage.py seed_demo
 ```
 
 Visit http://localhost:18875. Once seeded, the existing Spanish sign-in screen
-offers **Entrar en la demo**. No Discord credentials or external account are
-needed. Compose defaults to demo mode off; exporting the flag is an explicit
-opt-in. Use a different project name from the owner's retained instance.
+offers **Entrar con una cuenta de prueba**. No Discord credentials or external
+account are needed. Compose defaults to demo mode off; exporting the flag is an
+explicit opt-in. Use a different project name from the owner's retained instance.
 
 For a standalone backend, set `DEMO_MODE=true`, `BOOKCLUB_ENV=demo`, a dedicated
 absolute `DATABASE_PATH` and `MEDIA_ROOT`, then run `uv run python manage.py
@@ -73,3 +73,22 @@ old-session invalidation, OAuth/export-state clearance, request limits and actua
 meeting/review spoiler gates. Seed tests cover refusal and transactional rollback.
 The central TypeScript HTTP adapter has separate transport regressions; existing
 sign-in screen tests retain mock coverage of the demo button/session refresh.
+
+### Local verification record (2026-10-14)
+
+Built both existing Compose images and started the dedicated
+`bookclub-verify-75` project on loopback port 18875. The explicit seed command
+succeeded, and a repeat preserved the seeded installation. Terminal Playwright
+clicked the real demo button at 1440px and 360px widths; both POSTs returned 204,
+the session reported `signedIn`/`member`, and the HTTP library showed all four
+fictional books. Sign-in/library screenshots were inspected at both widths:
+no clipping, horizontal overflow, console/page errors or failed requests.
+The temporary browser closed and only that project's containers, network and
+named volume were removed afterwards; no temporary preview remains.
+
+Full backend suite: 1,584 passed, one existing Windows symlink-privilege skip
+(361.68 seconds). Frontend: 1,273 passed across 71 files (240.56 seconds);
+lint/build, contract validation/generated-type freshness, 24 contract tests and
+type-boundary checks passed. Backend Ruff/format, system and missing-migration
+checks passed. Both startup modes also passed their independent schema/route
+inventory contract checks. Independent security review found no blockers.
