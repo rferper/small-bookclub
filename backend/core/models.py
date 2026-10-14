@@ -293,6 +293,14 @@ class CoverErasure(models.Model):
         ]
 
 
+class RequestBudget(models.Model):
+    """Short-lived keyed digest and counter; no IP, member ID or request content."""
+
+    key = models.CharField(primary_key=True, max_length=64)
+    expires_at = models.DateTimeField(db_index=True)
+    count = models.PositiveIntegerField(default=0)
+
+
 class AuditEvent(models.Model):
     """Immutable safe transition metadata; no live subject FK or private payload."""
 

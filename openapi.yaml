@@ -48,6 +48,8 @@ paths:
       tags:
         - Session
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "200":
           description: Successful result.
           content:
@@ -1077,6 +1079,8 @@ paths:
       tags:
         - Member
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "200":
           description: Successful result.
           content:
@@ -1109,6 +1113,8 @@ paths:
       tags:
         - Member
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "200":
           description: Successful result.
           content:
@@ -1403,6 +1409,8 @@ paths:
         /administracion. Anonymous/ineligible export returns to /, eligible non-admin to
         /administracion without OAuth. Responses are noncached; absent configuration gives safe 503.
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "302":
           description: Redirect to Discord authorisation from start, or safe same-origin page/session gate
             after callback. Failure lands on anonymous/denied Spanish page; no club payload.
@@ -1457,6 +1465,8 @@ paths:
         Successful export returns to /administracion; ordinary login never grants freshness.
         All responses are noncached.
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "302":
           description: Redirect to Discord authorisation from start, or safe same-origin page/session gate
             after callback. Failure lands on anonymous/denied Spanish page; no club payload.
@@ -1525,6 +1535,8 @@ paths:
         member: 403
         curator: 403
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "200":
           description: Authenticated private ZIP attachment; never a JSON wire response.
           headers:
@@ -3550,6 +3562,8 @@ paths:
         member: 403
         curator: 403
       responses:
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "200":
           description: Successful approved-admin result.
           content:
@@ -6156,6 +6170,7 @@ components:
             - reauthentication_required
             - internal_error
             - service_unavailable
+            - rate_limited
         message:
           type: string
           minLength: 1
@@ -8991,6 +9006,20 @@ components:
           recordsFile: club.json
           media: []
   responses:
+    TooManyRequests:
+      description: Request budget exhausted. Retry after the indicated number of seconds.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: rate_limited
+            message: Demasiadas solicitudes.
     Error400:
       description: Datos no válidos.
       content:

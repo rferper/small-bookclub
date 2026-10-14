@@ -27,12 +27,14 @@ INSTALLED_APPS = [
 ]
 AUTH_USER_MODEL = "users.User"
 MIDDLEWARE = [
+    "config.security.PrivacyHeadersMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "config.access.AuthenticationCacheMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "config.access.MembershipMiddleware",
+    "config.security.RateLimitMiddleware",
     "django.middleware.common.CommonMiddleware",
     "config.access.RequiredCsrfMiddleware",
 ]
@@ -40,6 +42,28 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_NAME = "sessionid"
 CSRF_COOKIE_NAME = "csrftoken"
 CSRF_FAILURE_VIEW = "config.access.csrf_failure"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 64 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 30
+DATA_UPLOAD_MAX_NUMBER_FILES = 2
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": True,
+    "formatters": {"safe": {"()": "config.security.SafeLogFormatter"}},
+    "handlers": {
+        "safe": {"class": "logging.StreamHandler", "formatter": "safe"},
+    },
+    "root": {"handlers": ["safe"], "level": "WARNING"},
+    "loggers": {
+        "django": {"handlers": ["safe"], "level": "WARNING", "propagate": False},
+        "django.server": {
+            "handlers": ["safe"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Only the two explicitly mounted API handlers expose provider authentication.

@@ -14,13 +14,14 @@ export type OperationRequest<N extends JsonOperation> = {
 } & Slot<'pathParams', Parameter<N, 'path'>> & Slot<'query', Parameter<N, 'query'>> & Slot<'body', Body<N>>
 
 type ErrorCode = components['schemas']['Error']['code']
-const codes: readonly ErrorCode[] = ['invalid_input', 'unauthenticated', 'forbidden', 'not_found', 'conflict', 'reauthentication_required', 'internal_error', 'service_unavailable']
+const codes: readonly ErrorCode[] = ['invalid_input', 'unauthenticated', 'forbidden', 'not_found', 'conflict', 'reauthentication_required', 'internal_error', 'service_unavailable', 'rate_limited']
 const defaults: Record<number, [ErrorCode, string]> = {
   400: ['invalid_input', 'No se ha podido enviar la solicitud.'],
   401: ['unauthenticated', 'Vuelve a iniciar sesión.'],
   403: ['forbidden', 'No tienes permiso para realizar esta acción.'],
   404: ['not_found', 'No encontramos lo que buscas.'],
   409: ['conflict', 'No se puede realizar esta acción ahora.'],
+  429: ['rate_limited', 'Demasiadas solicitudes.'],
   503: ['service_unavailable', 'El servicio no está disponible. Inténtalo de nuevo.'],
 }
 export function safeError(status: number): ApiError {

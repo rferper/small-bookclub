@@ -2760,7 +2760,7 @@ export interface components {
          */
         Error: {
             /** @enum {string} */
-            code: "invalid_input" | "unauthenticated" | "forbidden" | "not_found" | "conflict" | "reauthentication_required" | "internal_error" | "service_unavailable";
+            code: "invalid_input" | "unauthenticated" | "forbidden" | "not_found" | "conflict" | "reauthentication_required" | "internal_error" | "service_unavailable" | "rate_limited";
             message: string;
         };
         /**
@@ -4198,6 +4198,22 @@ export interface components {
         };
     };
     responses: {
+        /** @description Request budget exhausted. Retry after the indicated number of seconds. */
+        TooManyRequests: {
+            headers: {
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "rate_limited",
+                 *       "message": "Demasiadas solicitudes."
+                 *     }
+                 */
+                "application/json": components["schemas"]["Error"];
+            };
+        };
         /** @description Datos no válidos. */
         Error400: {
             headers: {
@@ -4363,6 +4379,7 @@ export interface operations {
                     "application/json": components["schemas"]["Session"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
@@ -5375,6 +5392,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error401"];
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
@@ -5404,6 +5422,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error401"];
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
@@ -5662,6 +5681,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
@@ -5691,6 +5711,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
@@ -5767,6 +5788,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReauthenticationError"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
@@ -7329,6 +7351,7 @@ export interface operations {
             400: components["responses"]["Error400"];
             401: components["responses"]["Error401"];
             403: components["responses"]["Error403"];
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };
