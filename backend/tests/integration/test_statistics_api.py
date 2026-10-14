@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator
 
 from books.models import Book, BookCompletion
 from config.contract import read_contract, resolve
+from meetings.models import Meeting
 from reviews.constants import CRITERIA
 from reviews.models import Review
 from users.models import CuratorAssignment, User
@@ -53,10 +54,10 @@ def browser(actor):
     return client
 
 
-def get(client, status=200):
-    response = client.get(PATH)
+def get(client, status=200, path=PATH):
+    response = client.get(path)
     assert response.status_code == status, response.content
-    schema = resolve(DOC, DOC["paths"][PATH]["get"]["responses"][str(status)])[
+    schema = resolve(DOC, DOC["paths"][path]["get"]["responses"][str(status)])[
         "content"
     ]["application/json"]["schema"]
     Draft202012Validator(schema).validate(response.json())
@@ -205,3 +206,125 @@ def test_request_cannot_select_another_viewer(world):
         PATH, {"viewerId": str(users[0].pk), "memberId": str(users[0].pk)}
     )
     assert response.status_code == 200 and response.json() == expected
+
+
+@pytest.mark.parametrize("actor_index", [0, 1, 2])
+@pytest.mark.parametrize(
+    "finished,submitted", [(False, False), (True, False), (False, True), (True, True)]
+)
+def test_statistics_gate_precedes_every_rating_figure(
+    world, actor_index, finished, submitted
+):
+    users, books = world
+    actor = users[actor_index]
+    other = next(member for member in users if member != actor)
+    rate(books[3], other, 1)
+    if submitted:
+        rate(books[3], actor, 5)
+    if finished:
+        unlock(books[3], actor)
+    with CaptureQueriesContext(connection) as captured:
+        result = get(browser(actor), path="/api/statistics")
+    assert result["booksRead"] == 4 and result["meetingsHeld"] == 0
+    assert result["thresholds"] == {"bookRatings": 3, "memberRatings": 3}
+    if finished and submitted:
+        assert result["ratings"]["reviewCount"] == 2
+        assert result["ratings"]["overallMean"] == 3
+        assert result["ratings"]["bookCount"] == 1
+    else:
+        assert result["ratings"] == {"status": "empty"}
+        assert "SECRET_BOOK" not in str(result)
+        assert not any(
+            '"reviews_review"."disfrute"' in q["sql"] for q in captured.captured_queries
+        )
+    assert "SECRET_REVIEW_TEXT" not in str(result)
+
+
+def test_statistics_counts_use_retained_books_and_strict_past_meetings(
+    world, monkeypatch
+):
+    from datetime import timedelta
+
+    from django.utils import timezone as django_timezone
+
+    monkeypatch.setattr(django_timezone, "now", lambda: NOW)
+    users, books = world
+    books[0].status = "archivado"
+    books[0].save(update_fields=["status"])
+    books[1].status = "leyendo"
+    books[1].save(update_fields=["status"])
+    past = NOW - timedelta(seconds=1)
+    for starts, cancelled in [
+        (past, False),
+        (past, True),
+        (NOW, False),
+        (NOW + timedelta(seconds=1), False),
+    ]:
+        Meeting.objects.create(starts_at=starts, cancelled=cancelled)
+    removed = Meeting.objects.create(starts_at=past)
+    removed.soft_delete(users[0])
+    Meeting.objects.create(starts_at=past, book=books[3])
+    books[3].soft_delete(users[0])
+    result = get(browser(users[0]), path="/api/statistics")
+    assert result == {
+        "booksRead": 2,
+        "meetingsHeld": 1,
+        "thresholds": {"bookRatings": 3, "memberRatings": 3},
+        "ratings": {"status": "empty"},
+    }
+
+
+def test_statistics_weight_each_visible_review_and_retain_revoked_attribution(world):
+    users, books = world
+    client = browser(users[0])
+    for book in books[:2]:
+        unlock(book, users[0])
+        rate(book, users[0], 5)
+    rate(books[0], users[1], 2)
+    rate(books[0], users[2], 1)
+    rate(books[3], users[1], 1)
+    User.objects.filter(pk=users[1].pk).update(approved=False, revoked_at=NOW)
+    ratings = get(client, path="/api/statistics")["ratings"]
+    assert ratings["overallMean"] == 3.25
+    assert ratings["reviewCount"] == 4 and ratings["bookCount"] == 2
+    assert ratings["criterionMeans"] == dict.fromkeys(CRITERIA, 3.25)
+    assert ratings["members"][0]["isMe"] is True
+    assert ratings["members"][0]["reviewCount"] == 2
+    assert ratings["members"][0]["overallMean"] == 5
+    assert any(row["member"]["id"] == str(users[1].pk) for row in ratings["members"])
+    assert "SECRET_BOOK" not in str(ratings)
+    Review.objects.filter(book=books[0], member=users[1]).update(
+        **dict.fromkeys(CRITERIA, 4)
+    )
+    assert get(client, path="/api/statistics")["ratings"]["overallMean"] == 3.75
+    books[0].soft_delete(users[0])
+    ratings = get(client, path="/api/statistics")["ratings"]
+    assert ratings["reviewCount"] == ratings["bookCount"] == 1
+    assert ratings["overallMean"] == 5
+    assert str(users[1].pk) not in [row["member"]["id"] for row in ratings["members"]]
+    books[0].restore(users[0])
+    assert get(client, path="/api/statistics")["ratings"]["reviewCount"] == 4
+
+
+@pytest.mark.parametrize("kind", ["anonymous", "pending", "revoked"])
+def test_statistics_rechecks_membership(world, kind):
+    users, _ = world
+    actor = users[0] if kind != "anonymous" else None
+    client = browser(actor)
+    if kind != "anonymous":
+        User.objects.filter(pk=actor.pk).update(
+            approved=False, revoked_at=NOW if kind == "revoked" else None
+        )
+    assert get(client, 401, path="/api/statistics")["code"] == "unauthenticated"
+
+
+def test_statistics_empty_is_identical_with_no_reviews_or_only_locked_reviews(world):
+    users, books = world
+    client = browser(users[0])
+    expected = get(client, path="/api/statistics")
+    for book in books:
+        rate(book, users[1], 1)
+    assert get(client, path="/api/statistics") == expected
+    assert (
+        client.get("/api/statistics", {"viewerId": str(users[1].pk)}).json() == expected
+    )

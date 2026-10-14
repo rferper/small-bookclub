@@ -27,6 +27,15 @@ describe('HTTP taste compatibility adapter', () => {
   })
 })
 
+describe('HTTP statistics adapter', () => {
+  it('returns the server empty union and explicit independent counts through the central transport', async () => {
+    const body = { booksRead: 4, meetingsHeld: 2, thresholds: { bookRatings: 3, memberRatings: 3 }, ratings: { status: 'empty' as const } }
+    const send = vi.fn<typeof fetch>(async () => json(body))
+    expect(await createHttpClient({ fetch: send }).getStatistics()).toEqual(body)
+    expect(send.mock.calls[0]).toEqual(['/api/statistics', expect.objectContaining({ method: 'GET', credentials: 'same-origin', body: undefined })])
+  })
+})
+
 describe('HTTP session adapters', () => {
   it.each(sessions)('reads the $status session using the central same-origin transport', async session => {
     const send = vi.fn<typeof fetch>(async () => json(session))
