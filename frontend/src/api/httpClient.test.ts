@@ -13,6 +13,20 @@ const sessions: Session[] = [
   { status: 'signedIn', user: { id: 'fictional-website-7', displayName: 'Alba ficticia', avatarUrl: null, role: 'member' } },
 ]
 
+describe('HTTP taste compatibility adapter', () => {
+  it('uses the central session transport and preserves the server comparison union', async () => {
+    const body = { minSharedBooks: 3, members: [{ member: { id: '2', displayName: 'Lector ficticio', avatarUrl: null }, sharedBookCount: 2, comparison: { status: 'insufficient' as const } }] }
+    const send = vi.fn<typeof fetch>(async () => json(body))
+    expect(await createHttpClient({ fetch: send }).getTasteCompatibility()).toEqual(body)
+    expect(send.mock.calls[0]).toEqual(['/api/statistics/compatibility', expect.objectContaining({ method: 'GET', credentials: 'same-origin', body: undefined })])
+  })
+
+  it('preserves authentication errors', async () => {
+    const client = createHttpClient({ fetch: async () => json({ code: 'unauthenticated', message: 'Debes iniciar sesión.' }, 401) })
+    await expect(client.getTasteCompatibility()).rejects.toMatchObject({ status: 401, code: 'unauthenticated' })
+  })
+})
+
 describe('HTTP session adapters', () => {
   it.each(sessions)('reads the $status session using the central same-origin transport', async session => {
     const send = vi.fn<typeof fetch>(async () => json(session))
