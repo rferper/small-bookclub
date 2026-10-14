@@ -258,6 +258,9 @@ def add_candidate(request, vote_id):
     VoteCandidate.objects.create(
         vote=vote, book=book, position=(last.position if last else 0) + 1
     )
+    from core.activity import record_event
+
+    record_event("nomination_added", request.user, book=book, vote=vote)
     return 200, project_vote(vote, request.user)
 
 
@@ -312,6 +315,9 @@ def open_vote(request, vote_id):
     vote.status = Vote.Status.OPEN
     vote.opened_at = timezone.now()
     vote.save(update_fields=["status", "opened_at"])
+    from core.activity import record_event
+
+    record_event("vote_opened", request.user, vote=vote)
     return 200, project_vote(vote, request.user)
 
 
@@ -381,6 +387,9 @@ def close_vote(request, vote_id):
     vote.winning_book_id = int(top[0]) if len(top) == 1 else None
     vote.save(update_fields=["status", "closed_at", "winning_book"])
     record_book_origin(vote)
+    from core.activity import record_event
+
+    record_event("vote_closed", request.user, vote=vote)
     return 200, project_vote(vote, request.user)
 
 

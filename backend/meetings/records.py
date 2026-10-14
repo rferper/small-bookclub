@@ -155,11 +155,16 @@ def mutate_record(request, meeting_id, action, highlight_id=None):
             ):
                 raise InvalidRecordInput
             clean = text(value["text"], 10000, value["published"])
+            previously_published = meeting.summary_published
             meeting.summary_text = clean or None
             meeting.summary_published = value["published"]
             meeting.save(
                 update_fields=["summary_text", "summary_published", "updated_at"]
             )
+            if meeting.summary_published and not previously_published:
+                from core.activity import record_event
+
+                record_event("summary_published", request.user, meeting=meeting)
         elif action == "safe":
             if set(value) != {"safe"} or type(value["safe"]) is not bool:
                 raise InvalidRecordInput

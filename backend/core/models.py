@@ -1,6 +1,7 @@
 """Reusable soft deletion; domain services own cascades and purge policy."""
 
 from datetime import timedelta
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -183,3 +184,52 @@ class LiteraryQuote(SoftDeleteModel):
         if kwargs.get("update_fields") and "text" in kwargs["update_fields"]:
             kwargs["update_fields"] = {*kwargs["update_fields"], "normalized_text"}
         return super().save(*args, **kwargs)
+
+
+class ActivityEvent(models.Model):
+    """Protected typed subjects; payload can never carry substantive content."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    kind = models.CharField(max_length=20)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    book = models.ForeignKey("books.Book", null=True, on_delete=models.PROTECT)
+    meeting = models.ForeignKey("meetings.Meeting", null=True, on_delete=models.PROTECT)
+    vote = models.ForeignKey("votes.Vote", null=True, on_delete=models.PROTECT)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    payload = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(payload={}), name="activity_empty_payload"
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        kind__in=["book_selected", "review_available"],
+                        book__isnull=False,
+                        meeting__isnull=True,
+                        vote__isnull=True,
+                    )
+                    | models.Q(
+                        kind="nomination_added",
+                        book__isnull=False,
+                        meeting__isnull=True,
+                        vote__isnull=False,
+                    )
+                    | models.Q(
+                        kind__in=["vote_opened", "vote_closed"],
+                        book__isnull=True,
+                        meeting__isnull=True,
+                        vote__isnull=False,
+                    )
+                    | models.Q(
+                        kind="summary_published",
+                        book__isnull=True,
+                        meeting__isnull=False,
+                        vote__isnull=True,
+                    )
+                ),
+                name="activity_typed_subject",
+            ),
+        ]
