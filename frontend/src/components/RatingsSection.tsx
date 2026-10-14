@@ -27,7 +27,7 @@ const RULE =
 // here leaves the rest of the book visible. What it shows comes only from the
 // server's answer: a locked result carries no count, mean, name or text, so
 // there is nothing to hide here. The same for a member and the admin.
-export function RatingsSection({ bookId, reviewsAvailable = true }: { bookId: string; reviewsAvailable?: boolean }) {
+export function RatingsSection({ bookId }: { bookId: string }) {
   const ratings = useApiData((api) => api.getBookRatings(bookId))
   // Set by the rating form after saving: confirm it and move focus here.
   const savedJustNow = isRatingSavedState(useLocation().state)
@@ -47,13 +47,13 @@ export function RatingsSection({ bookId, reviewsAvailable = true }: { bookId: st
       ) : ratings.status === 'error' ? (
         <LoadError message="No se han podido cargar las valoraciones." onRetry={ratings.reload} />
       ) : (
-        <Ratings loaded={ratings.data} reload={ratings.reload} savedJustNow={savedJustNow} reviewsAvailable={reviewsAvailable} />
+        <Ratings loaded={ratings.data} reload={ratings.reload} savedJustNow={savedJustNow} />
       )}
     </Card>
   )
 }
 
-function Ratings({ loaded, reload, savedJustNow, reviewsAvailable }: { loaded: BookRatings; reload: () => void; savedJustNow: boolean; reviewsAvailable: boolean }) {
+function Ratings({ loaded, reload, savedJustNow }: { loaded: BookRatings; reload: () => void; savedJustNow: boolean }) {
   const api = useApi()
   // The ratings as last returned by the server: from the load, or from the
   // user's own «He terminado el libro» change.
@@ -105,7 +105,7 @@ function Ratings({ loaded, reload, savedJustNow, reviewsAvailable }: { loaded: B
           savedJustNow={savedJustNow}
         />
       ) : (
-        <LockedRatings ratings={ratings} pending={pending} failed={failed} reviewsAvailable={reviewsAvailable} onToggle={(finished) => void toggle(finished)} />
+        <LockedRatings ratings={ratings} pending={pending} failed={failed} onToggle={(finished) => void toggle(finished)} />
       )}
     </div>
   )
@@ -117,13 +117,11 @@ function LockedRatings({
   ratings,
   pending,
   failed,
-  reviewsAvailable,
   onToggle,
 }: {
   ratings: BookRatings
   pending: boolean | null
   failed: boolean
-  reviewsAvailable: boolean
   onToggle: (finished: boolean) => void
 }) {
   return (
@@ -145,14 +143,14 @@ function LockedRatings({
           </p>
         )}
       </div>
-      {reviewsAvailable && ratings.finishedByMe && (
+      {ratings.finishedByMe && (
         <p>
           <Link to={ratingFormPath(ratings.book.id)} className={linkClass}>
             Valorar el libro
           </Link>
         </p>
       )}
-      <p className="max-w-prose text-bark">{reviewsAvailable ? RULE : 'Las valoraciones estarán disponibles más adelante.'}</p>
+      <p className="max-w-prose text-bark">{RULE}</p>
     </div>
   )
 }
