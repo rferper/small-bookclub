@@ -266,6 +266,7 @@ def dependencies(kind, row):
 def book_history_dependencies(row):
     counts = [
         (row.reviews.count(), "valoraciones conservadas"),
+        (row.favourites.count(), "selecciones de libros favoritos conservadas"),
         (row.completions.count(), "registros de libro terminado conservados"),
         (
             Vote.objects.filter(

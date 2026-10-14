@@ -22,10 +22,10 @@ path is fetched, and symlinked files/directories cannot escape the configured ro
 Only declared business fields are projected. Passwords, session rows, OAuth state,
 tokens, secret configuration and purged substantive content are excluded. Canonical
 IDs, links, completion flags, deletion metadata, rubric anchors and minimal purge
-tombstones are retained. The current native implementation has no favourite-book
-selection storage, so profile favourite IDs are empty. Each successful export creates
+tombstones are retained. Profile favourite IDs preserve the persisted ranked selection,
+including recoverable book references. Each successful export creates
 one protected, safe actor/name/time event, included once in its archive; failed export
-transactions leave no success event. Other persistent critical-action auditing is #50.
+transactions leave no success event. Persistent critical-action auditing is documented in docs/audit.md.
 
 The format promises neither database restoration/import nor backup rotation. Export
 policy metadata at `GET /api/admin/backups` truthfully returns pending policy and no

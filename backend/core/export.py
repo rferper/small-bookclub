@@ -122,7 +122,12 @@ def business_projection(media, now):
                 "memberId": str(row.pk),
                 "bio": row.bio,
                 "favouriteQuote": row.favourite_quote,
-                "favouriteBookIds": [],
+                "favouriteBookIds": [
+                    str(pk)
+                    for pk in row.favourites.order_by("rank", "pk").values_list(
+                        "book_id", flat=True
+                    )
+                ],
             }
             for row in members
         ],

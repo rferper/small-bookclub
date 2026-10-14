@@ -229,6 +229,7 @@ def test_user_migrations_install_custom_identity_and_curator_and_are_repeatable(
         assert migrations == [
             ("users", "0001_initial"),
             ("users", "0002_curatorassignment"),
+            ("users", "0003_favouritebook"),
         ]
         assert "users_curatorassignment" in tables
 
