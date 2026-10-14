@@ -104,7 +104,7 @@ export function TieBreakForm({
             rows={4}
             aria-describedby={noteHintId}
             onChange={(event) => setNote(event.target.value)}
-            className="w-full min-w-0 rounded-lg border border-wood/60 bg-parchment p-2"
+            className="w-full min-w-0 rounded-lg border border-bark bg-parchment p-2"
           />
           <p id={noteHintId} className="text-sm text-bark">
             Por ejemplo, cómo lo decidisteis. Hasta {NOTE_MAX_LENGTH} caracteres.

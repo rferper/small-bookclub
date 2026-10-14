@@ -54,12 +54,15 @@ describe('Miembros', () => {
     expect(carmen.querySelector('[aria-hidden="true"]')).toHaveTextContent('C')
   })
 
-  it('shows an image avatar with its alt text', async () => {
+  it('treats an image avatar beside the visible name as decorative', async () => {
     const state = createClubState()
     state.members.find((m) => m.id === 'm3')!.avatarUrl = '/avatars/carmen.png'
     const { main } = await openMembers({ state })
 
-    expect(within(main).getByRole('img', { name: 'Foto de Carmen' })).toHaveAttribute('src', '/avatars/carmen.png')
+    const link = within(main).getByRole('link', { name: /^Carmen\s*✓ Leído$/ })
+    expect(link.querySelector('img')).toHaveAttribute('alt', '')
+    expect(link.querySelector('img')).toHaveAttribute('src', '/avatars/carmen.png')
+    expect(within(link).queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('marks the default member as «(tú)»', async () => {

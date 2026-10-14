@@ -14,7 +14,7 @@ import { meetingInstant, meetingLocalValues } from '../lib/meetingTime'
 const base = '/administracion/reuniones'
 const linkClass = 'text-moss underline underline-offset-4 hover:text-forest'
 const buttonClass = 'rounded-lg border-2 border-forest px-4 py-2 text-forest hover:bg-sage/40 disabled:opacity-60'
-const inputClass = 'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest'
+const inputClass = 'w-full min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest'
 
 export function AdminMeetingsPage() {
   const calendar = useApiData((api) => api.listAdminMeetings())

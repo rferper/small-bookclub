@@ -122,7 +122,7 @@ export function CuratorForm({
               setChoice({ base: current, value: event.target.value })
               setStatus('')
             }}
-            className="w-full max-w-xs min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest"
+            className="w-full max-w-xs min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest"
           >
             <option value={NOBODY}>Sin curaduría</option>
             {options.map((entry) => (

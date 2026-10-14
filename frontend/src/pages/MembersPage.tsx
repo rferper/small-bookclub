@@ -42,7 +42,7 @@ function MemberItem({ entry }: { entry: MemberDirectoryEntry }) {
         className="flex h-full min-w-0 items-center gap-3 rounded-xl border border-wood/30 bg-paper p-4 shadow-sm hover:bg-sage/30"
       >
         <span className="shrink-0">
-          <Avatar member={member} size={48} />
+          <Avatar member={member} size={48} decorative />
         </span>
         <span className="min-w-0">
           <span className="block font-serif text-lg break-words text-forest">

@@ -1,10 +1,10 @@
 import type { MemberSummary } from '../api/types'
 import { initials } from '../lib/format'
 
-export function Avatar({ member, size = 40 }: { member: MemberSummary; size?: number }) {
+export function Avatar({ member, size = 40, decorative = false }: { member: MemberSummary; size?: number; decorative?: boolean }) {
   const style = { width: size, height: size }
   if (member.avatarUrl) {
-    return <img src={member.avatarUrl} alt={`Foto de ${member.displayName}`} style={style} className="rounded-full object-cover" />
+    return <img src={member.avatarUrl} alt={decorative ? '' : `Foto de ${member.displayName}`} style={style} className="rounded-full object-cover" />
   }
   return (
     <span

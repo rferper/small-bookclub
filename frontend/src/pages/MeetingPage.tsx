@@ -64,7 +64,7 @@ function MeetingView({ meeting }: { meeting: MeetingDetail }) {
       <div>
         <h1 className="text-3xl break-words text-forest sm:text-4xl">Reunión del {formatMeetingDay(meeting.startsAt)}</h1>
         {meeting.cancelled && (
-          <p className="mt-3 inline-block rounded-lg border-2 border-wood/60 bg-paper px-3 py-1 font-semibold text-forest">
+          <p className="mt-3 inline-block rounded-lg border-2 border-bark bg-paper px-3 py-1 font-semibold text-forest">
             Reunión cancelada
           </p>
         )}

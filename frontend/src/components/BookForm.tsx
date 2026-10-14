@@ -13,7 +13,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { DeleteContentButton } from './DeleteContentButton'
 
 const buttonClass = 'rounded-lg border border-forest px-4 py-2 text-forest hover:bg-sage/40 disabled:opacity-60'
-const inputClass = 'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
+const inputClass = 'w-full min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
 const TEXT_FIELDS = [
   ['title', 'Título'], ['authors', 'Autores (uno por línea)'], ['description', 'Descripción'],
   ['publicationDate', 'Fecha de publicación'], ['publisher', 'Editorial'], ['isbn', 'ISBN'], ['pageCount', 'Número de páginas'],

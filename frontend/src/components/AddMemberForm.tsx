@@ -7,7 +7,7 @@ import { adminErrorKind, DISCORD_ID_MAX_DIGITS, DISCORD_ID_MIN_DIGITS, discordId
 import { DISPLAY_NAME_MAX_LENGTH, displayNameProblem, type DisplayNameProblem } from '../lib/profile'
 
 const inputClass =
-  'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
+  'w-full min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
 
 const DISCORD_ID_MESSAGE = `Escribe un ID de Discord de ${DISCORD_ID_MIN_DIGITS} a ${DISCORD_ID_MAX_DIGITS} cifras.`
 

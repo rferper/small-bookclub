@@ -221,3 +221,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Disposable Playwright accessibility reports.
+frontend/test-results/
+frontend/playwright-report/
