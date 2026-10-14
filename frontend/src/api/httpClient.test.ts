@@ -62,6 +62,14 @@ describe('native safe audit transport', () => {
   })
 })
 
+describe('native own-review transport', () => {
+  it('requests only the session-owned endpoint without accepting a member ID', async () => {
+    const send=vi.fn<typeof fetch>(async()=>json([]))
+    expect(await createHttpClient({fetch:send}).listMyReviews()).toEqual([])
+    expect(send.mock.calls[0]).toEqual(['/api/me/reviews',expect.objectContaining({method:'GET',credentials:'same-origin',body:undefined})])
+  })
+})
+
 describe('HTTP taste compatibility adapter', () => {
   it('uses the central session transport and preserves the server comparison union', async () => {
     const body = { minSharedBooks: 3, members: [{ member: { id: '2', displayName: 'Lector ficticio', avatarUrl: null }, sharedBookCount: 2, comparison: { status: 'insufficient' as const } }] }

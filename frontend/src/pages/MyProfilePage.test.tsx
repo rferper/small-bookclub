@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ApiClient } from '../api/client'
 import type { CriterionScores } from '../api/types'
 import { createClubState, createEmptyState } from '../api/mock/fixtures'
@@ -24,6 +24,16 @@ const reviewItems = () => within(region('Mis valoraciones')).getAllByRole('listi
 const reviewTitles = () => reviewItems().map((item) => within(item).getByRole('heading', { level: 3 }).textContent)
 
 describe('Mi perfil page', () => {
+  it('HTTP mode uses the existing own-review section with editing links and no club aggregates', async () => {
+    vi.stubEnv('VITE_API_MODE','http')
+    try {
+      const {tracked}=await openPage()
+      await waitFor(()=>expect(reviewItems()).toHaveLength(4))
+      expect(tracked.calls).toContain('listMyReviews')
+      expect(within(region('Mis valoraciones')).getAllByRole('link',{name:/Editar mi valoración/})).toHaveLength(4)
+      expect(region('Mis valoraciones')).not.toHaveTextContent('Media del club')
+    } finally {vi.unstubAllEnvs()}
+  })
   it('has an h1, a link to the own profile, and two sections, each with its own call', async () => {
     const { main, tracked } = await openPage()
     await screen.findByLabelText('Nombre visible')

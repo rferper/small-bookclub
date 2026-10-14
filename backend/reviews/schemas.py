@@ -4,8 +4,8 @@ from typing import Annotated
 
 from pydantic import Field, create_model
 
-from books.schemas import CriterionScores
-from users.schemas import ClosedSchema
+from books.schemas import CriterionScores, MyReview
+from users.schemas import BookSummary, ClosedSchema
 
 from .models import CRITERIA
 
@@ -42,3 +42,7 @@ class ReviewInput(ClosedSchema):
     text: ReviewText | None = Field(
         default=None, json_schema_extra=lambda schema: schema.pop("default", None)
     )
+
+
+class MyReviewEntry(MyReview):
+    book: BookSummary

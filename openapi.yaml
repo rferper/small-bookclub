@@ -1346,8 +1346,10 @@ paths:
     get:
       operationId: listMyReviews
       summary: listMyReviews
-      description: Approved membership rechecked before data lookup. See docs/api.md for server
-        obligations and error precedence.
+      description: Approved membership rechecked before data lookup. Only the session member's
+        own submitted reviews for retained active books; independent of current completion or
+        foreign-review eligibility. Order by latest edit/submission then Spanish book title
+        and native ID. Supplied member IDs cannot select another user's reviews.
       tags:
         - Member
       responses:
