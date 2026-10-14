@@ -17,7 +17,7 @@ COPY backend ./
 COPY openapi.yaml /app/openapi.yaml
 USER 10001:10001
 EXPOSE 8000
-HEALTHCHECK --interval=5s --timeout=3s --start-period=20s --retries=10 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"]
+HEALTHCHECK --interval=10s --timeout=10s --start-period=30s --retries=12 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
 ENTRYPOINT ["python", "container_entrypoint.py"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "60"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "60", "--no-control-socket"]

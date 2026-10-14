@@ -27,6 +27,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+        restart: true
     ports:
       - "127.0.0.1:${BOOKCLUB_PORT:-8080}:8080"
     init: true
