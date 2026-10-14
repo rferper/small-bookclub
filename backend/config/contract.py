@@ -1,6 +1,7 @@
 """Offline drift checking of every real implemented operation, never future stubs."""
 
 import copy
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -11,7 +12,13 @@ ANNOTATIONS = {"description", "title", "examples", "example"}
 
 
 def read_contract():
-    return yaml.safe_load(CONTRACT_PATH.read_text(encoding="utf-8"))
+    # Cache parsing, not callers' mutable documents; edits invalidate by content.
+    return copy.deepcopy(_parse_contract(CONTRACT_PATH.read_text(encoding="utf-8")))
+
+
+@lru_cache(maxsize=1)
+def _parse_contract(text):
+    return yaml.safe_load(text)
 
 
 def resolve(document, value, seen=()):
