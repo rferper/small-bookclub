@@ -12,8 +12,8 @@ export function createHttpClient(options: {
   const navigate = options.navigate ?? ((url: string) => window.location.assign(url))
   const unavailable = async (): Promise<never> => { throw safeError(503) }
   return {
-    getBackupInfo: unavailable,
-    exportClubData: unavailable,
+    getBackupInfo: () => request<'getBackupInfo'>({ method: 'GET', path: '/api/admin/backups', successStatus: 200 }),
+    exportClubData: () => request.exportZip(),
     getAuditLog: unavailable,
     getRecycleBin: () => request<'getRecycleBin'>({ method: 'GET', path: '/api/admin/bin', successStatus: 200 }),
     getDeletionPreview: (type, id) => request<'getDeletionPreview'>({ method: 'GET', path: '/api/admin/deletion-preview/{type}/{id}', pathParams: { type, id }, successStatus: 200 }),
@@ -50,9 +50,9 @@ export function createHttpClient(options: {
     updateBook: (bookId, input) => request<'updateBook'>({ method: 'PUT', path: '/api/admin/books/{bookId}', pathParams: { bookId }, body: multipartFormData(bookMultipart(input)), successStatus: 200 }),
     searchBookMetadata: (query) => request<'searchBookMetadata'>({ method: 'GET', path: '/api/admin/book-metadata', query: { query }, successStatus: 200 }),
     getSession: () => request<'getSession'>({ method: 'GET', path: '/api/session', successStatus: 200 }),
-    startSignIn: async () => {
+    startSignIn: async (purpose) => {
       // OAuth redirects belong to the top-level browser, never the JSON transport.
-      navigate(operationUrl('/api/auth/discord/start'))
+      navigate(operationUrl('/api/auth/discord/start', undefined, purpose ? { purpose } : undefined))
     },
     startDemoSignIn: unavailable,
     signOut: () => request<'signOut'>({ method: 'POST', path: '/api/auth/logout', successStatus: 204 }),

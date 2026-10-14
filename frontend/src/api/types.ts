@@ -92,5 +92,5 @@ export type ProfileUpdate = Omit<components['schemas']['ProfileMetadata'], 'avat
 export type BookCoverChange = AvatarChange | { action: 'metadata'; resultId: string }
 export type BookInput = Omit<components['schemas']['BookMetadataInput'], 'coverAction' | 'metadataResultId'> & { cover: BookCoverChange }
 
-// Deliberately local illustrative download; production export is authenticated ZIP.
-export interface ClubExport { filename: string; json: string }
+// Local mock JSON and the authenticated ZIP remain explicit download variants.
+export type ClubExport = { filename: string; json: string } | { filename: 'club-de-lectura.zip'; blob: Blob }

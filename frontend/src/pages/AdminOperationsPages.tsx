@@ -21,11 +21,12 @@ const labels: Record<AuditAction, string> = {
 const back = <Link to="/administracion" className="text-moss underline">Volver a Administración</Link>
 
 export function AdminBackupsPage() {
+  const native = import.meta.env.VITE_API_MODE === 'http'
   const loaded = useApiData((api) => api.getBackupInfo())
   if (loaded.status === 'error' && loaded.error instanceof ApiError && loaded.error.status === 403) return <AdminOnlyMessage focusOnMount />
   return <div className="grid min-w-0 gap-6 wrap-anywhere">{back}
     <h1 className="text-3xl text-forest">Copias y exportación</h1>
-    <p>Esta demostración contiene datos ficticios. La exportación JSON es un ejemplo, no una copia restaurable de la base de datos ni de los archivos multimedia.</p>
+    <p>{native ? 'La exportación ZIP contiene los registros del club y los archivos multimedia disponibles. Puede incluir datos privados y contenido de la papelera. No sustituye a una copia de seguridad restaurable.' : 'Esta demostración contiene datos ficticios. La exportación JSON es un ejemplo, no una copia restaurable de la base de datos ni de los archivos multimedia.'}</p>
     <Card title="Política de copias">
       <p>Las copias automáticas consistentes de la base de datos y de los archivos multimedia, junto con la recuperación probada, pertenecen al despliegue.</p>
       <p className="mt-3">La papelera mantiene el contenido retirado durante 30 días, por separado. Los datos borrados antiguos pueden permanecer en copias hasta que estas caduquen. La rotación de copias debe tener un límite.</p>
@@ -34,7 +35,7 @@ export function AdminBackupsPage() {
       {loaded.status === 'ready' && <>
         <p className="mt-3 font-semibold">Política de copias pendiente de configurar</p>
         <p>La frecuencia, el destino y la rotación todavía no se han acordado.</p>
-        {loaded.data.lastBackupAt && <p className="mt-3">Última copia simulada: {formatMeetingDateWithYear(loaded.data.lastBackupAt)}</p>}
+        {loaded.data.lastBackupAt && <p className="mt-3">{native ? 'Última copia' : 'Última copia simulada'}: {formatMeetingDateWithYear(loaded.data.lastBackupAt)}</p>}
         <ExportControl />
       </>}
     </Card>
@@ -42,33 +43,49 @@ export function AdminBackupsPage() {
 }
 
 function ExportControl() {
+  const native = import.meta.env.VITE_API_MODE === 'http'
   const api = useApi(), { forbid } = useAdminAccess()
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''), [success, setSuccess] = useState('')
+  const [reauthenticate, setReauthenticate] = useState(false)
   const running = useRef(false), button = useRef<HTMLButtonElement>(null), restoreFocus = useRef(false)
   useLayoutEffect(() => { if (!open && restoreFocus.current) { button.current?.focus(); restoreFocus.current = false } }, [open])
-  const close = () => { restoreFocus.current = true; setOpen(false); setError('') }
+  const close = () => { restoreFocus.current = true; setOpen(false); setError(''); setReauthenticate(false) }
+  const identify = async () => {
+    if (running.current) return
+    running.current = true; setBusy(true); setError('')
+    try { await api.startSignIn('export') }
+    catch (reason) {
+      if (reason instanceof ApiError && reason.status === 403) forbid()
+      else if (!(reason instanceof ApiError && reason.status === 401)) setError('No se ha podido iniciar la identificación con Discord. Inténtalo de nuevo.')
+    } finally { running.current = false; setBusy(false) }
+  }
   const run = async () => {
     if (running.current) return
     running.current = true; setBusy(true); setError(''); setSuccess('')
     try {
       const result = await api.exportClubData()
-      const url = URL.createObjectURL(new Blob([result.json], { type: 'application/json;charset=utf-8' }))
+      const zip = 'blob' in result
+      const url = URL.createObjectURL(zip ? result.blob : new Blob([result.json], { type: 'application/json;charset=utf-8' }))
       const anchor = document.createElement('a')
       anchor.href = url; anchor.download = result.filename; document.body.append(anchor)
       try { anchor.click() } finally { anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000) }
-      close(); setSuccess('Exportación de demostración descargada')
+      close(); setSuccess(zip ? 'Exportación del club descargada' : 'Exportación de demostración descargada')
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 403) forbid()
-      else if (!(reason instanceof ApiError && reason.status === 401)) setError(reason instanceof ApiError && reason.status === 409 ? reason.message : 'No se ha podido descargar la exportación. Vuelve a intentarlo.')
+      else if (!(reason instanceof ApiError && reason.status === 401)) {
+        setReauthenticate(native && reason instanceof ApiError && reason.code === 'reauthentication_required')
+        setError(reason instanceof ApiError && reason.status === 409 ? reason.message : 'No se ha podido descargar la exportación. Vuelve a intentarlo.')
+      }
     } finally { running.current = false; setBusy(false) }
   }
   return <div className="mt-5">
     <button ref={button} className="rounded-lg bg-forest px-5 py-2.5 font-semibold text-parchment disabled:opacity-60" disabled={busy} onClick={() => { setSuccess(''); setOpen(true) }}>Exportar datos</button>
     {success && <p role="status" className="mt-3">{success}</p>}
-    {open && <ConfirmDialog title="¿Exportar el club ficticio completo?" confirmLabel={busy ? 'Exportando…' : 'Confirmar exportación'} busy={busy} error={error || null} onCancel={close} onConfirm={() => void run()}>
+    {open && <ConfirmDialog title={native ? '¿Exportar los datos del club?' : '¿Exportar el club ficticio completo?'} confirmLabel={busy ? 'Exportando…' : 'Confirmar exportación'} busy={busy} error={error || null} onCancel={close} onConfirm={() => void run()}>
       <p>El archivo puede contener registros privados y datos retirados que aún se pueden recuperar.</p>
-      <p>Esta confirmación simula la autorización administrativa. En esta demostración no se realiza una reautenticación real.</p>
-      <p>Solo incluye referencias multimedia existentes; no descarga sus archivos.</p>
+      <p>{native ? 'Necesitas haberte identificado con Discord en los últimos cinco minutos. Confirmar aquí no sustituye esa identificación.' : 'Esta confirmación simula la autorización administrativa. En esta demostración no se realiza una reautenticación real.'}</p>
+      <p>{native ? 'Incluye los archivos multimedia disponibles; los que falten se indicarán en el archivo.' : 'Solo incluye referencias multimedia existentes; no descarga sus archivos.'}</p>
+      {reauthenticate && <button type="button" className="rounded-lg border-2 border-forest px-4 py-2 text-forest disabled:opacity-60" disabled={busy} onClick={() => void identify()}>Volver a identificarme con Discord</button>}
     </ConfirmDialog>}
   </div>
 }

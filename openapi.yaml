@@ -1514,7 +1514,7 @@ paths:
         identity/allowlist checks. Five minutes by server clock, recorded server-side (#49/#5).
         Confirmation/request boolean insufficient; no body accepted. Include UTF-8 manifest.json +
         club.json and available website media. Authenticated noncached attachment; sessions/secrets
-        excluded. Export event included once in safe audit.
+        excluded. Unsupported media is never fetched externally. Export event included once in safe audit.
       x-access:
         approvedAdmin: true
         anonymous: 401

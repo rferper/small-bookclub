@@ -97,6 +97,8 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/admin/bin (getRecycleBin)",
         "POST /api/admin/bin/{type}/{id}/restore (restoreDeleted)",
         "DELETE /api/admin/bin/{type}/{id} (purgeDeleted)",
+        "GET /api/admin/backups (getBackupInfo)",
+        "POST /api/admin/export (exportClubData)",
     ]
 
 

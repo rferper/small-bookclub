@@ -274,3 +274,12 @@ class CoverErasure(models.Model):
                 name="cover_erasure_valid_key",
             )
         ]
+
+
+class ExportEvent(models.Model):
+    """Safe proof of an authorized export; no exported content or credentials."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    actor_name = models.CharField(max_length=40)
+    occurred_at = models.DateTimeField(auto_now_add=True)

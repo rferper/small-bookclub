@@ -21,6 +21,7 @@ from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
 from books.schemas import BookRatings, FinishedInput
+from core.export import backup_info, export_club
 from core.quote_schemas import AdminLiteraryQuote, LiteraryQuoteInput
 from core.quotes import list_quotes, remove_quote, save_quote
 from core.recycle import list_bin, purge_deleted, remove_book, restore_deleted
@@ -1434,3 +1435,56 @@ def purge_bin(request, type: DeletedKind, id: Annotated[str, Field(min_length=1)
 )
 def delete_book(request, bookId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(remove_book, request, bookId)
+
+
+class BackupInfo(Schema):
+    model_config = ConfigDict(extra="forbid")
+    policy: Literal["pending"]
+    lastBackupAt: timezone.datetime | None
+
+
+class ReauthenticationError(Schema):
+    model_config = ConfigDict(extra="forbid")
+    code: Literal["reauthentication_required"]
+    message: str
+
+
+@api.get(
+    "/admin/backups",
+    response={200: BackupInfo, 401: Error, 403: Error, 500: Error, 503: Error},
+    operation_id="getBackupInfo",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_backups(request):
+    return allowlist_result(backup_info, request)
+
+
+@api.post(
+    "/admin/export",
+    response={
+        200: None,
+        401: Error,
+        403: Error,
+        409: ReauthenticationError,
+        500: Error,
+        503: Error,
+    },
+    operation_id="exportClubData",
+    openapi_extra={
+        "security": [{"sessionCookie": [], "csrfHeader": []}],
+        "responses": {
+            "200": resolve(
+                read_contract(),
+                read_contract()["paths"]["/api/admin/export"]["post"]["responses"][
+                    "200"
+                ],
+            )
+        },
+    },
+)
+def post_export(request):
+    try:
+        result = export_club(request)
+    except Exception:
+        return Status(*error_result(500))
+    return result if isinstance(result, HttpResponse) else Status(*result)

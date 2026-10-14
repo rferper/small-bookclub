@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createClubState, createEmptyState } from '../api/mock/fixtures'
 import { createMockClient } from '../api/mock/mockClient'
+import { ApiError } from '../api/client'
 import { holdCalls, trackCalls } from '../test/clients'
 import { renderApp } from '../test/renderApp'
 
@@ -17,6 +18,38 @@ function downloads() {
 }
 
 describe('guarded administrative operations screens', () => {
+  it('native mode downloads ZIP without demo claims or a fabricated backup timestamp', async () => {
+    vi.stubEnv('VITE_API_MODE','http')
+    try {
+      const download = downloads(), user = userEvent.setup()
+      const client = {...createMockClient(),exportClubData:async()=>({filename:'club-de-lectura.zip' as const,blob:new Blob(['fictional ZIP'],{type:'application/zip'})})}
+      renderApp({path:backups,client})
+      await user.click(await screen.findByRole('button',{name:'Exportar datos'}))
+      expect(screen.getByRole('dialog')).toHaveTextContent('últimos cinco minutos')
+      expect(screen.queryByText(/Esta demostración contiene/)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button',{name:'Confirmar exportación'}))
+      await screen.findByText('Exportación del club descargada')
+      expect(download.blob()?.type).toBe('application/zip')
+      expect(download.click.mock.instances[0]).toHaveProperty('download','club-de-lectura.zip')
+      expect(screen.queryByText(/Última copia/)).not.toBeInTheDocument()
+    } finally {vi.unstubAllEnvs()}
+  })
+  it('native reauthentication-required offers the existing export-purpose OAuth handoff and no download', async () => {
+    vi.stubEnv('VITE_API_MODE','http')
+    try {
+      const download = downloads(), user = userEvent.setup(), purposes: unknown[] = []
+      const client = {...createMockClient(),exportClubData:async()=>{throw new ApiError(409,'Vuelve a identificarte con Discord.','reauthentication_required')},startSignIn:async(purpose?:'export')=>{purposes.push(purpose)}}
+      const tracked=trackCalls(client)
+      renderApp({path:backups,client:tracked.client})
+      await user.click(await screen.findByRole('button',{name:'Exportar datos'}))
+      await user.click(screen.getByRole('button',{name:'Confirmar exportación'}))
+      await user.click(await screen.findByRole('button',{name:'Volver a identificarme con Discord'}))
+      expect(purposes).toEqual(['export'])
+      expect(download.click).not.toHaveBeenCalled()
+      expect(tracked.calls).toContain('startSignIn')
+      expect(screen.getByRole('button',{name:'Confirmar exportación'})).toBeEnabled()
+    } finally {vi.unstubAllEnvs()}
+  })
   it.each(['anonymous', 'denied', 'member', 'curator'] as const)('blocks direct routes with no data calls for %s', async (session) => {
     for (const path of [backups, audit]) {
       const tracked = trackCalls(createMockClient({ session })), app = renderApp({ path, client: tracked.client })
