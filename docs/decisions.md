@@ -982,3 +982,7 @@ New `votes` app. `Vote` links to the retained `CuratorAssignment` cycle row (PRO
 
 **Decision:** Reuse the central can_view_reviews policy with persisted personal completion and own submitted Review for all native ratings envelopes. Do not query foreign reviews until both flags pass, including admin and curator member views. Locked variants expose no foreign identities, text, counts or means; own review remains available independently. Entitled views return retained attributed reviews, equal-weight overall/criterion means, count and isMine flags. Submission unlocks immediately and edits recalculate aggregates. Removed books remain hidden and existing metadata surfaces contain no review projections. Future statistics/feed must apply the same gate before calculating any figure. No new dependency, schema or UI change.
 
+## 2026-10-14: Native book ratings interface (#39)
+
+**Decision:** Book pages offer rating submission after personal completion in both mock and HTTP modes, now that #35–#38 implement the rubric, submission and spoiler-gated ratings endpoints. Remove the temporary HTTP availability prop and copy. Reuse the accepted accessible SVG radar and equivalent numeric table (#92), as specified by the design system, rather than adding the stale issue's Chart.js dependency. The central API client supplies the server's locked/visible union; roles never determine foreign-rating visibility in components. Existing contract, components and dependencies remain sufficient.
+

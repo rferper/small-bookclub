@@ -18,19 +18,21 @@ const region = (name: string) => screen.getByRole('region', { name })
 const items = (name: string) => within(region(name)).getAllByRole('listitem')
 
 describe('Book page', () => {
-  it('uses live completion controls while staging review submission', async () => {
+  it('offers rating submission after completion in HTTP mode', async () => {
     vi.stubEnv('VITE_API_MODE', 'http')
     try {
       const { tracked } = await openBook('b3')
       const finished = await within(region('Valoraciones')).findByRole('checkbox', { name: 'He terminado el libro' })
-      expect(region('Valoraciones')).toHaveTextContent('Las valoraciones estarán disponibles más adelante.')
+      expect(region('Valoraciones')).toHaveTextContent('Cuando hayas terminado el libro y enviado tu valoración')
+      expect(within(region('Valoraciones')).queryByRole('link', { name: 'Valorar el libro' })).not.toBeInTheDocument()
       expect(tracked.calls).toContain('getBookRatings')
       await userEvent.setup().click(finished)
       expect(finished).toBeChecked()
       expect(tracked.calls).toContain('setBookFinished')
-      expect(within(region('Valoraciones')).queryByRole('link', { name: 'Valorar el libro' })).not.toBeInTheDocument()
+      expect(within(region('Valoraciones')).getByRole('link', { name: 'Valorar el libro' })).toHaveAttribute('href', '/biblioteca/b3/valorar')
       await userEvent.setup().click(finished)
       expect(finished).not.toBeChecked()
+      expect(within(region('Valoraciones')).queryByRole('link', { name: 'Valorar el libro' })).not.toBeInTheDocument()
       const toggle = within(region('Plan de lectura')).getByRole('button', { name: 'Semana 5: Marcar como leído' })
       await userEvent.setup().click(toggle)
       expect(toggle).toHaveAttribute('aria-pressed', 'true')
