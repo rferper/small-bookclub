@@ -33,6 +33,41 @@ Only approved members can sign in (Discord login plus an admin-managed allowlist
 
 ## Running it
 
+### Full system with Docker Compose
+
+With Docker Desktop running, from the repository root:
+
+```sh
+docker compose up --build
+```
+
+Open http://localhost:8080. The built React app uses the real Django API through
+one origin; no Discord credentials are needed to view the Spanish sign-in page
+or check `/api/health` and `/api/session`. Discord sign-in needs the owner's
+credentials and a bootstrapped approved identity; demo sign-in is issue #75.
+
+SQLite and private media live in the Compose named volume, separate from the
+host development database. Migrations run before Gunicorn starts, and the proxy
+waits for backend health. Both runtime processes run without root. Stop with
+`docker compose down`; it preserves data. **Do not use `down --volumes` for an
+instance whose data you want to keep.**
+
+Optional shell variables: `BOOKCLUB_PORT` (default 8080), `CLUB_TIMEZONE`
+(default Europe/Madrid), `SECRET_KEY`, `DISCORD_CLIENT_ID`,
+`DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI`. If changing the port, set
+the redirect URI to `http://localhost:<port>/api/auth/discord/callback` too.
+The club timezone is used at backend runtime and frontend build time; rebuild
+after changing it. The fallback secret and loopback HTTP are for local use only.
+Public HTTPS, isolated trusted proxy configuration and secret management are #76.
+
+Use `docker compose exec backend python manage.py bootstrap_admin` only after
+providing the intended `INITIAL_ADMIN_DISCORD_ID` explicitly (see the bootstrap
+section below). No member is created or elevated automatically. See
+[container operation and verification](docs/containers.md) for commands,
+persistence checks and backup guidance.
+
+### Separate development servers
+
 The frontend runs with fictional mock data by default. The backend implements public health and finite Discord sign-in, session lookup and logout:
 
 ```sh
@@ -53,7 +88,7 @@ curl http://localhost:8000/api/health
 # {"status":"ok"}
 ```
 
-Health is public process liveness, without database readiness probes, session or provider access. Explicit HTTP mode enables session, Discord navigation and logout only; other client methods reject with 503. Default mock mode stays fictional. Discord credentials are optional for startup; absent credentials make OAuth start return safe Spanish 503. See [authentication configuration and isolated HTTP checking](docs/api.md#finite-discord-authentication-5). Containers/Compose remain #73.
+Health is public process liveness, without database readiness probes, session or provider access. Explicit HTTP mode enables session, Discord navigation and logout only; other client methods reject with 503. Default mock mode stays fictional. Discord credentials are optional for startup; absent credentials make OAuth start return safe Spanish 503. See [authentication configuration and isolated HTTP checking](docs/api.md#finite-discord-authentication-5). Compose is available as described above.
 
 `backend/.env.example` documents shell variables; it is a reference, not automatically loaded. Defaults are `BOOKCLUB_ENV=development`, `DEBUG=true`, local allowed hosts, `DATABASE_PATH=development.sqlite3` and `CLUB_TIMEZONE=UTC`. Relative database paths resolve inside backend; `:memory:` is supported for tests. Timezone never follows the machine. `LANGUAGE_CODE=es` and `USE_TZ=True` always apply.
 
