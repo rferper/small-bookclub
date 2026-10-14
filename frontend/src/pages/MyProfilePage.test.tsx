@@ -228,7 +228,9 @@ describe('After saving, the new values show everywhere without a reload', () => 
       .getAllByRole('listitem')
       .map((item) => item.querySelector('span.text-lg')!.textContent)
     expect(names).toEqual(['Carmen', 'Elena', 'Inés', 'Jordi', 'Mateo', 'Pablo', 'Zoe (tú)'])
-    expect(screen.getByRole('img', { name: 'Foto de Zoe' })).toHaveAttribute('src', src)
+    const directoryAvatar = screen.getByRole('link', { name: /Zoe/ }).querySelector('img')
+    expect(directoryAvatar).toHaveAttribute('src', src)
+    expect(directoryAvatar).toHaveAttribute('alt', '')
 
     // The own profile.
     await user.click(screen.getByRole('link', { name: /Zoe/ }))
