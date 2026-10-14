@@ -76,7 +76,7 @@ export function createHttpClient(options: {
     getRatingRubric: () => request<'getRatingRubric'>({ method: 'GET', path: '/api/rating-rubric', successStatus: 200 }),
     setBookFinished: (bookId, finished) => request<'setBookFinished'>({ method: 'PUT', path: '/api/books/{bookId}/finished', pathParams: { bookId }, body: { finished }, successStatus: 200 }),
     saveMyReview: (bookId, input) => request<'saveMyReview'>({ method: 'PUT', path: '/api/books/{bookId}/my-review', pathParams: { bookId }, body: input, successStatus: 200 }),
-    getStatistics: unavailable,
+    getStatistics: () => request<'getStatistics'>({ method: 'GET', path: '/api/statistics', successStatus: 200 }),
     getTasteCompatibility: () => request<'getTasteCompatibility'>({ method: 'GET', path: '/api/statistics/compatibility', successStatus: 200 }),
     listMembers: () => request<'listMembers'>({ method: 'GET', path: '/api/members', successStatus: 200 }),
     getMemberProfile: (memberId) => request<'getMemberProfile'>({ method: 'GET', path: '/api/members/{memberId}', pathParams: { memberId }, successStatus: 200 }),
