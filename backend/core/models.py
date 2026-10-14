@@ -233,3 +233,29 @@ class ActivityEvent(models.Model):
                 name="activity_typed_subject",
             ),
         ]
+
+
+class PurgeRecord(models.Model):
+    """Minimal proof of erasure: no subject payload or live subject relation."""
+
+    kind = models.CharField(max_length=9)
+    resource_id = models.CharField(max_length=20)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    purged_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["kind", "resource_id"], name="purge_unique_target"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    kind__in=["book", "meeting", "week", "highlight", "quote"]
+                ),
+                name="purge_known_kind",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(resource_id__regex=r"\A[1-9][0-9]{0,19}\Z"),
+                name="purge_native_id",
+            ),
+        ]

@@ -128,7 +128,7 @@ Admin operations (all path parameters are required opaque ids; type is restricte
 | `getDeletionPreview` | `GET /api/admin/deletion-preview/{type}/{id}` | `â€”` | `DeletionPreview` | 200 | 401,403,400,404,500,503 |
 | `restoreDeleted` | `POST /api/admin/bin/{type}/{id}/restore` | `â€”` | `RecycleBinEntry[]` | 200 | 401,403,400,404,409,500,503 |
 | `purgeDeleted` | `DELETE /api/admin/bin/{type}/{id}` | `â€”` | `RecycleBinEntry[]` | 200 | 401,403,400,404,409,500,503 |
-| `deleteBook` | `DELETE /api/admin/books/{id}` | `â€”` | `RecycleBinEntry[]` | 200 | 401,403,404,500,503 |
+| `deleteBook` | `DELETE /api/admin/books/{bookId}` | `â€”` | `RecycleBinEntry[]` | 200 | 401,403,404,500,503 |
 | `deleteMeeting` | `DELETE /api/admin/meetings/{meetingId}` | `â€”` | `RecycleBinEntry[]` | 200 | 401,403,404,500,503 |
 | `deleteLiteraryQuote` | `DELETE /api/admin/quotes/{id}` | `â€”` | `RecycleBinEntry[]` | 200 | 401,403,404,500,503 |
 | `listAdminQuotes` | `GET /api/admin/quotes` | `â€”` | `AdminLiteraryQuote[]` | 200 | 401,403,500,503 |

@@ -5,15 +5,16 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation, ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 from books.models import Book
-from core.models import LiteraryQuote
+from core.models import ActivityEvent, LiteraryQuote
 from users.access import approved_admin_refusal, require_permission
 from users.directory import member_summary
 from users.membership import error_result, native_member_id, spanish_name_key
 from users.models import User
+from votes.models import Vote
 
 from .models import Meeting, MeetingHighlight, ReadingAssignment
 from .time_rules import attendance_eligible, parse_instant
@@ -234,8 +235,10 @@ def dependencies(kind, row):
     if kind == "book":
         count = Meeting.all_objects.filter(book_id=row.pk).count()
         weeks = ReadingAssignment.all_objects.filter(book_id=row.pk).count()
-        return ([f"{count} reuniones vinculadas"] if count else []) + (
-            [f"{weeks} semanas vinculadas"] if weeks else []
+        return (
+            ([f"{count} reuniones vinculadas"] if count else [])
+            + ([f"{weeks} semanas vinculadas"] if weeks else [])
+            + book_history_dependencies(row)
         )
     if kind == "week":
         count = row.completions.count()
@@ -249,7 +252,36 @@ def dependencies(kind, row):
         ([f"{count} registros de asistencia conservados"] if count else [])
         + ([f"{weeks} semanas vinculadas"] if weeks else [])
         + ([f"{highlights} momentos destacados conservados"] if highlights else [])
+        + (
+            [
+                f"{ActivityEvent.objects.filter(meeting=row).count()} "
+                "eventos de actividad conservados"
+            ]
+            if ActivityEvent.objects.filter(meeting=row).exists()
+            else []
+        )
     )
+
+
+def book_history_dependencies(row):
+    counts = [
+        (row.reviews.count(), "valoraciones conservadas"),
+        (row.completions.count(), "registros de libro terminado conservados"),
+        (
+            Vote.objects.filter(
+                models.Q(candidates__book=row) | models.Q(winning_book=row)
+            )
+            .distinct()
+            .count(),
+            "votaciones vinculadas",
+        ),
+        (1 if row.origin_vote_id else 0, "orígenes de votación conservados"),
+        (
+            ActivityEvent.objects.filter(book=row).count(),
+            "eventos de actividad conservados",
+        ),
+    ]
+    return [f"{count} {label}" for count, label in counts if count]
 
 
 @require_permission("manage_meetings")

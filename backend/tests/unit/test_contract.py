@@ -38,6 +38,7 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "POST /api/admin/books (createBook)",
         "GET /api/admin/books/{bookId} (getAdminBook)",
         "PUT /api/admin/books/{bookId} (updateBook)",
+        "DELETE /api/admin/books/{bookId} (deleteBook)",
         "GET /api/media/covers/{coverId} (getCover)",
         "GET /api/admin/book-metadata (searchBookMetadata)",
         "GET /api/books (listBooks)",
@@ -93,6 +94,9 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "POST /api/admin/quotes (addLiteraryQuote)",
         "PUT /api/admin/quotes/{id} (updateLiteraryQuote)",
         "DELETE /api/admin/quotes/{id} (deleteLiteraryQuote)",
+        "GET /api/admin/bin (getRecycleBin)",
+        "POST /api/admin/bin/{type}/{id}/restore (restoreDeleted)",
+        "DELETE /api/admin/bin/{type}/{id} (purgeDeleted)",
     ]
 
 
