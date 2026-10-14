@@ -34,3 +34,10 @@ Failure-propagation verification uses a disposable branch with an intentionally
 failing unit test, never a committed failure on main. Record observed run links
 in the issue handoff; remove that remote probe branch afterwards. A successful
 unmodified issue-branch CI run is required before merging this workflow change.
+
+Verified on 2026-10-14: [clean CI run](https://github.com/rferper/small-bookclub/actions/runs/38606126599)
+passed backend, frontend, both image builds and the aggregate. The isolated
+[failure probe](https://github.com/rferper/small-bookclub/actions/runs/38606274648)
+failed at the intentional unit assertion, skipped image builds and failed the
+aggregate while frontend checks passed. The probe branch/worktree were removed;
+the failing test was never merged into the issue branch or main.
