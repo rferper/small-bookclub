@@ -432,7 +432,7 @@ function Comparison({ entry, minSharedBooks }: { entry: MemberCompatibility; min
             </table>
             <table className={tableClass}>
               <caption className={`${captionClass} break-words`}>Libros en común con {name}</caption>
-              <colgroup><col className="w-1/2" /><col /><col /><col /></colgroup>
+              <colgroup><col className="w-2/5 sm:w-1/2" /><col /><col /><col /></colgroup>
               <thead>
                 <tr className="border-b border-wood/40">
                   <th scope="col" className={headerCellClass}>
@@ -441,8 +441,9 @@ function Comparison({ entry, minSharedBooks }: { entry: MemberCompatibility; min
                   <th scope="col" className={headerCellClass}>
                     Tu nota
                   </th>
-                  <th scope="col" className={`${headerCellClass} break-words`}>
-                    Nota de {name}
+                  <th scope="col" aria-label={`Nota de ${name}`} className={`${headerCellClass} break-words`}>
+                    <span className="sm:hidden">Su nota</span>
+                    <span className="hidden sm:inline">Nota de {name}</span>
                   </th>
                   <th scope="col" className={headerCellClass}>
                     Diferencia

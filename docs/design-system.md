@@ -77,4 +77,4 @@ Used in Estadísticas (#68) for a mean per book and per member (`src/components/
 - Every page has a friendly empty state.
 
 ## Controls and narrow data tables (#53)
-Use solid `border-bark` on inputs/selects/textareas whose boundary identifies the control (5.8:1 on parchment and over 6:1 on paper). Low-opacity wood borders remain decorative card/table separators. Avatars beside the same visible member name inside a link use empty alt text; standalone avatars keep their named alt text. Statistics tables use fixed layout and wrapping, with 40%/50% title columns in book/shared-book tables, so classic scrollbars do not force page-wide overflow.
+Use solid `border-bark` on inputs/selects/textareas whose boundary identifies the control (5.8:1 on parchment and over 6:1 on paper). Low-opacity wood borders remain decorative card/table separators. Avatars beside the same visible member name inside a link use empty alt text; standalone avatars keep their named alt text. Statistics tables use fixed layout and wrapping, with 40% title columns on mobile and a 50% shared-book title column on wider screens, so classic scrollbars do not force page-wide overflow.

@@ -84,5 +84,9 @@ test('statistics reflow with a classic scrollbar and reduced motion', async ({ p
   expect(parseFloat(motion.duration)).toBeLessThanOrEqual(0.00001)
   await page.getByRole('region', { name: 'Media del club por libro', exact: true }).screenshot({ path: testInfo.outputPath('book-statistics.png') })
   await page.getByLabel('Comparar con', { exact: true }).selectOption('m3')
+  // Stress the existing fictional row with the long-title case reported in QA.
+  await page.getByRole('region', { name: 'Gustos en común', exact: true }).getByRole('table').last().getByRole('link').first()
+    .evaluate(el => { el.textContent = 'El ingenioso hidalgo don Quijote de la Mancha' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await page.getByRole('region', { name: 'Gustos en común', exact: true }).screenshot({ path: testInfo.outputPath('shared-books.png') })
 })
