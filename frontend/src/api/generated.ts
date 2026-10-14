@@ -71,7 +71,7 @@ export interface paths {
         put?: never;
         /**
          * startDemoSignIn
-         * @description CSRF required. DEMO_MODE only, establishes fictional session; otherwise generic 404. Never available on real club instance.
+         * @description CSRF required. DEMO_MODE only, establishes fictional session; otherwise generic 404. Requires an explicitly seeded fictional installation and an eligible fixed ordinary member. Never available on real club instance. Browser identity and role claims are ignored.
          */
         post: operations["startDemoSignIn"];
         delete?: never;
@@ -4423,6 +4423,7 @@ export interface operations {
             };
             403: components["responses"]["Error403"];
             404: components["responses"]["Error404"];
+            429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Error500"];
             503: components["responses"]["Error503"];
         };

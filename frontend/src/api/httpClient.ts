@@ -1,5 +1,5 @@
 import type { ApiClient } from './client'
-import { createTransport, operationUrl, safeError } from './transport'
+import { createTransport, operationUrl } from './transport'
 import { bookMultipart, multipartFormData, profileMultipart } from './adapters'
 
 // Explicit inventory: a new feature requires an intentional HTTP behavior decision.
@@ -10,7 +10,6 @@ export function createHttpClient(options: {
 } = {}): ApiClient {
   const request = createTransport(options)
   const navigate = options.navigate ?? ((url: string) => window.location.assign(url))
-  const unavailable = async (): Promise<never> => { throw safeError(503) }
   return {
     getBackupInfo: () => request<'getBackupInfo'>({ method: 'GET', path: '/api/admin/backups', successStatus: 200 }),
     exportClubData: () => request.exportZip(),
@@ -54,7 +53,7 @@ export function createHttpClient(options: {
       // OAuth redirects belong to the top-level browser, never the JSON transport.
       navigate(operationUrl('/api/auth/discord/start', undefined, purpose ? { purpose } : undefined))
     },
-    startDemoSignIn: unavailable,
+    startDemoSignIn: () => request<'startDemoSignIn'>({ method: 'POST', path: '/api/auth/demo', successStatus: 204 }),
     signOut: () => request<'signOut'>({ method: 'POST', path: '/api/auth/logout', successStatus: 204 }),
     getHome: () => request<'getHome'>({ method: 'GET', path: '/api/home', successStatus: 200 }),
     setWeekCompleted: (weekId, completed) => request<'setWeekCompleted'>({ method: 'PUT', path: '/api/weeks/{weekId}/completion', pathParams: { weekId }, body: { completed }, successStatus: 204 }),

@@ -6,6 +6,7 @@ services:
     environment:
       BOOKCLUB_ENV: development
       DEBUG: "false"
+      DEMO_MODE: ${DEMO_MODE:-false}
       SECRET_KEY: ${SECRET_KEY:-local-compose-only-key-never-deploy}
       ALLOWED_HOSTS: localhost,127.0.0.1,backend
       CLUB_TIMEZONE: ${CLUB_TIMEZONE:-Europe/Madrid}

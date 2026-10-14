@@ -77,6 +77,7 @@ from users.authentication import (
     current_identity,
 )
 from users.curators import set_curator
+from users.demo import demo_member, sign_in_demo
 from users.directory import directory, member_profile
 from users.membership import (
     add_member,
@@ -171,7 +172,7 @@ def session(request):
     if identity is None:
         return {
             "status": "denied" if request.session.get(DENIED_KEY) else "anonymous",
-            "demoSignInAvailable": False,
+            "demoSignInAvailable": demo_member() is not None,
         }
     return {
         "status": "signedIn",
@@ -276,6 +277,29 @@ def discord_callback(request):
 def sign_out(request):
     logout(request)
     return HttpResponse(status=204)
+
+
+if settings.DEMO_MODE:
+
+    @api.post(
+        "/auth/demo",
+        response={
+            204: None,
+            403: Error,
+            404: Error,
+            429: Error,
+            500: Error,
+            503: Error,
+        },
+        operation_id="startDemoSignIn",
+        auth=None,
+        openapi_extra={
+            "security": [{"csrfHeader": []}],
+            "responses": {"429": RATE_LIMIT_RESPONSE},
+        },
+    )
+    def start_demo_sign_in(request):
+        return Status(*sign_in_demo(request))
 
 
 @api.post(

@@ -88,7 +88,8 @@ paths:
       operationId: startDemoSignIn
       summary: startDemoSignIn
       description: CSRF required. DEMO_MODE only, establishes fictional session; otherwise generic 404.
-        Never available on real club instance.
+        Requires an explicitly seeded fictional installation and an eligible fixed ordinary member.
+        Never available on real club instance. Browser identity and role claims are ignored.
       tags:
         - Session
       responses:
@@ -98,6 +99,8 @@ paths:
           $ref: "#/components/responses/Error403"
         "404":
           $ref: "#/components/responses/Error404"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/Error500"
         "503":

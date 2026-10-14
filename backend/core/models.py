@@ -18,6 +18,18 @@ from .quote_rules import normalize_quote, quote_key
 RETENTION = timedelta(days=30)
 
 
+class DemoInstallation(models.Model):
+    """Explicit fictional seed provenance, never inferred from an environment name."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=models.Q(id=1), name="demo_singleton")
+        ]
+
+
 class RestoreExpired(ValueError):
     """A removed row has reached its strict restoration deadline."""
 

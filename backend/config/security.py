@@ -5,6 +5,7 @@ import logging
 from datetime import timedelta
 from math import ceil
 
+from django.conf import settings
 from django.db import DatabaseError, transaction
 from django.http import JsonResponse
 from django.utils import timezone
@@ -20,6 +21,8 @@ POLICIES = {
     ("GET", "/api/statistics/compatibility"): ("expensive", 20),
     ("POST", "/api/admin/export"): ("export", 2),
 }
+if settings.DEMO_MODE:
+    POLICIES["POST", "/api/auth/demo"] = ("oauth", 30)
 
 
 class SafeLogFormatter(logging.Formatter):

@@ -16,6 +16,8 @@ Compose reads exported variables or a root `.env` file (never commit secrets).
 Defaults use loopback HTTP and a local-only key, with no Discord credentials.
 `BOOKCLUB_PORT`, `CLUB_TIMEZONE`, `SECRET_KEY`, `DISCORD_CLIENT_ID`,
 `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` are the available overrides.
+`DEMO_MODE` is false by default; see [demo.md](demo.md) for explicitly seeding a
+separate fictional demo project/volume and enabling its existing sign-in button.
 See README for callback/port and timezone rebuild requirements. The backend port
 is internal; the frontend is published on 127.0.0.1 only. Do not expose this local
 configuration publicly; public deployment/TLS is #76.

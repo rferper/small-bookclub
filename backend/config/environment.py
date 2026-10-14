@@ -13,6 +13,9 @@ def configure(environ, base_dir):
             "BOOKCLUB_ENV must be development, test, demo or production"
         )
     production = environment == "production"
+    demo_text = environ.get("DEMO_MODE", "false").lower()
+    if demo_text not in {"true", "false"}:
+        raise ImproperlyConfigured("DEMO_MODE must be true or false")
     debug_text = environ.get(
         "DEBUG", "true" if environment == "development" else "false"
     )
@@ -50,6 +53,7 @@ def configure(environ, base_dir):
         media_root = str(base_dir / media_root)
     return {
         "ENVIRONMENT": environment,
+        "DEMO_MODE": demo_text == "true",
         "MEDIA_ROOT": media_root,
         "SECRET_KEY": secret or "public-development-only-key-never-use-in-production",
         "DEBUG": debug,

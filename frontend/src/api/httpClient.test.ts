@@ -13,6 +13,23 @@ const sessions: Session[] = [
   { status: 'signedIn', user: { id: 'fictional-website-7', displayName: 'Alba ficticia', avatarUrl: null, role: 'member' } },
 ]
 
+describe('HTTP demo sign-in adapter', () => {
+  it('posts with CSRF and no browser identity or role, accepting empty 204', async () => {
+    const send = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'a'.repeat(32)}` })
+    await expect(client.startDemoSignIn()).resolves.toBeUndefined()
+    expect(send.mock.calls[0][0]).toBe('/api/auth/demo')
+    expect(send.mock.calls[0][1]).toMatchObject({ method: 'POST', credentials: 'same-origin', body: undefined })
+    expect(new Headers(send.mock.calls[0][1]?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
+  })
+  it('preserves disabled-demo and rate-limit errors', async () => {
+    for (const status of [404, 429]) {
+      const client = createHttpClient({ fetch: async () => json({ code: status === 404 ? 'not_found' : 'rate_limited', message: 'No disponible.' }, status), cookie: () => `csrftoken=${'a'.repeat(32)}` })
+      await expect(client.startDemoSignIn()).rejects.toMatchObject({ status })
+    }
+  })
+})
+
 describe('authenticated ZIP export transport', () => {
   const headers = { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="club-de-lectura.zip"', 'Cache-Control': 'no-store' }
   it('gets truthful backup metadata and downloads private ZIP through the central CSRF transport', async () => {
