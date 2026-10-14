@@ -35,6 +35,11 @@ export function useApiData<T>(load: (api: ApiClient) => Promise<T>): Loadable<T>
     }
   }, [api, version])
 
-  const reload = useCallback(() => setVersion((v) => v + 1), [])
+  const reload = useCallback(() => {
+    // A failed load has no data to preserve; show feedback while retrying it.
+    // Successful mutation refreshes keep their confirmed content and focus.
+    setState((previous) => previous.status === 'error' ? { status: 'loading' } : previous)
+    setVersion((v) => v + 1)
+  }, [])
   return { ...state, reload }
 }

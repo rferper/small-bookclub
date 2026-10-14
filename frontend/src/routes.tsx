@@ -24,12 +24,14 @@ import { StatisticsPage } from './pages/StatisticsPage'
 import { VotePage } from './pages/VotePage'
 import { VotesPage } from './pages/VotesPage'
 import { SessionGate } from './session/SessionGate'
+import { UnexpectedErrorPage } from './pages/UnexpectedErrorPage'
 
 // Every route sits behind the session gate, so no page renders (or loads
 // club data) until the visitor is a signed-in member.
 export const routes: RouteObject[] = [
   {
     element: <SessionGate />,
+    errorElement: <UnexpectedErrorPage />,
     children: [
       {
         element: <Layout />,

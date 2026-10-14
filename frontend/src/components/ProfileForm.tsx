@@ -106,8 +106,9 @@ export function ProfileForm({ profile }: { profile: MyProfile }) {
   const removePhoto = () => {
     fileChoice.current++
     setAvatarError(null)
-    setAvatar({ kind: 'remove' })
-    focusNext.current = () => document.getElementById(keepId)
+    const hasSavedPhoto = Boolean(saved.member.avatarUrl)
+    setAvatar({ kind: hasSavedPhoto ? 'remove' : 'keep' })
+    focusNext.current = () => hasSavedPhoto ? document.getElementById(keepId) : fields.current.file
   }
 
   const keepPhoto = () => {
