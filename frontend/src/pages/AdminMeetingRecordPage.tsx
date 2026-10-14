@@ -10,7 +10,7 @@ import { Loading, LoadError } from '../components/Status'
 import { formatMeetingDateWithYear } from '../lib/format'
 
 const button = 'rounded-lg border-2 border-forest px-4 py-2 text-forest hover:bg-sage/40 disabled:opacity-60'
-const input = 'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest'
+const input = 'w-full min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest'
 const link = 'text-moss underline underline-offset-4'
 const blank: MeetingHighlightInput = { text: '', kind: 'quote', speakerIds: [], published: false }
 

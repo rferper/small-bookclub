@@ -19,7 +19,7 @@ type AvailableRatings = Extract<RatingStatistics, { status: 'available' }>
 
 const bookPath = (id: string) => `/biblioteca/${encodeURIComponent(id)}`
 const linkClass = 'text-moss underline underline-offset-4 hover:text-forest'
-const tableClass = 'w-full text-left text-sm'
+const tableClass = 'w-full table-fixed text-left text-sm wrap-anywhere'
 const captionClass = 'mb-1 text-left text-bark'
 const headerCellClass = 'py-1 pr-3 align-bottom font-semibold last:pr-0'
 const cellClass = 'py-1 pr-3 align-top tabular-nums last:pr-0'
@@ -214,6 +214,7 @@ function BooksSection({ books }: { books: BookStatistics[] }) {
         />
         <table className={tableClass}>
           <caption className={captionClass}>Media y desviación típica de cada libro</caption>
+          <colgroup><col className="w-2/5" /><col /><col /><col /></colgroup>
           <thead>
             <tr className="border-b border-wood/40">
               <th scope="col" className={headerCellClass}>
@@ -360,7 +361,7 @@ function Compatibility({ compatibility }: { compatibility: TasteCompatibility })
           id={selectId}
           value={selected.member.id}
           onChange={(event) => setMemberId(event.target.value)}
-          className="w-full max-w-xs rounded-md border border-wood/60 bg-paper px-3 py-2 text-forest"
+          className="w-full max-w-xs rounded-md border border-bark bg-paper px-3 py-2 text-forest"
         >
           {/* The server's order: by name, never by difference. */}
           {members.map((entry) => (
@@ -431,6 +432,7 @@ function Comparison({ entry, minSharedBooks }: { entry: MemberCompatibility; min
             </table>
             <table className={tableClass}>
               <caption className={`${captionClass} break-words`}>Libros en común con {name}</caption>
+              <colgroup><col className="w-2/5 sm:w-1/2" /><col /><col /><col /></colgroup>
               <thead>
                 <tr className="border-b border-wood/40">
                   <th scope="col" className={headerCellClass}>
@@ -439,8 +441,9 @@ function Comparison({ entry, minSharedBooks }: { entry: MemberCompatibility; min
                   <th scope="col" className={headerCellClass}>
                     Tu nota
                   </th>
-                  <th scope="col" className={`${headerCellClass} break-words`}>
-                    Nota de {name}
+                  <th scope="col" aria-label={`Nota de ${name}`} className={`${headerCellClass} break-words`}>
+                    <span className="sm:hidden">Su nota</span>
+                    <span className="hidden sm:inline">Nota de {name}</span>
                   </th>
                   <th scope="col" className={headerCellClass}>
                     Diferencia

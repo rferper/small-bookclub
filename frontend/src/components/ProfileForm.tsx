@@ -18,7 +18,7 @@ import { Avatar } from './Avatar'
 import { FavouriteBooksField } from './FavouriteBooksField'
 
 const smallButton = 'rounded-md border border-forest px-3 py-1.5 text-forest hover:bg-sage/50'
-const inputClass = 'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
+const inputClass = 'w-full min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest aria-[invalid=true]:border-2 aria-[invalid=true]:border-bark'
 
 const NAME_MESSAGES: Record<DisplayNameProblem, string> = {
   empty: 'Escribe un nombre.',

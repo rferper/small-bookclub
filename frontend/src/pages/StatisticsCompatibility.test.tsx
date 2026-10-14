@@ -52,7 +52,7 @@ const rows = (t: HTMLElement) =>
 const columns = (t: HTMLElement) =>
   within(t)
     .getAllByRole('columnheader')
-    .map((cell) => cell.textContent)
+    .map((cell) => cell.getAttribute('aria-label') ?? cell.textContent)
 const metric = () => {
   const term = within(section()).getByText('Diferencia media en la nota global', { selector: 'dt' })
   return term.nextElementSibling!.textContent

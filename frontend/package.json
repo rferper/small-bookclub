@@ -14,7 +14,8 @@
     "test:contract": "node --test scripts/contract-tests.mjs",
     "generate:api": "node scripts/generate-api-types.mjs",
     "check:api": "node scripts/generate-api-types.mjs --check",
-    "test:type-boundaries": "node scripts/check-type-boundaries.mjs"
+    "test:type-boundaries": "node scripts/check-type-boundaries.mjs",
+    "test:a11y": "playwright test --config playwright.a11y.config.ts"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -23,6 +24,8 @@
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

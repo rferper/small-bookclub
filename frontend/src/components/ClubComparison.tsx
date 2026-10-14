@@ -54,7 +54,7 @@ export function ClubComparison({ club }: { club: VisibleClub }) {
             id={selectId}
             value={selected.member.id}
             onChange={(event) => setSelection({ club, memberId: event.target.value })}
-            className="w-fit max-w-full rounded-md border border-wood/60 bg-paper px-3 py-2 text-forest"
+            className="w-fit max-w-full rounded-md border border-bark bg-paper px-3 py-2 text-forest"
           >
             {/* The server's order: own review first, then by name. */}
             {club.reviews.map((review) => (

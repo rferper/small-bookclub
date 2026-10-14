@@ -12,7 +12,7 @@ import { readingErrors, readingWarnings } from '../lib/readingPlan'
 
 const base = '/administracion/lecturas'
 const button = 'rounded-lg border-2 border-forest px-3 py-2 text-forest hover:bg-sage/40 disabled:opacity-60'
-const field = 'w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2'
+const field = 'w-full min-w-0 rounded-lg border border-bark bg-paper p-2'
 const link = 'text-moss underline underline-offset-4'
 
 export function AdminReadingPlansPage() {

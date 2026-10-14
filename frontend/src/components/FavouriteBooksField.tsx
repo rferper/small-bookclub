@@ -145,7 +145,7 @@ export function FavouriteBooksField({
               value={selected?.id ?? ''}
               disabled={atLimit}
               onChange={(event) => setSelectedId(event.target.value)}
-              className="w-full min-w-0 rounded-lg border border-wood/60 bg-paper p-2 text-forest disabled:opacity-60 sm:w-auto sm:max-w-full"
+              className="w-full min-w-0 rounded-lg border border-bark bg-paper p-2 text-forest disabled:opacity-60 sm:w-auto sm:max-w-full"
             >
               {available.map((book) => (
                 <option key={book.id} value={book.id}>

@@ -10,6 +10,7 @@ export default defineConfig(({ command, mode }) => {
   server: target ? { proxy: { '^/api/': { target, changeOrigin: false, followRedirects: false } } } : undefined,
   plugins: [react(), tailwindcss()],
   test: {
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     // Room for several findBy* waits (5 s each, see setup.ts) on a busy machine.

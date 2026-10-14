@@ -169,7 +169,7 @@ function RatingForm({ ratings, rubric }: { ratings: BookRatings; rubric: RatingR
           maxLength={REVIEW_TEXT_MAX_LENGTH}
           rows={6}
           onChange={(event) => setText(event.target.value.slice(0, REVIEW_TEXT_MAX_LENGTH))}
-          className="w-full rounded-lg border border-wood/60 bg-paper p-3"
+          className="w-full rounded-lg border border-bark bg-paper p-3"
         />
       </div>
 

@@ -84,7 +84,7 @@ export function LibraryPage() {
             id={statusId}
             value={status ?? 'todos'}
             onChange={(event) => setStatus(event.target.value)}
-            className="rounded-md border border-wood/60 bg-paper px-3 py-2 text-forest"
+            className="rounded-md border border-bark bg-paper px-3 py-2 text-forest"
           >
             <option value="todos">Todos</option>
             {BOOK_STATUSES.map((value) => (
@@ -104,7 +104,7 @@ export function LibraryPage() {
               id={orderId}
               value={order}
               onChange={(event) => setOrder(event.target.value === 'titulo' ? 'titulo' : 'fecha')}
-              className="rounded-md border border-wood/60 bg-paper px-3 py-2 text-forest"
+              className="rounded-md border border-bark bg-paper px-3 py-2 text-forest"
             >
               <option value="fecha">Fecha de lectura</option>
               <option value="titulo">Título</option>
