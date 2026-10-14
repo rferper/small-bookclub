@@ -165,6 +165,17 @@ def mutate_record(request, meeting_id, action, highlight_id=None):
                 from core.activity import record_event
 
                 record_event("summary_published", request.user, meeting=meeting)
+            if meeting.summary_published != previously_published:
+                from core.audit import record_audit
+
+                record_audit(
+                    "summary_published"
+                    if meeting.summary_published
+                    else "summary_unpublished",
+                    request.user,
+                    "meeting",
+                    meeting.pk,
+                )
         elif action == "safe":
             if set(value) != {"safe"} or type(value["safe"]) is not bool:
                 raise InvalidRecordInput
@@ -228,11 +239,23 @@ def mutate_record(request, meeting_id, action, highlight_id=None):
                 highlight = MeetingHighlight(
                     meeting=meeting, position=last.position + 1 if last else 1
                 )
+            previously_published = highlight.published
             highlight.text = clean
             highlight.kind = value["kind"]
             highlight.published = value["published"]
             highlight.save()
             highlight.speakers.set(selected)
+            if previously_published != highlight.published:
+                from core.audit import record_audit
+
+                record_audit(
+                    "highlight_published"
+                    if highlight.published
+                    else "highlight_unpublished",
+                    request.user,
+                    "highlight",
+                    highlight.pk,
+                )
         else:
             raise InvalidRecordInput
     except InvalidRecordInput:

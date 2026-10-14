@@ -28,7 +28,8 @@ from users.models import CuratorAssignment, User
 from users.profile import avatar_file, stored_avatar_key
 from votes.models import Vote
 
-from .models import ExportEvent, LiteraryQuote, PurgeRecord
+from .audit import audit_projection, record_audit
+from .models import LiteraryQuote, PurgeRecord
 
 
 def native_id(value):
@@ -184,16 +185,7 @@ def business_projection(media, now):
             }
             for row in PurgeRecord.objects.order_by("pk")
         ],
-        "audit": [
-            {
-                "id": str(event.pk),
-                "action": "exported",
-                "target": {"type": "club", "id": "club", "label": "Club de lectura"},
-                "actor": {"id": str(event.actor_id), "displayName": event.actor_name},
-                "occurredAt": event.occurred_at,
-            }
-            for event in ExportEvent.objects.order_by("occurred_at", "pk")
-        ],
+        "audit": audit_projection(),
         "rubric": rubric_projection(),
     }
     for row in books:
@@ -338,7 +330,7 @@ def export_club(request):
             "message": "Vuelve a identificarte con Discord para exportar los datos.",
         }
     media = Media()
-    ExportEvent.objects.create(actor=request.user, actor_name=request.user.display_name)
+    record_audit("exported", request.user, "club", "club")
     records = business_projection(media, timezone.now())
     manifest = {key: records[key] for key in ("schemaVersion", "createdAt", "media")}
     manifest["recordsFile"] = "club.json"

@@ -135,6 +135,8 @@ def list_members(request):
 @transaction.atomic
 def add_member(request):
     actor = current_identity(request)
+    if actor is not None:
+        actor = User.objects.select_for_update().filter(pk=actor.pk).first()
     refusal = approved_admin_refusal(actor)
     if refusal:
         return error_result(refusal)
@@ -158,19 +160,24 @@ def add_member(request):
     try:
         # Isolate a concurrent unique-key conflict from the outer transaction.
         with transaction.atomic():
-            User.objects.create_user(
+            target = User.objects.create_user(
                 discord_id, display_name=display_name, approved=True
             )
     except IntegrityError:
         if User.objects.filter(discord_user_id=discord_id).exists():
             return error_result(409)
         raise
+    from core.audit import record_audit
+
+    record_audit("member_approved", actor, "member", target.pk)
     return 201, admin_members_projection(actor)
 
 
 @transaction.atomic
 def restore_member(request, member_id):
     actor = current_identity(request)
+    if actor is not None:
+        actor = User.objects.select_for_update().filter(pk=actor.pk).first()
     refusal = approved_admin_refusal(actor)
     if refusal:
         return error_result(refusal)
@@ -189,6 +196,9 @@ def restore_member(request, member_id):
     target.approved = True
     target.revoked_at = None
     target.save(update_fields=["approved", "revoked_at", "updated_at"])
+    from core.audit import record_audit
+
+    record_audit("member_restored", actor, "member", target.pk)
     return 200, admin_members_projection(actor)
 
 
@@ -214,8 +224,13 @@ def revoke_member(request, member_id):
     target.approved = False
     target.revoked_at = timezone.now()
     target.save(update_fields=["approved", "revoked_at", "updated_at"])
-    CuratorAssignment.objects.filter(current=True, member=target).update(
+    cleared = CuratorAssignment.objects.filter(current=True, member=target).update(
         current=False, ended_at=target.revoked_at
     )
     invalidate_member_sessions(target)
+    from core.audit import record_audit
+
+    record_audit("member_revoked", actor, "member", target.pk)
+    if cleared:
+        record_audit("curator_cleared", actor, "curator", target.pk)
     return 200, admin_members_projection(actor)

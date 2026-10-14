@@ -211,6 +211,7 @@ def save_book(request, book_id=None):
             if book is None:
                 return error_result(404)
             previously_proposed = book.status == "propuesto"
+            previous_status = book.status
             for field, value in values.items():
                 setattr(book, field, value)
             if external_ids is not None:
@@ -235,6 +236,10 @@ def save_book(request, book_id=None):
                 book.cover_path = COVER_URL + new_key
             book.full_clean(validate_constraints=False)
             book.save()
+            if previous_status != book.status:
+                from core.audit import record_audit
+
+                record_audit("book_status_changed", current_actor, "book", book.pk)
             if previously_proposed and book.status in {"elegido", "leyendo"}:
                 from core.activity import record_event
                 from core.models import ActivityEvent

@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from books.catalogue import COVER_URL, cover_file
 from books.models import Book, BookCompletion
 from config.contract import read_contract, resolve
-from core.models import ExportEvent, LiteraryQuote, PurgeRecord
+from core.models import AuditEvent, LiteraryQuote, PurgeRecord
 from core.recycle import purge_target
 from meetings.models import (
     Meeting,
@@ -324,7 +324,7 @@ def test_projection_error_returns_safe_error_without_download(world, monkeypatch
 
     monkeypatch.setattr(export, "business_projection", fail)
     request(browser(world[0][0]), 500)
-    assert not ExportEvent.objects.exists()
+    assert not AuditEvent.objects.filter(action="exported").exists()
 
 
 def test_empty_club_export_and_repeated_success_have_exactly_one_event_per_request(
@@ -351,9 +351,15 @@ def test_empty_club_export_and_repeated_success_have_exactly_one_event_per_reque
         "media",
     ):
         assert first[key] == []
-    assert len(first["audit"]) == ExportEvent.objects.count() == 1
+    assert (
+        len(first["audit"]) == AuditEvent.objects.filter(action="exported").count() == 1
+    )
     _, second = unpack(request(client))
-    assert len(second["audit"]) == ExportEvent.objects.count() == 2
+    assert (
+        len(second["audit"])
+        == AuditEvent.objects.filter(action="exported").count()
+        == 2
+    )
     assert len({row["id"] for row in second["audit"]}) == 2
     assert all(
         row["target"] == {"type": "club", "id": "club", "label": "Club de lectura"}
@@ -363,4 +369,4 @@ def test_empty_club_export_and_repeated_success_have_exactly_one_event_per_reque
 
 def test_reauthentication_refusal_creates_no_export_event(world):
     request(browser(world[0][0], fresh=False), 409)
-    assert not ExportEvent.objects.exists()
+    assert not AuditEvent.objects.filter(action="exported").exists()

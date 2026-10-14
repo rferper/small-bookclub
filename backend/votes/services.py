@@ -390,6 +390,9 @@ def close_vote(request, vote_id):
     from core.activity import record_event
 
     record_event("vote_closed", request.user, vote=vote)
+    from core.audit import record_audit
+
+    record_audit("vote_closed", request.user, "vote", vote.pk)
     return 200, project_vote(vote, request.user)
 
 
@@ -430,4 +433,7 @@ def record_tie_winner(request, vote_id):
     vote.tie_note = note or None
     vote.save(update_fields=["winning_book", "tie_note"])
     record_book_origin(vote)
+    from core.audit import record_audit
+
+    record_audit("tie_resolved", request.user, "vote", vote.pk)
     return 200, project_vote(vote, request.user)

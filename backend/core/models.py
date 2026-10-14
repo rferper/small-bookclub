@@ -122,6 +122,23 @@ class SoftDeleteModel(models.Model):
                 using=database,
                 update_fields=["deleted_at", "deleted_by", "purge_due_at"],
             )
+            from .audit import record_audit
+
+            kinds = {
+                "book": "book",
+                "meeting": "meeting",
+                "readingassignment": "week",
+                "meetinghighlight": "highlight",
+                "literaryquote": "quote",
+            }
+            kind = kinds.get(current._meta.model_name)
+            if kind:
+                record_audit(
+                    "restored" if restore else "soft_deleted",
+                    current_actor,
+                    kind,
+                    current.pk,
+                )
             for field in ("deleted_at", "deleted_by_id", "purge_due_at"):
                 setattr(self, field, getattr(current, field))
             self._state.fields_cache.pop("deleted_by", None)
@@ -276,10 +293,82 @@ class CoverErasure(models.Model):
         ]
 
 
-class ExportEvent(models.Model):
-    """Safe proof of an authorized export; no exported content or credentials."""
+class AuditEvent(models.Model):
+    """Immutable safe transition metadata; no live subject FK or private payload."""
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     actor_name = models.CharField(max_length=40)
     occurred_at = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=23, default="exported")
+    target_type = models.CharField(max_length=9, default="club")
+    target_id = models.CharField(max_length=20, default="club")
+    target_label = models.CharField(max_length=30, default="Club de lectura")
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        action__in=[
+                            "member_approved",
+                            "member_revoked",
+                            "member_restored",
+                        ],
+                        target_type="member",
+                    )
+                    | models.Q(
+                        action__in=["curator_assigned", "curator_cleared"],
+                        target_type="curator",
+                    )
+                    | models.Q(action="book_status_changed", target_type="book")
+                    | models.Q(
+                        action__in=["summary_published", "summary_unpublished"],
+                        target_type="meeting",
+                    )
+                    | models.Q(
+                        action__in=["highlight_published", "highlight_unpublished"],
+                        target_type="highlight",
+                    )
+                    | models.Q(
+                        action__in=["soft_deleted", "restored", "purged"],
+                        target_type__in=[
+                            "book",
+                            "meeting",
+                            "week",
+                            "highlight",
+                            "quote",
+                        ],
+                    )
+                    | models.Q(
+                        action__in=["vote_closed", "tie_resolved"], target_type="vote"
+                    )
+                    | models.Q(action="exported", target_type="club", target_id="club")
+                ),
+                name="audit_action_subject",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(target_type="club", target_id="club")
+                | (
+                    ~models.Q(target_type="club")
+                    & models.Q(target_id__regex=r"\A[1-9][0-9]{0,19}\Z")
+                ),
+                name="audit_native_target",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(target_type="member", target_label="Miembro")
+                    | models.Q(target_type="curator", target_label="Curaduría")
+                    | models.Q(target_type="book", target_label="Libro")
+                    | models.Q(target_type="meeting", target_label="Reunión")
+                    | models.Q(
+                        target_type="highlight", target_label="Momento destacado"
+                    )
+                    | models.Q(target_type="week", target_label="Semana de lectura")
+                    | models.Q(target_type="quote", target_label="Cita literaria")
+                    | models.Q(target_type="vote", target_label="Votación")
+                    | models.Q(target_type="club", target_label="Club de lectura")
+                ),
+                name="audit_generic_label",
+            ),
+        ]
