@@ -87,6 +87,7 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/rating-rubric (getRatingRubric)",
         "PUT /api/admin/rating-rubric (saveRatingRubric)",
         "PUT /api/books/{bookId}/my-review (saveMyReview)",
+        "GET /api/statistics/compatibility (getTasteCompatibility)",
     ]
 
 
