@@ -62,6 +62,8 @@ from meetings.schemas import (
 from reviews.rubric import read_rubric, save_rubric
 from reviews.schemas import RatingRubric, RatingRubricInput, ReviewInput
 from reviews.services import save_review
+from reviews.statistics_schemas import TasteCompatibility
+from reviews.statistics_services import read_compatibility
 from users.authentication import (
     DENIED_KEY,
     EXPORT_KEY,
@@ -1269,3 +1271,13 @@ def put_rating_rubric(request):
 )
 def put_my_review(request, bookId: Annotated[str, Field(min_length=1)]):
     return allowlist_result(save_review, request, bookId)
+
+
+@api.get(
+    "/statistics/compatibility",
+    response={200: TasteCompatibility, 401: Error, 500: Error, 503: Error},
+    operation_id="getTasteCompatibility",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_compatibility(request):
+    return allowlist_result(read_compatibility, request)

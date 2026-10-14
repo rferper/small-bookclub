@@ -77,7 +77,7 @@ export function createHttpClient(options: {
     setBookFinished: (bookId, finished) => request<'setBookFinished'>({ method: 'PUT', path: '/api/books/{bookId}/finished', pathParams: { bookId }, body: { finished }, successStatus: 200 }),
     saveMyReview: (bookId, input) => request<'saveMyReview'>({ method: 'PUT', path: '/api/books/{bookId}/my-review', pathParams: { bookId }, body: input, successStatus: 200 }),
     getStatistics: unavailable,
-    getTasteCompatibility: unavailable,
+    getTasteCompatibility: () => request<'getTasteCompatibility'>({ method: 'GET', path: '/api/statistics/compatibility', successStatus: 200 }),
     listMembers: () => request<'listMembers'>({ method: 'GET', path: '/api/members', successStatus: 200 }),
     getMemberProfile: (memberId) => request<'getMemberProfile'>({ method: 'GET', path: '/api/members/{memberId}', pathParams: { memberId }, successStatus: 200 }),
     getMyProfile: () => request<'getMyProfile'>({ method: 'GET', path: '/api/me/profile', successStatus: 200 }),
