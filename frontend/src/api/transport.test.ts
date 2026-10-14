@@ -112,8 +112,14 @@ describe('central HTTP operation transport', () => {
     await expect(createTransport({ fetch: async () => response })<'getHealth'>(health)).rejects.toMatchObject({ status: 500, code: 'internal_error', message: 'No se ha podido completar la solicitud.' })
   })
 
-  it.each([400, 401, 403, 404, 409, 500, 503])('retains HTTP status %i and valid closed Spanish envelope', async status => {
+  it.each([400, 401, 403, 404, 409, 429, 500, 503])('retains HTTP status %i and valid closed Spanish envelope', async status => {
     await expect(createTransport({ fetch: async () => ok({ code: 'conflict', message: 'No se puede realizar esta acción ahora.' }, status) })<'getHealth'>(health)).rejects.toMatchObject({ status, code: 'conflict', message: 'No se puede realizar esta acción ahora.' })
+  })
+
+  it('preserves the rate limit envelope and safely handles an edge HTML 429', async () => {
+    for (const response of [ok({ code: 'rate_limited', message: 'Demasiadas solicitudes.' }, 429), new Response('<html>private</html>', { status: 429 })]) {
+      await expect(createTransport({ fetch: async () => response })<'getSession'>({ method: 'GET', path: '/api/session', successStatus: 200 })).rejects.toMatchObject({ status: 429, code: 'rate_limited', message: 'Demasiadas solicitudes.' })
+    }
   })
 
   it.each([{ code: 'unknown', message: 'secret' }, { code: 'conflict', message: '' }, { code: 'conflict', message: ' ' }, { code: 'conflict', message: '<script>secret</script>' }, { code: 'conflict', message: 'safe', privateToken: 'secret' }, { message: 'secret' }, ['secret'], null])('refuses untrusted envelope %j', async body => {

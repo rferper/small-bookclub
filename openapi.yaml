@@ -9019,7 +9019,7 @@ components:
             $ref: "#/components/schemas/Error"
           example:
             code: rate_limited
-            message: Demasiadas solicitudes. Int?ntalo m?s tarde.
+            message: Demasiadas solicitudes.
     Error400:
       description: Datos no válidos.
       content:

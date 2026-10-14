@@ -269,6 +269,7 @@ class Error(ClosedSchema):
         "reauthentication_required",
         "internal_error",
         "service_unavailable",
+        "rate_limited",
     ]
     message: str = Field(min_length=1)
 

@@ -64,4 +64,17 @@ def configure(environ, base_dir):
         "CSRF_COOKIE_SECURE": production,
         "SESSION_COOKIE_HTTPONLY": True,
         "SESSION_COOKIE_SAMESITE": "Lax",
+        "CSRF_COOKIE_SAMESITE": "Lax",
+        "SECURE_SSL_REDIRECT": production,
+        "SECURE_HSTS_SECONDS": 3600 if production else 0,
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS": False,
+        "SECURE_HSTS_PRELOAD": False,
+        "SECURE_CONTENT_TYPE_NOSNIFF": True,
+        "SECURE_REFERRER_POLICY": "no-referrer",
+        # Trust only an explicitly configured, isolated TLS-terminating proxy.
+        "SECURE_PROXY_SSL_HEADER": (
+            ("HTTP_X_FORWARDED_PROTO", "https")
+            if environ.get("TRUST_HTTPS_PROXY", "false").lower() == "true"
+            else None
+        ),
     }

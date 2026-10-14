@@ -133,6 +133,10 @@ BOOK_MULTIPART_SCHEMA = normalize_schema(
     resolve(read_contract(), {"$ref": "#/components/schemas/BookMultipart"})
 )
 
+RATE_LIMIT_RESPONSE = resolve(
+    read_contract(), {"$ref": "#/components/responses/TooManyRequests"}
+)
+
 api = NinjaAPI(
     title="Small Bookclub API", version="1.2.0", docs_url=None, openapi_url=None
 )
@@ -156,10 +160,10 @@ def health(request):
 
 @api.get(
     "/session",
-    response={200: Session, 500: Error, 503: Error},
+    response={429: Error, 200: Session, 500: Error, 503: Error},
     operation_id="getSession",
     auth=None,
-    openapi_extra={"security": []},
+    openapi_extra={"responses": {"429": RATE_LIMIT_RESPONSE}, "security": []},
 )
 def session(request):
     get_token(request)
@@ -182,7 +186,7 @@ def session(request):
 
 @api.get(
     "/auth/discord/start",
-    response={302: None, 500: Error, 503: Error},
+    response={429: Error, 302: None, 500: Error, 503: Error},
     operation_id="startSignIn",
     auth=None,
     openapi_extra={
@@ -193,7 +197,7 @@ def session(request):
                 {"type": "string", "enum": ["login", "export"], "default": "login"},
             )
         ],
-        "responses": {"302": REDIRECT_RESPONSE},
+        "responses": {"429": RATE_LIMIT_RESPONSE, "302": REDIRECT_RESPONSE},
     },
 )
 def start_sign_in(request):
@@ -246,7 +250,7 @@ def start_sign_in(request):
 
 @api.get(
     "/auth/discord/callback",
-    response={302: None, 500: Error, 503: Error},
+    response={429: Error, 302: None, 500: Error, 503: Error},
     operation_id="discordCallback",
     auth=None,
     openapi_extra={
@@ -255,7 +259,7 @@ def start_sign_in(request):
             query_parameter(name, {"type": "string"})
             for name in ["code", "state", "error"]
         ],
-        "responses": {"302": REDIRECT_RESPONSE},
+        "responses": {"429": RATE_LIMIT_RESPONSE, "302": REDIRECT_RESPONSE},
     },
 )
 def discord_callback(request):
@@ -558,6 +562,7 @@ def get_cover(request, coverId: str):
 @api.get(
     "/admin/book-metadata",
     response={
+        429: Error,
         200: list[BookMetadataResult],
         400: Error,
         401: Error,
@@ -567,6 +572,7 @@ def get_cover(request, coverId: str):
     },
     operation_id="searchBookMetadata",
     openapi_extra={
+        "responses": {"429": RATE_LIMIT_RESPONSE},
         "security": [{"sessionCookie": []}],
         "parameters": [
             {
@@ -1280,9 +1286,12 @@ def put_my_review(request, bookId: Annotated[str, Field(min_length=1)]):
 
 @api.get(
     "/statistics/compatibility",
-    response={200: TasteCompatibility, 401: Error, 500: Error, 503: Error},
+    response={429: Error, 200: TasteCompatibility, 401: Error, 500: Error, 503: Error},
     operation_id="getTasteCompatibility",
-    openapi_extra={"security": [{"sessionCookie": []}]},
+    openapi_extra={
+        "responses": {"429": RATE_LIMIT_RESPONSE},
+        "security": [{"sessionCookie": []}],
+    },
 )
 def get_compatibility(request):
     return allowlist_result(read_compatibility, request)
@@ -1290,9 +1299,12 @@ def get_compatibility(request):
 
 @api.get(
     "/statistics",
-    response={200: Statistics, 401: Error, 500: Error, 503: Error},
+    response={429: Error, 200: Statistics, 401: Error, 500: Error, 503: Error},
     operation_id="getStatistics",
-    openapi_extra={"security": [{"sessionCookie": []}]},
+    openapi_extra={
+        "responses": {"429": RATE_LIMIT_RESPONSE},
+        "security": [{"sessionCookie": []}],
+    },
 )
 def get_statistics(request):
     return allowlist_result(read_statistics, request)
@@ -1463,6 +1475,7 @@ def get_backups(request):
 @api.post(
     "/admin/export",
     response={
+        429: Error,
         200: None,
         401: Error,
         403: Error,
@@ -1474,12 +1487,13 @@ def get_backups(request):
     openapi_extra={
         "security": [{"sessionCookie": [], "csrfHeader": []}],
         "responses": {
+            "429": RATE_LIMIT_RESPONSE,
             "200": resolve(
                 read_contract(),
                 read_contract()["paths"]["/api/admin/export"]["post"]["responses"][
                     "200"
                 ],
-            )
+            ),
         },
     },
 )

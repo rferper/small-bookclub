@@ -36,7 +36,7 @@ export function mockDownload(filename: string, json: string): Extract<ClubExport
 // Existing callers may keep constructing ApiError(status,message).
 const errorCodes: Record<number, components['schemas']['Error']['code']> = {
   400: 'invalid_input', 401: 'unauthenticated', 403: 'forbidden', 404: 'not_found',
-  409: 'conflict', 500: 'internal_error', 503: 'service_unavailable',
+  409: 'conflict', 429: 'rate_limited', 500: 'internal_error', 503: 'service_unavailable',
 }
 export function errorEnvelope(error: ApiError): components['schemas']['Error'] {
   return { code: error.code ?? errorCodes[error.status] ?? 'internal_error', message: error.message }
