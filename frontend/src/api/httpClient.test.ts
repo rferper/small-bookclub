@@ -13,6 +13,46 @@ const sessions: Session[] = [
   { status: 'signedIn', user: { id: 'fictional-website-7', displayName: 'Alba ficticia', avatarUrl: null, role: 'member' } },
 ]
 
+describe('authenticated ZIP export transport', () => {
+  const headers = { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="club-de-lectura.zip"', 'Cache-Control': 'no-store' }
+  it('gets truthful backup metadata and downloads private ZIP through the central CSRF transport', async () => {
+    const send = vi.fn<typeof fetch>(async url => String(url).endsWith('/backups') ? json({policy:'pending',lastBackupAt:null}) : new Response('fictional ZIP bytes', {headers}))
+    const api = createHttpClient({fetch:send,cookie:()=>`csrftoken=${'a'.repeat(32)}`})
+    expect(await api.getBackupInfo()).toEqual({policy:'pending',lastBackupAt:null})
+    const result = await api.exportClubData()
+    expect(result.filename).toBe('club-de-lectura.zip')
+    if (!('blob' in result)) throw new Error('Expected ZIP blob')
+    expect(result.blob.type).toBe('application/zip')
+    expect(result.blob.size).toBeGreaterThan(0)
+    const [url,init] = send.mock.calls[1]
+    expect(url).toBe('/api/admin/export')
+    expect(init).toMatchObject({method:'POST',credentials:'same-origin',redirect:'error',body:undefined})
+    expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('a'.repeat(32))
+    expect(new Headers(init?.headers).get('Accept')).toBe('application/zip')
+  })
+  it('preserves reauthentication-required without pretending it is a session expiry', async () => {
+    const api = createHttpClient({fetch:async()=>json({code:'reauthentication_required',message:'Vuelve a identificarte con Discord.'},409)})
+    await expect(api.exportClubData()).rejects.toMatchObject({status:409,code:'reauthentication_required'})
+  })
+  it('hands export reauthentication to the existing top-level OAuth route', async () => {
+    const navigate = vi.fn(), send = vi.fn<typeof fetch>()
+    await createHttpClient({navigate,fetch:send}).startSignIn('export')
+    expect(navigate).toHaveBeenCalledWith('/api/auth/discord/start?purpose=export')
+    expect(send).not.toHaveBeenCalled()
+  })
+  it.each([
+    {'Content-Type':'text/html'}, {'Content-Disposition':'attachment; filename="../../private.zip"'}, {'Cache-Control':'public'},
+  ])('rejects an unexpected ZIP attachment boundary %j', async extra => {
+    const api = createHttpClient({fetch:async()=>new Response('fictional bytes',{headers:{...headers,...extra}})})
+    await expect(api.exportClubData()).rejects.toMatchObject({status:500})
+  })
+  it('rejects an empty attachment and redirects', async () => {
+    for(const response of [new Response('',{headers}),new Response(null,{status:302,headers:{Location:'https://invalid.example'}})]) {
+      await expect(createHttpClient({fetch:async()=>response}).exportClubData()).rejects.toMatchObject({status:500})
+    }
+  })
+})
+
 describe('HTTP taste compatibility adapter', () => {
   it('uses the central session transport and preserves the server comparison union', async () => {
     const body = { minSharedBooks: 3, members: [{ member: { id: '2', displayName: 'Lector ficticio', avatarUrl: null }, sharedBookCount: 2, comparison: { status: 'insufficient' as const } }] }

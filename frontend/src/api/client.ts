@@ -64,7 +64,7 @@ export interface ApiClient {
   getSession(): Promise<ApiResult<'getSession'>>
   // Starts Discord sign-in. The HTTP client will hand over to the backend's
   // OAuth flow; components never build backend or Discord URLs themselves.
-  startSignIn(): Promise<void>
+  startSignIn(purpose?: 'export'): Promise<void>
   // Demo sign-in with fictional data (#75); only offered when the session
   // says so.
   startDemoSignIn(): Promise<ApiResult<'startDemoSignIn'>>

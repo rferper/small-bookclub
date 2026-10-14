@@ -699,7 +699,7 @@ export interface paths {
         put?: never;
         /**
          * exportClubData
-         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Requires recent same-approved-admin Discord OAuth reauthentication after verified identity/allowlist checks. Five minutes by server clock, recorded server-side (#49/#5). Confirmation/request boolean insufficient; no body accepted. Include UTF-8 manifest.json + club.json and available website media. Authenticated noncached attachment; sessions/secrets excluded. Export event included once in safe audit.
+         * @description Effective approved admin only; recheck allowlist and role on server. 401 before 403; both before lookup/payload validation. Curator alone is denied. CSRF on unsafe methods. Atomic refusal changes nothing; member/own-profile gates apply to admin outside these endpoints. Requires recent same-approved-admin Discord OAuth reauthentication after verified identity/allowlist checks. Five minutes by server clock, recorded server-side (#49/#5). Confirmation/request boolean insufficient; no body accepted. Include UTF-8 manifest.json + club.json and available website media. Authenticated noncached attachment; sessions/secrets excluded. Unsupported media is never fetched externally. Export event included once in safe audit.
          */
         post: operations["exportClubData"];
         delete?: never;

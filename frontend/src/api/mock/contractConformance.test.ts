@@ -204,6 +204,7 @@ describe('generated input and deliberately local adapter boundaries', () => {
     const api = createMockClient()
     const download = await api.exportClubData()
     expect(download.filename).toMatch(/\.json$/)
+    if (!('json' in download)) throw new Error('Expected illustrative mock JSON')
     expect(() => JSON.parse(download.json)).not.toThrow()
     const exported = operation('exportClubData')
     expect(exported.responses?.['200']?.content?.['application/json']).toBeUndefined()

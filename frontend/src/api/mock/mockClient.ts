@@ -819,8 +819,9 @@ export function createMockClient({
       return { status: state.session === 'denied' ? 'denied' : 'anonymous', demoSignInAvailable }
     },
 
-    async startSignIn(): Promise<void> {
+    async startSignIn(purpose?: 'export'): Promise<void> {
       failIfConfigured('startSignIn')
+      if (purpose === 'export') { requireAdmin(); return }
       switchSession(signInResult)
     },
 

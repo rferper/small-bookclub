@@ -31,7 +31,7 @@ export function multipartFormData(parts: components['schemas']['ProfileMultipart
 // Top-level OAuth navigation has no JSON result. Mock resolves void after session simulation.
 export type OAuthHandoff = operations['startSignIn']['responses'][302]
 export type ProductionExport = operations['exportClubData']['responses'][200]['content']['application/zip']
-export function mockDownload(filename: string, json: string): ClubExport { return { filename, json } }
+export function mockDownload(filename: string, json: string): Extract<ClubExport, { json: string }> { return { filename, json } }
 
 // Existing callers may keep constructing ApiError(status,message).
 const errorCodes: Record<number, components['schemas']['Error']['code']> = {

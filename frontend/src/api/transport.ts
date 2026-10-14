@@ -91,9 +91,9 @@ function errorBody(value: unknown): value is components['schemas']['Error'] {
 }
 
 export function createTransport({ fetch: send = globalThis.fetch, cookie = () => document.cookie }: { fetch?: typeof fetch; cookie?: () => string } = {}) {
-  return async function request<N extends JsonOperation>(options: OperationRequest<N>): Promise<ApiResult<N>> {
+  async function responseFor(options: { method: string; path: string; successStatus: number; pathParams?: unknown; query?: unknown; body?: unknown; signal?: AbortSignal }, accept: string): Promise<Response> {
     const url = operationUrl(options.path, options.pathParams, options.query)
-    const headers = new Headers({ Accept: 'application/json' })
+    const headers = new Headers({ Accept: accept })
     const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(options.method)
     if (!unsafe && options.body !== undefined) throw safeError(500)
     if (unsafe) {
@@ -130,12 +130,27 @@ export function createTransport({ fetch: send = globalThis.fetch, cookie = () =>
       throw safeError(response.status)
     }
     if (response.status !== options.successStatus) throw safeError(500)
+    return response
+  }
+  const request = async function request<N extends JsonOperation>(options: OperationRequest<N>): Promise<ApiResult<N>> {
+    const response = await responseFor(options, 'application/json')
     if (response.status === 204) return undefined as ApiResult<N>
-    if (!json) throw safeError(500)
+    if (response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw safeError(500)
     try {
       const parsed: unknown = await response.json()
       // The operation declaration owns this boundary. Full runtime schema validation is deferred.
       return parsed as ApiResult<N>
     } catch { throw safeError(500) }
   }
+  request.exportZip = async (): Promise<{ filename: 'club-de-lectura.zip'; blob: Blob }> => {
+    const response = await responseFor({ method: 'POST', path: '/api/admin/export', successStatus: 200 }, 'application/zip')
+    const disposition: operations['exportClubData']['responses'][200]['headers']['Content-Disposition'] = 'attachment; filename="club-de-lectura.zip"'
+    if (response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/zip' || response.headers.get('Content-Disposition') !== disposition || response.headers.get('Cache-Control') !== 'no-store') throw safeError(500)
+    try {
+      const blob = await response.blob()
+      if (blob.size === 0) throw safeError(500)
+      return { filename: 'club-de-lectura.zip', blob }
+    } catch { throw safeError(500) }
+  }
+  return request
 }
