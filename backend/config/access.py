@@ -63,6 +63,7 @@ class AuthenticationCacheMiddleware:
             "/api/auth/discord/start",
             "/api/auth/discord/callback",
             "/api/auth/logout",
+            "/api/auth/demo",
         }:
             response["Cache-Control"] = "no-store"
         return response

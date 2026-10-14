@@ -19,6 +19,7 @@ def test_documented_environments_have_explicit_spanish_sqlite_configuration(
     }
     settings = configure(env, BASE)
     assert settings["ENVIRONMENT"] == environment
+    assert settings["DEMO_MODE"] is False
     assert settings["LANGUAGE_CODE"] == "es"
     assert settings["TIME_ZONE"] == "UTC"
     assert settings["USE_TZ"] is True
@@ -34,6 +35,8 @@ def test_documented_environments_have_explicit_spanish_sqlite_configuration(
         ({"BOOKCLUB_ENV": "staging"}, "BOOKCLUB_ENV"),
         ({"DEBUG": "1"}, "DEBUG"),
         ({"DEBUG": ""}, "DEBUG"),
+        ({"DEMO_MODE": "1"}, "DEMO_MODE"),
+        ({"DEMO_MODE": ""}, "DEMO_MODE"),
         ({"CLUB_TIMEZONE": "Unknown/Club"}, "CLUB_TIMEZONE"),
         ({"CLUB_TIMEZONE": ""}, "CLUB_TIMEZONE"),
         ({"BOOKCLUB_ENV": "production"}, "SECRET_KEY and ALLOWED_HOSTS"),
@@ -55,6 +58,7 @@ def test_custom_timezone_database_hosts_and_boolean_are_parsed():
             "DATABASE_PATH": "fictional.sqlite3",
             "ALLOWED_HOSTS": " localhost, example.test ,",
             "DEBUG": "FALSE",
+            "DEMO_MODE": "TRUE",
         },
         BASE,
     )
@@ -62,6 +66,7 @@ def test_custom_timezone_database_hosts_and_boolean_are_parsed():
     assert settings["DATABASES"]["default"]["NAME"] == str(BASE / "fictional.sqlite3")
     assert settings["ALLOWED_HOSTS"] == ["localhost", "example.test"]
     assert settings["DEBUG"] is False
+    assert settings["DEMO_MODE"] is True
 
 
 def test_memory_database_and_defaults_do_not_depend_on_machine_timezone():
