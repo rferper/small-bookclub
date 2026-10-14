@@ -65,8 +65,8 @@ from meetings.schemas import (
     RecycleBinEntry,
 )
 from reviews.rubric import read_rubric, save_rubric
-from reviews.schemas import RatingRubric, RatingRubricInput, ReviewInput
-from reviews.services import save_review
+from reviews.schemas import MyReviewEntry, RatingRubric, RatingRubricInput, ReviewInput
+from reviews.services import list_own_reviews, save_review
 from reviews.statistics_schemas import Statistics, TasteCompatibility
 from reviews.statistics_services import read_compatibility, read_statistics
 from users.authentication import (
@@ -1549,3 +1549,13 @@ class AuditEvent(Schema):
 )
 def get_audit_log(request):
     return allowlist_result(read_audit, request)
+
+
+@api.get(
+    "/me/reviews",
+    response={200: list[MyReviewEntry], 401: Error, 500: Error, 503: Error},
+    operation_id="listMyReviews",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_own_reviews(request):
+    return allowlist_result(list_own_reviews, request)

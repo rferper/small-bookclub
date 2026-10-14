@@ -7,15 +7,42 @@ from django.db import transaction
 from django.utils import timezone
 
 from books.completion import projection
+from books.home import book_summary
 from books.models import Book, BookCompletion
 from users.access import permission_refusal, require_permission
-from users.membership import error_result, native_member_id
+from users.membership import error_result, native_member_id, spanish_name_key
 from users.models import User
 from users.profile import OWNER_KEYS
 
 from .constants import CRITERIA
 from .math import validated_scores
 from .models import Review
+
+
+@require_permission("view_club")
+def list_own_reviews(request):
+    rows = Review.objects.filter(
+        member=request.user, book__deleted_at__isnull=True
+    ).select_related("book")
+    ordered = sorted(
+        rows,
+        key=lambda row: (
+            -(row.edited_at or row.submitted_at).timestamp(),
+            spanish_name_key(row.book.title),
+            row.book_id,
+        ),
+    )
+    return 200, [
+        {
+            "book": book_summary(row.book),
+            "scores": {key: float(score) for key, score in row.scores.items()},
+            "overall": float(row.overall),
+            "text": row.text,
+            "submittedAt": row.submitted_at,
+            "editedAt": row.edited_at,
+        }
+        for row in ordered
+    ]
 
 
 def payload(request):

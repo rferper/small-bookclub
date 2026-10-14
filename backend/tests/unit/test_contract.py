@@ -100,6 +100,7 @@ def test_every_real_registered_operation_matches_contract_without_future_stubs()
         "GET /api/admin/backups (getBackupInfo)",
         "POST /api/admin/export (exportClubData)",
         "GET /api/admin/audit-log (getAuditLog)",
+        "GET /api/me/reviews (listMyReviews)",
     ]
 
 
