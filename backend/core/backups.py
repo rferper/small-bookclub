@@ -117,7 +117,7 @@ def manifest(archive):
     return data
 
 
-def rotate(destination, keep):
+def rotate(destination, keep, newest):
     candidates = []
     for file in destination.iterdir():
         if not NAME.fullmatch(file.name) or file.is_symlink() or not file.is_file():
@@ -128,7 +128,12 @@ def rotate(destination, keep):
         except (ValueError, KeyError, zipfile.BadZipFile):
             continue
         candidates.append(file)
-    for file in sorted(candidates, reverse=True)[keep:]:
+    # A corrected system clock must never make this run delete its new snapshot.
+    ordered = [
+        newest,
+        *sorted((file for file in candidates if file != newest), reverse=True),
+    ]
+    for file in ordered[keep:]:
         # Only direct, recognized archives inside the checked destination are removed.
         if plain_path(file).parent != destination:
             raise ValueError("Unsafe rotation target")
@@ -204,7 +209,13 @@ def create_backup(database, media_root, destination, keep, runtime):
                 if final.exists():
                     raise FileExistsError("Archive already exists")
                 os.replace(output, final)
-                rotate(destination, keep)
+                if os.name == "posix":
+                    descriptor = os.open(destination, os.O_RDONLY | os.O_DIRECTORY)
+                    try:
+                        os.fsync(descriptor)
+                    finally:
+                        os.close(descriptor)
+                rotate(destination, keep, final)
         finally:
             lock.rollback()
     return final

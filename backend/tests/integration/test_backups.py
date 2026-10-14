@@ -6,6 +6,7 @@ import stat
 import subprocess
 import sys
 import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -116,6 +117,21 @@ def test_rotation_is_bounded_and_preserves_unrelated_and_unrecognized_files(stor
     assert not first.exists() and second.exists() and third.exists()
     assert unrelated.read_bytes() == b"unrelated bytes"
     assert unrecognized.read_bytes() == b"not a managed backup"
+
+
+def test_rotation_keeps_new_snapshot_if_system_clock_moves_backward(
+    storage, monkeypatch
+):
+    class Future:
+        @staticmethod
+        def now(tz):
+            return datetime(2030, 1, 1, tzinfo=UTC)
+
+    monkeypatch.setattr(backups, "datetime", Future)
+    old = archive(storage, keep=1)
+    monkeypatch.setattr(backups, "datetime", datetime)
+    new = archive(storage, keep=1)
+    assert new.exists() and not old.exists()
 
 
 @pytest.mark.parametrize("keep", [0, -1, 31, True, "3"])
