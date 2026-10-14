@@ -21,6 +21,7 @@ from books.library import list_books
 from books.library import read_book as read_member_book
 from books.metadata import search_metadata
 from books.schemas import BookRatings, FinishedInput
+from core.audit import read_audit
 from core.export import backup_info, export_club
 from core.quote_schemas import AdminLiteraryQuote, LiteraryQuoteInput
 from core.quotes import list_quotes, remove_quote, save_quote
@@ -1488,3 +1489,63 @@ def post_export(request):
     except Exception:
         return Status(*error_result(500))
     return result if isinstance(result, HttpResponse) else Status(*result)
+
+
+class AuditTarget(Schema):
+    model_config = ConfigDict(extra="forbid")
+    type: Literal[
+        "member",
+        "curator",
+        "book",
+        "meeting",
+        "summary",
+        "highlight",
+        "week",
+        "quote",
+        "vote",
+        "club",
+    ]
+    id: Annotated[str, Field(min_length=1)]
+    label: str
+
+
+class AuditActor(Schema):
+    model_config = ConfigDict(extra="forbid")
+    id: Annotated[str, Field(min_length=1)]
+    displayName: str
+
+
+class AuditEvent(Schema):
+    model_config = ConfigDict(extra="forbid")
+    id: Annotated[str, Field(min_length=1)]
+    action: Literal[
+        "member_approved",
+        "member_revoked",
+        "member_restored",
+        "curator_assigned",
+        "curator_cleared",
+        "book_status_changed",
+        "summary_published",
+        "summary_unpublished",
+        "highlight_published",
+        "highlight_unpublished",
+        "soft_deleted",
+        "restored",
+        "purged",
+        "vote_closed",
+        "tie_resolved",
+        "exported",
+    ]
+    target: AuditTarget
+    actor: AuditActor
+    occurredAt: timezone.datetime
+
+
+@api.get(
+    "/admin/audit-log",
+    response={200: list[AuditEvent], 401: Error, 403: Error, 500: Error, 503: Error},
+    operation_id="getAuditLog",
+    openapi_extra={"security": [{"sessionCookie": []}]},
+)
+def get_audit_log(request):
+    return allowlist_result(read_audit, request)

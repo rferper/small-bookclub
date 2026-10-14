@@ -14,7 +14,7 @@ export function createHttpClient(options: {
   return {
     getBackupInfo: () => request<'getBackupInfo'>({ method: 'GET', path: '/api/admin/backups', successStatus: 200 }),
     exportClubData: () => request.exportZip(),
-    getAuditLog: unavailable,
+    getAuditLog: () => request<'getAuditLog'>({ method: 'GET', path: '/api/admin/audit-log', successStatus: 200 }),
     getRecycleBin: () => request<'getRecycleBin'>({ method: 'GET', path: '/api/admin/bin', successStatus: 200 }),
     getDeletionPreview: (type, id) => request<'getDeletionPreview'>({ method: 'GET', path: '/api/admin/deletion-preview/{type}/{id}', pathParams: { type, id }, successStatus: 200 }),
     deleteBook: (bookId) => request<'deleteBook'>({ method: 'DELETE', path: '/api/admin/books/{bookId}', pathParams: { bookId }, successStatus: 200 }),

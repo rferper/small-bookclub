@@ -47,10 +47,14 @@ def set_curator(request):
     if existing and target and existing.member_id == target.pk:
         return 200, admin_members_projection(actor)
     now = timezone.now()
+    from core.audit import record_audit
+
     if existing:
         existing.current = False
         existing.ended_at = now
         existing.save(update_fields=["current", "ended_at"])
+        record_audit("curator_cleared", actor, "curator", existing.member_id)
     if target:
         CuratorAssignment.objects.create(member=target, assigned_at=now)
+        record_audit("curator_assigned", actor, "curator", target.pk)
     return 200, admin_members_projection(actor)

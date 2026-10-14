@@ -171,6 +171,9 @@ def purge_target(kind, row, actor):
     key = cover_key(row.cover_path) if kind == "book" else None
     with transaction.atomic():
         PurgeRecord.objects.create(kind=kind, resource_id=str(row.pk), actor=actor)
+        from .audit import record_audit
+
+        record_audit("purged", actor, kind, row.pk)
         if kind == "highlight":
             row.speakers.clear()
         row.hard_delete()

@@ -53,6 +53,15 @@ describe('authenticated ZIP export transport', () => {
   })
 })
 
+describe('native safe audit transport', () => {
+  it('returns only the server metadata through the central authenticated JSON adapter', async () => {
+    const events=[{id:'event-fiction',action:'purged',target:{type:'quote',id:'8',label:'Cita literaria'},actor:{id:'1',displayName:'Persona ficticia'},occurredAt:'2026-10-14T12:00:00Z'}]
+    const send=vi.fn<typeof fetch>(async()=>json(events))
+    expect(await createHttpClient({fetch:send}).getAuditLog()).toEqual(events)
+    expect(send.mock.calls[0]).toEqual(['/api/admin/audit-log',expect.objectContaining({method:'GET',credentials:'same-origin',body:undefined})])
+  })
+})
+
 describe('HTTP taste compatibility adapter', () => {
   it('uses the central session transport and preserves the server comparison union', async () => {
     const body = { minSharedBooks: 3, members: [{ member: { id: '2', displayName: 'Lector ficticio', avatarUrl: null }, sharedBookCount: 2, comparison: { status: 'insufficient' as const } }] }

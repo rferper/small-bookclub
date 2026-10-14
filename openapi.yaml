@@ -1573,6 +1573,7 @@ paths:
     get:
       operationId: getAuditLog
       summary: getAuditLog
+      x-implementation-scope: Native read-only safe transition audit. Preserve existing export-event IDs and immutable actor snapshots; omit payloads, private text and credentials.
       tags:
         - Admin
       description: "Effective approved admin only; recheck allowlist and role on server. 401 before 403;

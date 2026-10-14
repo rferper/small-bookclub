@@ -91,17 +91,18 @@ function ExportControl() {
 }
 
 export function AdminAuditPage() {
+  const native = import.meta.env.VITE_API_MODE === 'http'
   const loaded = useApiData((api) => api.getAuditLog())
   if (loaded.status === 'error' && loaded.error instanceof ApiError && loaded.error.status === 403) return <AdminOnlyMessage focusOnMount />
   return <div className="grid min-w-0 gap-6 wrap-anywhere">{back}
     <h1 className="text-3xl text-forest">Registro de actividad</h1>
-    <p>Registro operativo simulado y de solo lectura. Conserva identificadores y etiquetas, sin copiar el contenido privado de los registros.</p>
+    <p>{native ? 'Registro de solo lectura de las acciones importantes del club. Conserva quién actuó, qué cambió y cuándo, sin copiar el contenido privado.' : 'Registro operativo simulado y de solo lectura. Conserva identificadores y etiquetas, sin copiar el contenido privado de los registros.'}</p>
     {loaded.status === 'loading' && <Loading />}
     {loaded.status === 'error' && <LoadError message="No se ha podido cargar el registro de actividad." onRetry={loaded.reload} />}
     {loaded.status === 'ready' && <Card title="Actividad administrativa">
       {!loaded.data.length && <EmptyState>Todavía no hay actividad administrativa.</EmptyState>}
       <ol className="grid gap-4">{loaded.data.map((event) => <li key={event.id} className="min-w-0 border-b border-wood/30 pb-4">
-        <h3 className="font-serif text-xl">{labels[event.action]}</h3>
+        <h3 className="font-serif text-xl">{native && event.action === 'exported' ? 'Datos del club exportados' : labels[event.action]}</h3>
         <p className="whitespace-pre-wrap">{event.target.label} · Identificador: {event.target.id}</p>
         <p>Por {event.actor.displayName}</p>
         <time dateTime={event.occurredAt} className="text-bark">{formatMeetingDateWithYear(event.occurredAt)}</time>

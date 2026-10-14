@@ -18,6 +18,17 @@ function downloads() {
 }
 
 describe('guarded administrative operations screens', () => {
+  it('native audit is read-only and labels successful export without demo claims', async () => {
+    vi.stubEnv('VITE_API_MODE','http')
+    try {
+      const client={...createMockClient(),getAuditLog:async()=>[{id:'audit-fiction',action:'exported' as const,target:{type:'club' as const,id:'club',label:'Club de lectura'},actor:{id:'1',displayName:'Persona ficticia'},occurredAt:'2026-10-14T12:00:00Z'}]}
+      renderApp({path:audit,client})
+      await screen.findByText('Datos del club exportados')
+      expect(screen.queryByText(/Registro operativo simulado/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button',{name:/Editar|Eliminar/})).not.toBeInTheDocument()
+      expect(screen.getByText('Por Persona ficticia')).toBeInTheDocument()
+    } finally {vi.unstubAllEnvs()}
+  })
   it('native mode downloads ZIP without demo claims or a fabricated backup timestamp', async () => {
     vi.stubEnv('VITE_API_MODE','http')
     try {
