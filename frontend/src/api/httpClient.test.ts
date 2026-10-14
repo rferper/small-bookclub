@@ -54,6 +54,24 @@ describe('HTTP literary quote adapters', () => {
   })
 })
 
+describe('HTTP recycle-bin adapters', () => {
+  it('uses canonical paths and CSRF for native delete, restore and purge without sending content', async () => {
+    const send = vi.fn<typeof fetch>(async () => json([]))
+    const client = createHttpClient({ fetch: send, cookie: () => `csrftoken=${'r'.repeat(32)}` })
+    expect(await client.getRecycleBin()).toEqual([])
+    expect(await client.deleteBook('9')).toEqual([])
+    expect(await client.restoreDeleted('week', '4')).toEqual([])
+    expect(await client.purgeDeleted('quote', '5')).toEqual([])
+    expect(send.mock.calls.map(([url]) => url)).toEqual(['/api/admin/bin', '/api/admin/books/9', '/api/admin/bin/week/4/restore', '/api/admin/bin/quote/5'])
+    expect(send.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'DELETE', 'POST', 'DELETE'])
+    for (const [, init] of send.mock.calls) {
+      expect(init?.body).toBeUndefined()
+      expect(init?.credentials).toBe('same-origin')
+    }
+    for (const [, init] of send.mock.calls.slice(1)) expect(new Headers(init?.headers).get('X-CSRFToken')).toBe('r'.repeat(32))
+  })
+})
+
 describe('HTTP session adapters', () => {
   it.each(sessions)('reads the $status session using the central same-origin transport', async session => {
     const send = vi.fn<typeof fetch>(async () => json(session))
