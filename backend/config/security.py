@@ -8,6 +8,7 @@ from math import ceil
 from django.db import DatabaseError, transaction
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.cache import patch_cache_control
 from django.utils.crypto import salted_hmac
 
 POLICIES = {
@@ -35,7 +36,7 @@ class PrivacyHeadersMiddleware:
         response = self.get_response(request)
         response["X-Robots-Tag"] = "noindex, nofollow, noarchive"
         response["X-Frame-Options"] = "DENY"
-        response["Cache-Control"] = "no-store"
+        patch_cache_control(response, no_store=True)
         response["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         return response
 
