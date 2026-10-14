@@ -12,6 +12,8 @@ Living document: update it when we learn something about how tests should be wri
 
 ## Browser verification
 
+The owner explicitly chose disposable terminal Playwright for this repository and does not connect a browser. This preference persists across issues; do not ask again or leave visual checks pending on a connected browser. Keep screenshots and test data fictional, preserve the owner's preview/database, and stop temporary verification servers after checking.
+
 For local frontend visual checks, when the connected Browser is unavailable and the user chooses terminal-based checking, use standalone Playwright in a disposable environment. Capture screenshots and layout metrics, and inspect the screenshots alongside the required interaction, console and network checks. Do not change the repository's dependency list unless the issue requires it. An absent connected browser alone need not block local visual validation; the user's explicit workflow preference takes precedence over plugin instructions. Keep the issue's port and resource limits, and stop the browser and dev server afterwards.
 
 ## Unit vs integration tests
