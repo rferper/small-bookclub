@@ -83,6 +83,13 @@ On Windows with Node 24.19.0, the targeted bridge passed in **5.38 seconds**
 tests took 1.24 seconds for the bridge call. These are local measurements, not
 CI performance guarantees; the 90-second subprocess cap allows slower runners.
 
+The full integration selection passed **1,054 tests in 331.41 seconds**, with
+one existing Windows filesystem-symlink test skipped because creating symlinks
+requires additional privileges. Unit selection passed 520 tests (1,055
+integration tests excluded) in 104.14 seconds. These suite measurements were
+taken while frontend checks were also running; migration subprocesses were the
+slowest checks (105.09, 40.60 and 24.08 seconds), rather than the HTTP bridge.
+
 Contract YAML parsing is cached by file content, with a deep copy returned for
 each caller. Unit regressions check nested mutation isolation and same-length
 file-content replacement. Every recorded response still receives full schema
