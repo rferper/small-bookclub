@@ -1,8 +1,11 @@
 """Closed website-native projections for the private member directory."""
 
+from django.db import transaction
+
 from meetings.current_reading import current_reading
 
 from .access import require_permission
+from .favourites import selected
 from .membership import error_result, native_member_id, spanish_name_key
 from .models import User
 
@@ -45,6 +48,7 @@ def directory(request):
     }
 
 
+@transaction.atomic
 @require_permission("view_club")
 def member_profile(request, member_id):
     actor = request.user
@@ -61,7 +65,7 @@ def member_profile(request, member_id):
         "member": member_summary(target),
         "bio": target.bio,
         "favouriteQuote": target.favourite_quote,
-        "favouriteBooks": [],
+        "favouriteBooks": selected(target),
         "isMe": target.pk == actor.pk,
         "currentWeek": {
             "weekNumber": week.week_number,

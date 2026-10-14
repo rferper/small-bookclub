@@ -1198,6 +1198,7 @@ paths:
     get:
       operationId: getMyProfile
       summary: getMyProfile
+      x-implementation-scope: Native ranked favourites expose only retained active club-book summaries; new options are completed/archived club books, matching the existing selector. Current session owns the selection.
       description: Approved membership rechecked before data lookup. See docs/api.md for server
         obligations and error precedence.
       tags:
@@ -1229,6 +1230,7 @@ paths:
     put:
       operationId: updateMyProfile
       summary: updateMyProfile
+      x-implementation-scope: Persist zero to five distinct active completed/archived native favourite book IDs in submitted order, atomically with profile and avatar changes. Recheck selected parent visibility, club completion status and current ownership inside the write transaction.
       description: 401 before validation, any smuggled owner/member/id key 403 and never used for
         identity. JSON metadata+optional avatar image multipart parts. Normalize trim before
         lengths, blank optional text null, allowed ordered distinct <=5 favourites. Replace requires

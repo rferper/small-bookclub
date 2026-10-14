@@ -146,6 +146,7 @@ def purge_blocked(kind, row):
             ReadingAssignment.all_objects.filter(book=row).exists()
             or Meeting.all_objects.filter(book=row).exists()
             or row.reviews.exists()
+            or row.favourites.exists()
             or row.completions.exists()
             or row.vote_candidacies.exists()
             or row.won_votes.exists()

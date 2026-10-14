@@ -15,8 +15,10 @@ from core.images import encode_image as encode_avatar
 
 from .access import can_edit_profile, is_effective_member, require_permission
 from .authentication import current_identity
+from .favourites import options as favourite_options
+from .favourites import selected, selection_ids
 from .membership import error_result
-from .models import User
+from .models import FavouriteBook, User
 from .validators import validate_display_name
 
 OWNER_KEYS = {"id", "memberid", "userid", "ownerid", "member", "user", "owner"}
@@ -33,11 +35,12 @@ def projection(identity):
         },
         "bio": identity.bio,
         "favouriteQuote": identity.favourite_quote,
-        "favouriteBooks": [],
-        "favouriteOptions": [],
+        "favouriteBooks": selected(identity),
+        "favouriteOptions": favourite_options(),
     }
 
 
+@transaction.atomic
 @require_permission("view_club")
 def read_profile(request):
     return 200, projection(request.user)
@@ -89,10 +92,7 @@ def parse_input(request):
         raise ValueError("Unknown field")
     name = metadata.get("displayName")
     validate_display_name(name)
-    favourites = metadata.get("favouriteBookIds")
-    if favourites != []:
-        # The book catalogue is introduced in its own issue.
-        raise ValueError("Unavailable favourite books")
+    favourites = selection_ids(metadata.get("favouriteBookIds"))
     action = metadata.get("avatarAction")
     if not isinstance(action, str) or action not in {"keep", "remove", "replace"}:
         raise ValueError("Invalid avatar action")
@@ -106,6 +106,7 @@ def parse_input(request):
         text_value(metadata.get("favouriteQuote"), 300),
         action,
         encoded,
+        favourites,
     )
 
 
@@ -145,7 +146,7 @@ def update_profile(request):
         return error_result(400)
     if status == 403:
         return error_result(403)
-    name, bio, quote, action, encoded = values
+    name, bio, quote, action, encoded, favourites = values
     new_key = uuid.uuid4().hex if encoded is not None else None
     new_file = avatar_file(new_key) if new_key else None
     try:
@@ -155,6 +156,15 @@ def update_profile(request):
                 return error_result(401)
             if not can_edit_profile(identity, actor.pk):
                 return error_result(403)
+            from books.models import Book
+
+            books = list(
+                Book.objects.select_for_update().filter(
+                    pk__in=favourites, status__in=["terminado", "archivado"]
+                )
+            )
+            if len(books) != len(favourites):
+                return error_result(400)
             old_key = stored_avatar_key(identity.avatar_path)
             identity.display_name = name
             identity.bio = bio
@@ -174,6 +184,13 @@ def update_profile(request):
                     "favourite_quote",
                     "avatar_path",
                     "updated_at",
+                ]
+            )
+            FavouriteBook.objects.filter(member=identity).delete()
+            FavouriteBook.objects.bulk_create(
+                [
+                    FavouriteBook(member=identity, book_id=key, rank=rank)
+                    for rank, key in enumerate(favourites, 1)
                 ]
             )
             result = projection(identity)

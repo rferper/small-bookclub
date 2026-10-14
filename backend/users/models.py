@@ -102,6 +102,33 @@ class User(AbstractBaseUser):
             )
 
 
+class FavouriteBook(models.Model):
+    """Small ranked preference; retained book references forbid silent purge."""
+
+    member = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="favourites"
+    )
+    book = models.ForeignKey(
+        "books.Book", on_delete=models.PROTECT, related_name="favourites"
+    )
+    rank = models.PositiveSmallIntegerField()
+
+    class Meta:
+        ordering = ["rank", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["member", "book"], name="favourite_unique_book"
+            ),
+            models.UniqueConstraint(
+                fields=["member", "rank"], name="favourite_unique_rank"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(rank__gte=1, rank__lte=5),
+                name="favourite_rank_range",
+            ),
+        ]
+
+
 class CuratorAssignment(models.Model):
     """A retained cycle identity, never an account role."""
 
