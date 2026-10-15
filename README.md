@@ -218,6 +218,11 @@ CI (`.github/workflows/frontend.yml`) runs these on every push to `main` and eve
 
 ## Deployment and demo *(to do: Phase 3)*
 
+See the [portable production deployment guide](docs/deployment.md) for the
+explicit HTTPS Compose override, SQLite/media persistence, hosting comparison,
+maintenance and recovery. Public cloud provisioning and working staging/production
+URLs remain #76. See [fictional demo operation](docs/demo.md) for opt-in seeding.
+
 ## How AI was used *(to do)*
 
 This project is built with AI coding agents following a PM → engineer → QA process. See [`AGENTS.md`](AGENTS.md) and [`docs/process.md`](docs/process.md).

@@ -21,6 +21,8 @@ separate fictional demo project/volume and enabling its existing sign-in button.
 See README for callback/port and timezone rebuild requirements. The backend port
 is internal; the frontend is published on 127.0.0.1 only. Do not expose this local
 configuration publicly; public deployment/TLS is #76.
+The host-neutral HTTPS recipe and maintenance commands are in
+[deployment.md](deployment.md); public host provisioning remains #76.
 
 Migrations run on startup before serving traffic; failure stops the backend.
 Health is process liveness, not a full database/provider readiness probe. Compose
