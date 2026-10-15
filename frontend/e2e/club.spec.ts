@@ -1,0 +1,128 @@
+import { test, expect } from '@playwright/test'
+
+const world = JSON.parse(process.env.E2E_WORLD!) as Record<string, string>
+
+test('member completes the native club journey', async ({ page, context, baseURL }, testInfo) => {
+  const actor = testInfo.project.name
+  const errors: string[] = [], failures: string[] = [], badResponses: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+  page.on('requestfailed', request => failures.push(new URL(request.url()).pathname))
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      const failure = `${response.status()} ${new URL(response.url()).pathname}`
+      badResponses.push(failure)
+      console.error(`Unexpected browser HTTP response: ${failure}`)
+    }
+  })
+  const json = async (path: string) => {
+    const response = await context.request.get(path)
+    expect(response.status()).toBe(200)
+    return response.json()
+  }
+  const mutation = (path: string, method: string) => page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method)
+  const screenshot = async (name: string) => {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true })
+  }
+
+  await test.step('sign in through real OAuth with only Discord mocked', async () => {
+    // Both contexts share one proxy peer. Let its production burst budget refill
+    // between actors: burst=30 at 10 requests/second, plus a small timer margin.
+    // Keep rate limits active and fail on every unexpected HTTP error; no retries.
+    await new Promise(resolve => setTimeout(resolve, 3200))
+    expect((await context.request.get('/api/me/profile')).status()).toBe(401)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Entrar con Discord', exact: true }).click()
+    await page.waitForURL(`${process.env.E2E_PROVIDER_URL}/authorize?**`)
+    const authorization = new URL(page.url())
+    expect(authorization.origin).toBe(process.env.E2E_PROVIDER_URL)
+    expect(authorization.searchParams.get('client_id')).toBe('fictional-browser-client')
+    expect(authorization.searchParams.get('response_type')).toBe('code')
+    expect(authorization.searchParams.get('code_challenge_method')).toBe('S256')
+    expect(authorization.searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(authorization.searchParams.get('state')).toBeTruthy()
+    expect(authorization.searchParams.get('redirect_uri')).toBe(`${baseURL}/api/auth/discord/callback`)
+    await page.getByRole('link', { name: `Entrar como ${actor}`, exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Inicio', exact: true })).toBeVisible()
+    expect((await json('/api/session')).user.role).toBe('member')
+    await expect(page.getByRole('button', { name: 'Entrar con una cuenta de prueba' })).toHaveCount(0)
+  })
+  await test.step('edit own profile and read persisted values', async () => {
+    await page.goto('/mi-perfil')
+    await page.getByLabel('Nombre visible', { exact: true }).fill(`Lector ${actor} editado`)
+    await page.getByLabel('Sobre mí', { exact: true }).fill(`Biografía ficticia ${actor}`)
+    const saved = mutation('/api/me/profile', 'PUT')
+    await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+    expect((await saved).status()).toBe(200)
+    await page.reload()
+    await expect(page.getByLabel('Nombre visible', { exact: true })).toHaveValue(`Lector ${actor} editado`)
+    expect((await json('/api/me/profile')).bio).toBe(`Biografía ficticia ${actor}`)
+  })
+  await test.step('complete weekly reading and unlock the actual meeting summary', async () => {
+    const locked = await json(`/api/meetings/${world.meeting}`)
+    expect(JSON.stringify(locked)).not.toContain('E2E_SUMMARY_SENTINEL')
+    await page.goto(`/reuniones/${world.meeting}`)
+    await expect(page.getByRole('region', { name: 'Resumen y momentos destacados', exact: true })).toBeVisible()
+    await expect(page.getByText(/E2E_SUMMARY_SENTINEL/)).toHaveCount(0)
+    await page.goto(`/biblioteca/${world.currentBook}`)
+    const saved = mutation(`/api/weeks/${world.week}/completion`, 'PUT')
+    await page.getByRole('button', { name: 'Semana 1: Marcar como leído', exact: true }).click()
+    expect((await saved).status()).toBe(204)
+    await expect(page.getByRole('button', { name: 'Semana 1: Desmarcar', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await page.goto(`/reuniones/${world.meeting}`)
+    await expect(page.getByRole('region', { name: 'Resumen', exact: true })).toContainText('E2E_SUMMARY_SENTINEL')
+    expect(JSON.stringify(await json(`/api/meetings/${world.meeting}`))).toContain('E2E_SUMMARY_SENTINEL')
+  })
+  await test.step('cast an approval and reload it from Django', async () => {
+    await page.goto('/votaciones')
+    const checkbox = page.getByRole('checkbox', { name: 'Votar por «La ciudad de los relojes (ficticio)»', exact: true })
+    const saved = mutation(`/api/votes/${world.vote}/candidates/${world.candidate}/approval`, 'PUT')
+    await checkbox.check()
+    expect((await saved).status()).toBe(200)
+    await page.reload()
+    await expect(checkbox).toBeChecked()
+  })
+  await test.step('finish, submit five scores and unlock foreign ratings', async () => {
+    const locked = await json(`/api/books/${world.finishedBook}/ratings`)
+    expect(locked.club).toEqual({ status: 'locked' })
+    expect(JSON.stringify(locked)).not.toContain('E2E_REVIEW_SENTINEL')
+    await page.goto(`/biblioteca/${world.finishedBook}`)
+    await expect(page.getByText(/E2E_REVIEW_SENTINEL/)).toHaveCount(0)
+    const saved = mutation(`/api/books/${world.finishedBook}/finished`, 'PUT')
+    await page.getByRole('checkbox', { name: 'He terminado el libro', exact: true }).check()
+    expect((await saved).status()).toBe(200)
+    const finishedOnly = await json(`/api/books/${world.finishedBook}/ratings`)
+    expect(finishedOnly.club).toEqual({ status: 'locked' })
+    expect(JSON.stringify(finishedOnly)).not.toContain('E2E_REVIEW_SENTINEL')
+    await page.getByRole('link', { name: 'Valorar el libro', exact: true }).click()
+    for (const [criterion, value] of [['Disfrute', '5 estrellas'], ['Estilo', '4,5 estrellas'], ['Personajes', '3 estrellas'], ['Trama', '4 estrellas'], ['Huella', '2,5 estrellas']]) {
+      // Native keyboard radios exercise the accessible form without forced clicks.
+      await page.getByRole('group', { name: criterion, exact: true }).getByRole('radio', { name: value, exact: true }).press('Space')
+    }
+    await page.getByRole('textbox', { name: 'Reseña (opcional)', exact: true }).fill(`Reseña propia ${actor}`)
+    const reviewSaved = mutation(`/api/books/${world.finishedBook}/my-review`, 'PUT')
+    await page.getByRole('button', { name: 'Guardar valoración', exact: true }).click()
+    expect((await reviewSaved).status()).toBe(200)
+    await expect(page.getByRole('heading', { name: 'Media del club', exact: true })).toBeVisible()
+    await expect(page.getByText('E2E_REVIEW_SENTINEL: Una lectura compartida.').first()).toBeVisible()
+    const ratings = await json(`/api/books/${world.finishedBook}/ratings`)
+    expect(ratings.myReview.overall).toBe(3.8)
+    expect(ratings.club.status).toBe('visible')
+    expect(JSON.stringify(ratings.club)).toContain('E2E_REVIEW_SENTINEL')
+    await screenshot('unlocked-ratings')
+  })
+  await test.step('browse the persisted reading timeline', async () => {
+    await page.goto('/biblioteca')
+    await page.getByRole('button', { name: 'Cronología', exact: true }).click()
+    await expect(page).toHaveURL(/vista=cronologia/)
+    await expect(page.getByRole('heading', { name: '2025', exact: true })).toBeVisible()
+    await page.getByRole('combobox', { name: 'Estado', exact: true }).selectOption('terminado')
+    await expect(page.getByRole('link', { name: /El mapa de las nubes/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /El faro de papel/ })).toHaveCount(0)
+    await screenshot('timeline')
+  })
+  expect(errors).toEqual([])
+  expect(failures).toEqual([])
+  expect(badResponses).toEqual([])
+})

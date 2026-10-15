@@ -15,7 +15,8 @@
     "generate:api": "node scripts/generate-api-types.mjs",
     "check:api": "node scripts/generate-api-types.mjs --check",
     "test:type-boundaries": "node scripts/check-type-boundaries.mjs",
-    "test:a11y": "playwright test --config playwright.a11y.config.ts"
+    "test:a11y": "playwright test --config playwright.a11y.config.ts",
+    "test:e2e": "node scripts/run-e2e.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
