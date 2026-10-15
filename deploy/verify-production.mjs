@@ -26,7 +26,8 @@ async function port() {
 const httpPort = await port(), httpsPort = await port()
 await Promise.all(servers.map(server => new Promise(resolve => server.close(resolve))))
 const env = { ...process.env, SECRET_KEY: randomBytes(48).toString('hex'), BOOKCLUB_HOST: 'localhost', BACKUP_DIRECTORY: backups,
-  BOOKCLUB_BIND_IP: '127.0.0.1', BOOKCLUB_HTTP_PORT: String(httpPort), BOOKCLUB_HTTPS_PORT: String(httpsPort), TLS_ISSUER: 'internal', DEMO_MODE: 'false' }
+  BOOKCLUB_BIND_IP: '127.0.0.1', BOOKCLUB_HTTP_PORT: String(httpPort), BOOKCLUB_HTTPS_PORT: String(httpsPort), TLS_ISSUER: 'internal', DEMO_MODE: 'false',
+  DISCORD_CLIENT_ID: '', DISCORD_CLIENT_SECRET: '' }
 const args = ['compose', '-p', project, '-f', 'docker-compose.yml', '-f', 'deploy/compose.production.yml']
 function command(extra, capture = false) {
   const result = spawnSync('docker', [...args, ...extra], { cwd: root, env, timeout: 300000, encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' })
@@ -50,6 +51,8 @@ try {
   const config = JSON.parse(command(['config', '--format', 'json'], true))
   assert.equal(config.services.backend.environment.BOOKCLUB_ENV, 'production')
   assert.equal(config.services.backend.environment.DEMO_MODE, 'false')
+  assert.ok(config.services.backend.environment.DISCORD_CLIENT_ID === '', 'Provider ID must be blank')
+  assert.ok(config.services.backend.environment.DISCORD_CLIENT_SECRET === '', 'Provider secret must be blank')
   assert.equal(config.services.backend.ports, undefined)
   assert.equal(config.services.frontend.ports, undefined)
   command(['up', '--build', '-d', '--wait', '--wait-timeout', '180'])
