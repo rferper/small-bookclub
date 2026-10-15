@@ -1,42 +1,114 @@
-# Public demo deployment preparation (#76)
+# Render Free fictional demos (#76)
 
-Status: the local HTTPS stack and reusable smoke check are verified. A hosting
-account, public staging/production-demo URLs and hosted rollback evidence are
-still pending. This document does not claim a public deployment exists. The real
-club remains deferred; every public environment must contain fictional data only.
+Status: the owner selected Render Free and accepted resetting fictional demo data.
+Account connection, public staging/production-demo URLs and hosted rollback evidence
+are still pending. This document does not claim a public deployment exists. The
+real club remains separate and must use retained storage before real data entry.
 
-## Hosting decision boundary
+## Selected free plan and storage policy
 
-A free Linux VM can run the existing [production Compose recipe](deployment.md)
-with persistent SQLite and private media. Use separate projects, hostnames,
-secrets, backup locations and volumes for staging and production-demo. On one
-machine the current standalone edge owns ports 80/443; a shared edge design must
-be implemented and tested before putting both projects behind those ports.
-Alternatively, separate approved free VMs can use the standalone recipe directly.
-No VM, region, account, DNS hostname or credential has been selected/provisioned.
+The root `render.yaml` declares two separate Docker web services, each explicitly
+`plan: free`, with its own generated secret and isolated SQLite/media filesystem.
+No database, persistent disk, cron service, paid environment or custom domain is
+requested. Automatic deployment is off until gated delivery in #77. The current
+review branch is explicit so the first deployment does not depend on merging an
+issue whose hosted acceptance evidence is still outstanding.
 
-Current alternatives checked 2026-10-15:
+Conditions checked 2026-10-15: free services sleep after 15 idle minutes; their
+filesystem is discarded on spin-down/restart/redeploy. Both demos share 750 included
+instance-hours per month. Keep the account without a payment method: exceeding
+included usage can suspend services/builds instead of charging. Each free service
+has 512 MB memory and limited CPU; cold starts are expected. [Free limits](https://render.com/docs/free),
+[service plans](https://render.com/docs/blueprint-spec).
 
-- Render Free supports fictional previews, but SQLite/uploads disappear on
-  restart/redeploy/spin-down. Staging and production-demo share the workspace's
-  included runtime allowance. Without a payment method, excess usage suspends
-  services/builds instead of charging. A resetting demo policy needs the owner's
-  explicit acceptance and a separately tested single-container adapter; none is
-  claimed here. [Official limits](https://render.com/docs/free).
-- Oracle Always Free is a VM candidate with account/card verification and
-  capacity constraints. Trial credits are not an ongoing-free hosting plan.
-  Provision only approved Always Free resources; no billing upgrade is authorized.
-  [Official information](https://www.oracle.com/cloud/free/).
-- Fly.io's finite trial is insufficient for the ongoing-free requirement.
-  [Trial terms](https://fly.io/docs/about/free-trial/).
-- PythonAnywhere Free offers only one web app, so it does not directly provide
-  both required environments. [Free features](https://help.pythonanywhere.com/pages/FreeAccountsFeatures/).
+Every startup runs migrations and the existing guarded `seed_demo` command before
+serving traffic. Existing marked demo data is preserved if a process restarts with
+the same filesystem; a new discarded filesystem receives fresh fixtures. Reviewer
+edits/uploads/sessions are disposable, not backed-up club history. Rollback means
+starting the older reviewed image with its compatible fresh fictional fixtures;
+it does not recover discarded edits. Never copy real club data into these services.
 
-Account/secret access requires approval under AGENTS.md. Do not paste credentials
-into chat or issue comments. The requested hosting-account clarification must be
-resolved before provider-specific implementation or public deployment. A provider's
-free-plan name alone does not authorize payment details, billing upgrades or paid
-resources.
+For a future retained installation, the [portable Compose recipe](deployment.md)
+and existing backup/restore commands remain available. Switching hosts does not
+require replacing SQLite, but data discarded by this demo host cannot be recovered.
+
+## Single-container runtime and ingress
+
+`deploy/render/Dockerfile` builds the existing HTTP-mode frontend and locked Python
+dependencies. Debian's free/open-source Nginx package supplies the same static/API
+proxy pattern within one container because Render Free does not run Compose or a
+private backend service. No new application dependency or API endpoint is added.
+
+Render owns public TLS and HTTP-to-HTTPS forwarding. The container listens on
+`0.0.0.0:$PORT`; Nginx sends API traffic to Gunicorn bound only to `127.0.0.1:8000`,
+overwriting forwarded protocol to HTTPS and stripping forwarded client IP. This
+trust configuration is for Render's ingress only, not a directly exposed HTTP club
+server. The existing 3 MiB body cap, connection/request limits, privacy headers and
+disabled raw request/error logs remain. Peer budgets are shared behind the proxy.
+
+Both processes run as UID 10001. The Python entry point supervises them, fails if
+either exits unexpectedly and forwards shutdown, with bounded termination waits.
+Startup requires explicit demo mode, a private generated secret, a valid hostname
+from `RENDER_EXTERNAL_HOSTNAME`, dedicated `/tmp/bookclub-render` storage and no
+Discord credentials. It fixes production security settings regardless of inherited
+development variables. Real-club storage paths are refused. The real club's future
+authentication choice is separate; the public demo needs no Discord account.
+
+## Account connection and first deployment
+
+After reviewing passing checks, the owner can open this branch-specific Blueprint:
+
+[Review the Render Free deployment](https://render.com/deploy?repo=https://github.com/rferper/small-bookclub/tree/issue-76-public-demo)
+
+Sign up/sign in to Render in the owner's own browser. This does not require a
+connected browser session in the coding agent or sharing a password/API key. Review
+that both listed services are **Free**, have distinct names/generated secrets, and
+no paid add-ons or payment method. Then approve their creation. The public GitHub
+source is sufficient; authorize only this repository if Render asks for GitHub
+access. Check that Blueprint Auto Sync is off as well as service auto-deploys,
+so later source/config changes require a deliberate rollout until #77.
+
+Render supplies each actual `onrender.com` hostname; it may append a suffix if a
+name is already taken. No DNS purchase or hardcoded hostname is needed. Record the
+two real URLs and deployed source commit after creation, and run the smoke below.
+The account connection is the remaining owner step under AGENTS.md; credentials
+must stay in Render's private settings, outside git/chat/logs/screenshots.
+
+For later manual changes, use the service's **Manual Deploy** control to deploy a
+specific reviewed commit. Deploy staging first and verify it before selecting that
+same commit for production-demo. To demonstrate rollback on staging, deploy a
+second known-good revision, choose the previous successful deploy's rollback action,
+then rerun smoke and restore the intended revision. Render Free keeps only its two
+most recent previous deploys available for rollback. [Deployment controls](https://render.com/docs/deploys),
+[free rollback limits](https://render.com/docs/free).
+
+Migrations/seed run inside startup rather than a paid pre-deploy/one-off job. Free
+services have no operator shell/one-off job facility. Do not add an admin or public
+reset/export endpoint to work around that limitation; the existing demo member is
+an ordinary member and a discarded filesystem safely reseeds at startup.
+
+## Local artifact verification
+
+With Docker, frontend dependencies and Chromium installed, run from the root:
+
+```sh
+node deploy/render/verify.mjs
+```
+
+This uses the repository Compose files with an explicit test override. Two random
+projects, independent secrets, four unused loopback ports, separate TLS CAs and
+512 MB Render-image memory caps isolate staging/production-demo. The outer proxy
+forwards every asset and API request to the actual single-container artifact.
+Only fictional data is seeded. Checks cover verified TLS, real demo sign-in/library/
+sign-out, a profile edit/reload, cross-environment profile/session isolation,
+locked ratings, and container recreation followed by reset/reseed. The script prints
+the temporary screenshot directory; inspect both screenshots. Subprocesses are
+bounded to 300 seconds, Compose readiness to 180, smoke subprocesses to 180 and TLS
+readiness to 30 attempts. Normal success/failure closes browsers and removes only
+the printed projects' containers/networks/volumes. Abrupt interruption can prevent
+cleanup; use those exact project names and the same three Compose files to inspect
+and remove them, preserving owner resources. Local tests do not replace hosted
+provider verification.
 
 ## Reusable post-deploy smoke
 
@@ -72,9 +144,8 @@ can prevent cleanup, so retain a bounded job and inspect failed runs.
 
 ## Hosted release and rollback evidence still required
 
-Once a host/account is approved, implement its adapter and record exact commands,
-service identifiers and limits here. Then carry out this sequence on fictional
-data only:
+After account connection, record service identifiers and actual URLs here. Carry
+out this sequence on fictional data only:
 
 1. Record the source commit and current deployed revision. Verify staging and
    production-demo use distinct hostnames, secrets and database/media storage.
@@ -93,9 +164,8 @@ data only:
    uncertain, stop writers and recover the matching snapshot into new isolated
    storage before cutover, as described in [deployment.md](deployment.md).
 
-The precise rollback operation depends on the approved host. An ephemeral Render
-demo would need an explicitly accepted fixture-reset policy rather than pretending
-to recover discarded writes. Do not install automatic CD until #76 has actual hosted
+The accepted Render reset policy does not recover discarded writes. Do not install
+automatic CD until #76 has actual hosted
 evidence; #77 will gate delivery on CI and reuse this smoke command. Public URLs
 and a demonstrated rollback remain open acceptance criteria, not documentation-only
 checkboxes.
