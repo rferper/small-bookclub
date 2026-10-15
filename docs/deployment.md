@@ -5,6 +5,8 @@ This recipe targets one Linux machine with Docker Engine and Compose 2.24.4+
 images with SQLite; it does not select or provision a host. Public staging and
 production URLs, real DNS/provider acceptance and rollout evidence belong to
 #76; automated delivery is #77 and versioned release policy is #78.
+See [public-demo.md](public-demo.md) for the current public-demo preparation,
+hosting decision boundary and reusable HTTPS smoke command.
 
 ## Hosting choices, checked 2026-10-15
 
