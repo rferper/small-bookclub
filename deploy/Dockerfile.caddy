@@ -1,0 +1,6 @@
+FROM caddy:2-alpine
+RUN addgroup -g 10001 bookclub \
+    && adduser -D -u 10001 -G bookclub bookclub \
+    && setcap -r /usr/bin/caddy \
+    && chown -R 10001:10001 /data /config
+USER 10001:10001
