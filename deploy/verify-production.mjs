@@ -111,7 +111,9 @@ try {
   const archive = command(['exec', '-T', 'backend', 'python', '-c', "from pathlib import Path; print(next(Path('/backups').glob('*.zip')).name)"], true)
   assert.ok(archive, 'Consistent backup archive exists')
   console.log(manage('restore_club_backup', '--archive', `/backups/${archive}`, '--destination', '/tmp/bookclub-recovered'))
-  command(['exec', '-T', 'backend', 'python', '-c', "import sqlite3; a=sqlite3.connect('/data/club.sqlite3'); b=sqlite3.connect('/tmp/bookclub-recovered/database.sqlite3'); assert a.execute('select count(*) from users_user').fetchone()==b.execute('select count(*) from users_user').fetchone(); assert b.execute('pragma integrity_check').fetchone()==('ok',)"], true)
+  // The restore command already validates integrity. Compare native contents here;
+  // a bare SQLite connection does not register Django's constraint SQL functions.
+  command(['exec', '-T', 'backend', 'python', '-c', "import sqlite3; a=sqlite3.connect('/data/club.sqlite3'); b=sqlite3.connect('/tmp/bookclub-recovered/database.sqlite3'); query='select discord_user_id, display_name, bio, approved, role from users_user order by id'; assert a.execute(query).fetchall()==b.execute(query).fetchall(); assert a.execute('select title from books_book order by id').fetchall()==b.execute('select title from books_book order by id').fetchall()"], true)
   command(['up', '-d', '--force-recreate', '--wait', '--wait-timeout', '180'])
   assert.equal(JSON.parse((await https('/api/session')).body).demoSignInAvailable, true)
   const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
