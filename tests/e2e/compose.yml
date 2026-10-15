@@ -1,0 +1,33 @@
+# Only the explicit browser-test runner includes this read-only test wiring.
+services:
+  backend:
+    environment:
+      BOOKCLUB_ENV: test
+      DEMO_MODE: "false"
+      PYTHONPATH: /e2e:/app/backend
+      DISCORD_CLIENT_ID: fictional-browser-client
+      DISCORD_CLIENT_SECRET: fictional-browser-secret
+      DISCORD_REDIRECT_URI: http://localhost:${BOOKCLUB_PORT}/api/auth/discord/callback
+      E2E_PROVIDER_ORIGIN: http://localhost:${BOOKCLUB_PROVIDER_PORT}
+    volumes:
+      - ./tests/e2e:/e2e:ro
+    command: [gunicorn, oauth_wsgi:application, --bind, "0.0.0.0:8000", --workers, "1", --threads, "4", --timeout, "60", --no-control-socket]
+  provider:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    entrypoint: [python, /e2e/authorization_provider.py]
+    command: []
+    environment:
+      BOOKCLUB_ENV: test
+      E2E_CALLBACK_ORIGIN: http://localhost:${BOOKCLUB_PORT}
+    volumes:
+      - ./tests/e2e:/e2e:ro
+    ports:
+      - "127.0.0.1:${BOOKCLUB_PROVIDER_PORT}:8001"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=5)"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    init: true

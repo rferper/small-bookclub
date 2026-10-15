@@ -74,7 +74,9 @@ Backend GitHub Actions installs Node 24 and frontend dependencies, then runs
 unit and integration checks separately on every push/pull request. Frontend CI
 runs unit, contract, build and mock-screen accessibility checks separately.
 This journey checks HTTP/data integration; browser rendering and full-stack
-browser journeys remain #54, and Compose is #73.
+browser journeys use `npm run test:e2e` against disposable Compose resources;
+see [browser-tests.md](browser-tests.md). They mock only the external Discord
+boundary and complement this lower-level HTTP journey.
 
 ## Timing and contract parsing
 
