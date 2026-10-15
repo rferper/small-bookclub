@@ -112,6 +112,9 @@ try {
 } catch (error) {
   failed = true
   console.error(error)
+  for (const world of worlds) {
+    try { command(world, ['logs', '--tail', '40', 'backend']) } catch { /* Cleanup still runs. */ }
+  }
 } finally {
   await browser?.close()
   for (const world of worlds.reverse()) {
