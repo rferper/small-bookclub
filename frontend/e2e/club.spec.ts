@@ -27,6 +27,10 @@ test('member completes the native club journey', async ({ page, context, baseURL
   }
 
   await test.step('sign in through real OAuth with only Discord mocked', async () => {
+    // Both contexts share one proxy peer. Let its production burst budget refill
+    // between actors: burst=30 at 10 requests/second, plus a small timer margin.
+    // Keep rate limits active and fail on every unexpected HTTP error; no retries.
+    await new Promise(resolve => setTimeout(resolve, 3200))
     expect((await context.request.get('/api/me/profile')).status()).toBe(401)
     await page.goto('/')
     await page.getByRole('button', { name: 'Entrar con Discord', exact: true }).click()
@@ -80,13 +84,17 @@ test('member completes the native club journey', async ({ page, context, baseURL
     await expect(checkbox).toBeChecked()
   })
   await test.step('finish, submit five scores and unlock foreign ratings', async () => {
-    expect(JSON.stringify(await json(`/api/books/${world.finishedBook}/ratings`))).not.toContain('E2E_REVIEW_SENTINEL')
+    const locked = await json(`/api/books/${world.finishedBook}/ratings`)
+    expect(locked.club).toEqual({ status: 'locked' })
+    expect(JSON.stringify(locked)).not.toContain('E2E_REVIEW_SENTINEL')
     await page.goto(`/biblioteca/${world.finishedBook}`)
     await expect(page.getByText(/E2E_REVIEW_SENTINEL/)).toHaveCount(0)
     const saved = mutation(`/api/books/${world.finishedBook}/finished`, 'PUT')
     await page.getByRole('checkbox', { name: 'He terminado el libro', exact: true }).check()
     expect((await saved).status()).toBe(200)
-    expect(JSON.stringify(await json(`/api/books/${world.finishedBook}/ratings`))).not.toContain('E2E_REVIEW_SENTINEL')
+    const finishedOnly = await json(`/api/books/${world.finishedBook}/ratings`)
+    expect(finishedOnly.club).toEqual({ status: 'locked' })
+    expect(JSON.stringify(finishedOnly)).not.toContain('E2E_REVIEW_SENTINEL')
     await page.getByRole('link', { name: 'Valorar el libro', exact: true }).click()
     for (const [criterion, value] of [['Disfrute', '5 estrellas'], ['Estilo', '4,5 estrellas'], ['Personajes', '3 estrellas'], ['Trama', '4 estrellas'], ['Huella', '2,5 estrellas']]) {
       // Native keyboard radios exercise the accessible form without forced clicks.

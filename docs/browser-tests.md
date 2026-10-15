@@ -25,6 +25,11 @@ and `down --volumes --remove-orphans`; never substitute the owner's project.
 The free-port reservation is released immediately before Compose starts; a
 competing bind causes startup failure rather than connecting to that server.
 
+Both actors share the proxy's network peer and its unchanged production request
+limit (10 requests/second, burst 30). Each journey starts with a bounded 3.2-second
+quiet period to refill that burst budget. This keeps fast CI automation from
+inheriting the previous actor's burst; HTTP errors still fail without retries.
+
 ## Real application, external-provider fixture
 
 `tests/e2e/compose.yml` is an explicit test-only override. It mounts
@@ -70,6 +75,8 @@ both widths, failure screenshots and retained failure traces go into ignored
 `frontend/test-results/e2e/`; inspect these during local verification. Traces
 contain only fictional data. The runner closes browser contexts/processes and
 then cleans the stack. Do not commit browser artifacts or sensitive data.
+CI retains failure evidence as the `native-browser-failures` artifact for three
+days and prints unexpected HTTP status/path diagnostics without query strings.
 
 The existing CI containers job runs this command after backend/frontend checks
 and image builds. A browser/fixture/cleanup assertion failure fails that job and
