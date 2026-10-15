@@ -1,0 +1,34 @@
+# Fictional, resetting demos only. Manual rollout until gated CD in #77.
+services:
+  - type: web
+    name: small-bookclub-staging
+    runtime: docker
+    plan: free
+    branch: issue-76-public-demo
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: 'off'
+    healthCheckPath: /api/health
+    envVars:
+      - key: DEMO_MODE
+        value: 'true'
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CLUB_TIMEZONE
+        value: Europe/Madrid
+  - type: web
+    name: small-bookclub-demo
+    runtime: docker
+    plan: free
+    branch: issue-76-public-demo
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: 'off'
+    healthCheckPath: /api/health
+    envVars:
+      - key: DEMO_MODE
+        value: 'true'
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CLUB_TIMEZONE
+        value: Europe/Madrid
