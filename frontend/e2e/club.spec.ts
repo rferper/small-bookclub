@@ -8,7 +8,13 @@ test('member completes the native club journey', async ({ page, context, baseURL
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   page.on('requestfailed', request => failures.push(new URL(request.url()).pathname))
-  page.on('response', response => { if (response.status() >= 400) badResponses.push(`${response.status()} ${new URL(response.url()).pathname}`) })
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      const failure = `${response.status()} ${new URL(response.url()).pathname}`
+      badResponses.push(failure)
+      console.error(`Unexpected browser HTTP response: ${failure}`)
+    }
+  })
   const json = async (path: string) => {
     const response = await context.request.get(path)
     expect(response.status()).toBe(200)

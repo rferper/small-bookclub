@@ -95,6 +95,12 @@ jobs:
         working-directory: frontend
       - run: npm run test:e2e
         working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: native-browser-failures
+          path: frontend/test-results/e2e/
+          retention-days: 3
 
   required:
     name: All CI checks passed
