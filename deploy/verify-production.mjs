@@ -38,13 +38,20 @@ const manage = (...extra) => command(['exec', '-T', 'backend', 'python', 'manage
 let ca, browser
 function https(path, method = 'GET', headers = {}) {
   return new Promise((resolve, reject) => {
-    const req = request({ hostname: 'localhost', port: httpsPort, path, method, ca, headers, timeout: 10000 }, response => {
+    const req = request({ hostname: 'localhost', port: httpsPort, path, method, ca, headers, agent: false, timeout: 10000 }, response => {
       let body = ''
       response.setEncoding('utf8').on('data', chunk => { body += chunk }).on('end', () => resolve({ status: response.statusCode, headers: response.headers, body }))
     })
     req.on('error', reject).on('timeout', () => req.destroy(new Error('HTTPS verification timeout')))
     req.end()
   })
+}
+async function waitForHttps() {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    try { if ((await https('/api/health')).status === 200) return } catch { /* Edge startup only. */ }
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  }
+  throw new Error('Recreated HTTPS edge did not become ready')
 }
 try {
   console.log(`Disposable production verification: ${project}; evidence: ${evidence}`)
@@ -118,6 +125,8 @@ try {
   // a bare SQLite connection does not register Django's constraint SQL functions.
   command(['exec', '-T', 'backend', 'python', '-c', "import sqlite3; a=sqlite3.connect('/data/club.sqlite3'); b=sqlite3.connect('/tmp/bookclub-recovered/database.sqlite3'); query='select discord_user_id, display_name, bio, approved, role from users_user order by id'; assert a.execute(query).fetchall()==b.execute(query).fetchall(); assert a.execute('select title from books_book order by id').fetchall()==b.execute('select title from books_book order by id').fetchall()"], true)
   command(['up', '-d', '--force-recreate', '--wait', '--wait-timeout', '180'])
+  // Compose has no edge health probe; wait for its new TLS listener explicitly.
+  await waitForHttps()
   assert.equal(JSON.parse((await https('/api/session')).body).demoSignInAvailable, true)
   const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
   browser = await chromium.launch()
