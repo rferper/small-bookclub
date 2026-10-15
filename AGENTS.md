@@ -50,6 +50,7 @@ The frontend exists; backend commands work once `backend/` is created.
 - Default issue workflow: one implementer reads and grooms the issue as needed, implements and tests it, and posts a GitHub handoff. Use a brief independent security review when authentication, permissions or spoilers warrant one. The full PM → engineer → QA loop is a fallback, not mandatory; see `docs/process.md`.
 - Record reversible technical decisions in `docs/decisions.md`.
 - When the user corrects how an agent works, update this file or the relevant linked doc.
+- Before asking the owner to choose or connect a hosting account, explain the realistic options in plain language, their free-tier conditions, data persistence, maintenance and payment-card requirements, and a recommendation. Discuss those tradeoffs before treating hosting selection as an account-connection step.
 - The owner does not connect a browser. Use terminal Playwright in a disposable environment for local visual checks; this workflow is already authorized and must not be requested again. Preserve the owner's database and preview, inspect screenshots, and stop temporary verification servers afterwards.
 - If a local verification needs Docker and the daemon is closed, ask the user to open Docker Desktop before recording Docker as unavailable. Use only the repository's existing Compose setup and preserve the owner's database and preview.
 
