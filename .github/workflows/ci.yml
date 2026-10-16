@@ -10,7 +10,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Let an active main delivery finish; branch/PR verification stays cancellable.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 defaults:
   run:
@@ -43,6 +44,7 @@ jobs:
       - run: uv python install 3.13
       - run: uv sync --locked
       - run: uv run python manage.py check
+      - run: node --test ../deploy/render/release.test.mjs
       - run: uv run ruff check . ../deploy/render/entrypoint.py
       - run: uv run ruff format --check . ../deploy/render/entrypoint.py
       - run: uv run pytest -m "not integration"
@@ -124,3 +126,14 @@ jobs:
           test "$BACKEND_RESULT" = success
           test "$FRONTEND_RESULT" = success
           test "$CONTAINERS_RESULT" = success
+
+  deploy:
+    needs: required
+    if: needs.required.result == 'success' && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      sha: ${{ github.sha }}
+      ci_passed: ${{ needs.required.result == 'success' }}
+    secrets:
+      RENDER_STAGING_DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+      RENDER_DEMO_DEPLOY_HOOK: ${{ secrets.RENDER_DEMO_DEPLOY_HOOK }}

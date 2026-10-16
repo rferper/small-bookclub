@@ -10,6 +10,8 @@ assert.ok(url.protocol === 'https:' && !url.username && !url.password && url.pat
 const localCa = process.env.SMOKE_LOCAL_CA
 assert.ok(!localCa || ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname), 'A test CA is permitted only for loopback verification')
 const ca = localCa ? readFileSync(localCa) : undefined
+const expectedRevision = process.env.SMOKE_EXPECTED_REVISION
+assert.ok(!expectedRevision || /^[a-f0-9]{40}$/u.test(expectedRevision), 'Expected revision must be a full commit SHA')
 function health() {
   return new Promise((resolve, reject) => {
     const req = request(new URL('/api/health', url), { ca, agent: false, timeout: 10000 }, response => {
@@ -53,6 +55,7 @@ try {
   page.on('response', response => { if (response.status() >= 400) bad.push(`${response.status()} ${new URL(response.url()).pathname}`) })
   const html = await page.goto(url.origin)
   assert.equal(html.status(), 200)
+  if (expectedRevision) assert.equal(html.headers()['x-bookclub-revision'], expectedRevision, 'Browser must see the intended candidate revision')
   assert.match(html.headers()['cache-control'], /no-store/)
   assert.match(html.headers()['x-robots-tag'], /noindex/)
   assert.equal(html.headers()['x-frame-options'], 'DENY')

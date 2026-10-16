@@ -214,7 +214,8 @@ npm run lint
 npm run build   # type-check and build
 ```
 
-CI (`.github/workflows/frontend.yml`) runs these on every push to `main` and every pull request. Backend tests: *(to do)*
+CI (`.github/workflows/ci.yml`) runs backend, frontend and deployment artifact checks
+on every push and pull request. See [CI operation](docs/ci.md).
 
 ## Deployment and demo
 
@@ -227,6 +228,8 @@ button to enter without Discord. Free services can take about a minute to wake;
 fictional edits and uploads reset on restart, redeploy or spin-down.
 See the [Render deployment and verification guide](docs/public-demo.md) for manual
 rollout, storage limits and the verified hosted rollout/rollback evidence for #76.
+See [continuous delivery](docs/release-process.md) for the tested main-to-staging-to-demo
+workflow, activation requirements and failure recovery.
 See [fictional demo operation](docs/demo.md) for opt-in seeding.
 
 ## How AI was used *(to do)*

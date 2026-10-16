@@ -8,6 +8,7 @@ services:
       DATABASE_PATH: /tmp/bookclub-render/club.sqlite3
       MEDIA_ROOT: /tmp/bookclub-render/private_media
       RENDER_EXTERNAL_HOSTNAME: ${BOOKCLUB_HOST}
+      RENDER_GIT_COMMIT: '1111111111111111111111111111111111111111'
       DISCORD_CLIENT_ID: ''
       DISCORD_CLIENT_SECRET: ''
     volumes: !reset []
