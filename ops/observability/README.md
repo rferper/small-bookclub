@@ -81,6 +81,8 @@ Python dependencies and version choices. No subscription, payment card or new
 owner account is required; local CPU, memory and disk are consumed.
 
 Storage and the Collector are accessible only on an internal Compose network.
+Grafana alone also joins a dedicated bridge for its loopback published port;
+Docker does not publish ports for containers attached only to an internal bridge.
 The backend also retains its base application network. Monitoring services run
 non-root, drop capabilities and have no Docker socket, host PID namespace or
 privilege. Containers have individual memory limits totaling about 1.7 GiB for

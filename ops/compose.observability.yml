@@ -82,7 +82,7 @@ services:
       - ./ops/observability/dashboards.yaml:/etc/grafana/provisioning/dashboards/bookclub.yaml:ro
       - ./ops/observability/dashboard.json:/etc/grafana/bookclub/dashboard.json:ro
       - telemetry_dashboard:/var/lib/grafana
-    networks: [observability]
+    networks: [observability, dashboard]
     mem_limit: 512m
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
@@ -90,6 +90,8 @@ services:
 networks:
   observability:
     internal: true
+  dashboard:
+    driver: bridge
 volumes:
   telemetry_metrics:
   telemetry_logs:

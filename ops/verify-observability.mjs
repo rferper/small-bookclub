@@ -56,8 +56,14 @@ try {
   console.log(`Disposable observability project: ${project}`)
   console.log(`Observability screenshots: ${evidence}`)
   const config = JSON.parse(command(['config', '--format', 'json'], true))
-  for (const name of ['otel-collector', 'prometheus', 'loki', 'tempo']) assert.equal(config.services[name].ports, undefined)
+  for (const name of ['otel-collector', 'prometheus', 'loki', 'tempo']) {
+    assert.equal(config.services[name].ports, undefined)
+    assert.deepEqual(config.services[name].networks, { observability: null })
+  }
   assert.equal(config.networks.observability.internal, true)
+  assert.deepEqual(config.services.grafana.networks, { observability: null, dashboard: null })
+  assert.equal(config.networks.dashboard.driver, 'bridge')
+  assert.notEqual(config.networks.dashboard.internal, true)
   assert.deepEqual(config.services.backend.networks, { default: null, observability: null })
   assert.equal(config.services.backend.environment.TELEMETRY_ENABLED, 'true')
   for (const name of ['frontend', 'grafana']) {
@@ -72,6 +78,9 @@ try {
   }
   start('startup')
   command(['up', '--build', '-d', '--wait', '--wait-timeout', '180'])
+  const published = JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Ports}}',
+    command(['ps', '-q', 'grafana'], true)], true))
+  assert.deepEqual(published['3000/tcp'], [{ HostIp: '127.0.0.1', HostPort: String(grafanaPort) }])
   await ready(async () => (await json(`${grafana}/api/health`)).database === 'ok')
   start('fictional-requests')
   for (let count = 0; count < 6; count++) {

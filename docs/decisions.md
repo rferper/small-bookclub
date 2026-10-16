@@ -1166,3 +1166,10 @@ dedicated named volumes, finite retention/memory and external reporting disabled
 This local development/evaluation stack is not a public monitoring deployment.
 Dependencies follow the [Python exporter documentation](https://opentelemetry.io/docs/languages/python/exporters/);
 image versions were checked against official release metadata and published registry manifests.
+
+Grafana also joins a dedicated dashboard bridge: Docker suppresses published
+ports on internal-only networks. Keep Collector/Prometheus/Loki/Tempo exclusively
+on the internal observability network and assert this topology in the executable
+verifier. Only Grafana publishes a loopback port; application networking is not
+shared with the dashboard bridge. This corrects observed unreachable ingress
+without publishing any storage/OTLP endpoint or changing the host daemon.
