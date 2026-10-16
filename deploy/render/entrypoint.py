@@ -75,6 +75,7 @@ def configure(environ):
         PORT=str(int(port)),
         BOOKCLUB_REVISION=env["RENDER_GIT_COMMIT"],
         DEPLOYMENT_ENVIRONMENT=deployment,
+        TELEMETRY_ENABLED="false",
     )
     return env
 

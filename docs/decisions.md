@@ -1132,3 +1132,50 @@ Conflicting refs fail; matching refs are idempotent; no force/delete/retry write
 Source tags do not promise reproducible image bytes or persistent demo edits.
 Document the unavoidable final read/write race and failed-tag recovery. No new
 dependency, paid registry, account, secret or hosted configuration change.
+
+## 2026-10-16: Private local OpenTelemetry (#79)
+
+Use manual server instrumentation, never automatic SQL/provider/request capture.
+Add `opentelemetry-api`, `opentelemetry-sdk` and
+`opentelemetry-exporter-otlp-proto-http` 1.45.1 (Apache-2.0) through uv for the
+standard SDK's three signals, plus an explicit `requests` 2.34.2 (Apache-2.0)
+dependency for a constrained transport session. SDK resources contain only fixed
+service and validated release/environment; ignore incoming context/baggage and
+disable span events/links. Emit known route templates/methods, status and bounded
+duration. Bound metric combinations to 255 plus one overflow rollup without a
+fabricated status; span/log queues are bounded and asynchronous. Unknown routes
+and pre-routing denials share one unmatched bucket. Requests outside the template
+vocabulary are never recorded verbatim. Root log messages/extras/exceptions are
+projected into closed events; exporter diagnostics cannot recursively re-export.
+
+The exporter fixes local OTLP paths, disables proxy/netrc/redirects and rebuilds
+final wire headers. The SDK merges OTEL header variables even with explicit
+constructor headers; the transport test inspects the actual final request, not
+just constructor arguments. Explicit resources avoid environment detectors.
+Opt-in defaults off and Render explicitly pins it off. No API/product change or
+new external account/service; ordinary application operation must survive outage.
+
+An explicit base-Compose overlay uses pinned Collector 0.162.0/Prometheus 3.15.0
+(Apache-2.0), Loki 3.7.8/Tempo 2.10.8/Grafana 13.2.4 (AGPL-3.0) locally.
+Tempo uses the published 2.10.8 patch release for the small single-process fixture;
+the current 3.x evaluation sizing is materially larger. BusyBox 1.37.0 (GPL-2.0)
+is build-only for seeding non-root Loki/Tempo data-directory ownership. No runtime
+root, Docker socket, host PID or privileged container. Only a loopback Grafana
+Viewer is published; collectors/storage are on a private internal network, with
+dedicated named volumes, finite retention/memory and external reporting disabled.
+This local development/evaluation stack is not a public monitoring deployment.
+Dependencies follow the [Python exporter documentation](https://opentelemetry.io/docs/languages/python/exporters/);
+image versions were checked against official release metadata and published registry manifests.
+
+Grafana also joins a dedicated dashboard bridge: Docker suppresses published
+ports on internal-only networks. Keep Collector/Prometheus/Loki/Tempo exclusively
+on the internal observability network and assert this topology in the executable
+verifier. Only Grafana publishes a loopback port; application networking is not
+shared with the dashboard bridge. This corrects observed unreachable ingress
+without publishing any storage/OTLP endpoint or changing the host daemon.
+
+Use a Tempo TraceQL search table for the dashboard trace list; Grafana's trace
+viewer expects an individual trace frame and cannot render these search rows.
+Wait for visible HTTP trace names and closed log events before screenshot capture.
+Use short Spanish metric legends. Show zero 5xx rate only when an overall request
+rate exists, preserving missing-data state when baseline metrics are unavailable.
