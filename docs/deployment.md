@@ -7,8 +7,9 @@ images with SQLite. The separate fictional Render Free services are live at
 [production-demo](https://small-bookclub-demo.onrender.com).
 See [public-demo.md](public-demo.md) for provider-specific setup, migration/seed
 startup, smoke commands, reset/recovery/rollback procedure and verification status.
-Hosted rollout/rollback evidence remains part of #76; automated delivery is #77
-and versioned release policy is #78. The real private club remains deferred.
+Hosted staged rollout and provider rollback/reset evidence is recorded there for
+#76; automated delivery is #77 and versioned release policy is #78. The real
+private club remains deferred.
 
 ## Hosting choices, checked 2026-10-15
 

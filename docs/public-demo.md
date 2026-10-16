@@ -1,14 +1,14 @@
 # Render Free fictional demos (#76)
 
-Status: the owner created both Render Free services. Public HTTPS smoke and native
-profile/session isolation checks passed on 2026-10-16. The owner confirmed both
-services at revision `43faf1d`; hosted rollout/reset/rollback evidence remains open.
+Status: both Render Free services are live on candidate `4cbb767`. Public HTTPS
+smoke, native profile persistence, environment isolation, staged promotion and
+actual provider rollback/reset checks passed on 2026-10-16; evidence is below.
 The real club remains separate and must use retained storage before real data entry.
 
-| Environment | Public URL |
-| --- | --- |
-| Staging | https://small-bookclub-staging.onrender.com |
-| Production-demo | https://small-bookclub-demo.onrender.com |
+| Environment | Public URL | Provider service ID |
+| --- | --- | --- |
+| Staging | https://small-bookclub-staging.onrender.com | `srv-db8tjebbc2fs73c55du0` |
+| Production-demo | https://small-bookclub-demo.onrender.com | `srv-db8tjebbc2fs73c55dtg` |
 
 ## Selected free plan and storage policy
 
@@ -19,7 +19,7 @@ requested. Automatic deployment is off until gated delivery in #77. The current
 review branch is explicit so the first deployment does not depend on merging an
 issue whose hosted acceptance evidence is still outstanding.
 
-Conditions checked 2026-10-15: free services sleep after 15 idle minutes; their
+Conditions rechecked 2026-10-16: free services sleep after 15 idle minutes; their
 filesystem is discarded on spin-down/restart/redeploy. Both demos share 750 included
 instance-hours per month. Keep the account without a payment method: exceeding
 included usage can suspend services/builds instead of charging. Each free service
@@ -92,9 +92,7 @@ services have no operator shell/one-off job facility. Do not add an admin or pub
 reset/export endpoint to work around that limitation; the existing demo member is
 an ordinary member and a discarded filesystem safely reseeds at startup.
 
-## Local artifact verification
-
-### Terminal access to the existing Render services
+## Terminal access to the existing Render services
 
 This project is operated from a terminal; ChatGPT plugin installation/connection
 is not part of the workflow. The free, Apache-2.0 official Render CLI can inspect
@@ -116,7 +114,106 @@ deployment metadata before operating on their exact IDs. Do not create replaceme
 services or modify unrelated resources. Automatic deployments remain off until #77.
 See the [official CLI setup and command reference](https://render.com/docs/cli).
 
-### Disposable local checks
+The CLI/API access is now owner-authorized. Before any mutation, check the exact
+service name/repository, Free plan, auto-deploy off and current deploy revision.
+The service IDs below are identifiers, not credentials:
+
+```powershell
+$stagingId = 'srv-db8tjebbc2fs73c55du0'
+$demoId = 'srv-db8tjebbc2fs73c55dtg'
+render services -o json
+render deploys list $stagingId -o json
+render deploys list $demoId -o json
+```
+
+Deploy the reviewed, CI-passing candidate to staging first. Capture the returned
+deployment ID and poll the metadata until that exact ID is `live`; build/update
+failure or a ten-minute deadline is failure, never successful readiness. Do not
+promote merely because the previous deployment still answers health requests.
+
+```powershell
+$candidate = '4cbb767c90d31b8ef54341ca40d8390d3d229a65'
+render deploys create $stagingId --commit $candidate -o json --confirm
+# Wait for the returned ID to be live at the intended commit, then:
+$env:DEMO_URL = 'https://small-bookclub-staging.onrender.com'
+node deploy/smoke-demo.mjs
+# Only after staging passes, promote the same source:
+render deploys create $demoId --commit $candidate -o json --confirm
+# Wait for this returned ID to be live, then:
+$env:DEMO_URL = 'https://small-bookclub-demo.onrender.com'
+node deploy/smoke-demo.mjs
+```
+
+Every new instance automatically runs `python manage.py migrate --noinput` and
+`python manage.py seed_demo` before Nginx/Gunicorn start. No operator shell,
+paid pre-deploy job or separate migration command is required on Render Free.
+Startup failure exits nonzero; the provider keeps the prior successful instance.
+Inspect only allowlisted migration-success/seed-created events in provider logs;
+never publish raw request errors, environment values or CLI token configuration.
+
+For an intentional fictional storage reset/recovery on staging, the CLI's exact
+restart command is:
+
+```powershell
+render restart $stagingId -o json --confirm
+render services instances $stagingId -o json
+# Confirm replacement-instance startup/readiness, then rerun staging HTTPS smoke.
+```
+
+Restart/redeploy recovery reseeds disposable fixtures; it does not restore reviewer
+edits. A restart can retain the same deployment ID: confirm the new instance and
+its startup events, not a nonexistent new deploy record. The retained real-club
+backup/restore process remains in [deployment.md](deployment.md).
+
+### Actual provider rollback from the terminal
+
+CLI v2.29.0 has no rollback subcommand. Use Render's documented
+[rollback API](https://api-docs.render.com/reference/rollback-deploy), which reuses
+the previous build artifact, rather than describing a newly built old commit as a
+provider rollback. Choose a still-retained successful staging deployment from
+`render deploys list`; Free retains only two previous artifacts. The following
+PowerShell command uses the owner's local CLI token privately. Replace the example
+target with the currently intended known-good deployment ID before running:
+
+```powershell
+@'
+import json, pathlib, urllib.error, urllib.request, yaml
+service_id = 'srv-db8tjebbc2fs73c55du0'  # Staging only.
+target_deploy = 'dep-db8uasqvcj2c73b8hntg'  # Historical example; check retention.
+config = yaml.safe_load((pathlib.Path.home()/'.render'/'cli.yaml').read_text())
+headers = {'Authorization': 'Bearer '+config['api']['key'],
+           'Accept': 'application/json', 'Content-Type': 'application/json'}
+def api(path, payload=None):
+    body = json.dumps(payload).encode() if payload else None
+    req = urllib.request.Request('https://api.render.com/v1'+path,
+                                 headers=headers, data=body)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        raise SystemExit('Render API HTTP '+str(error.code)) from None
+service = api('/services/'+service_id)
+assert service['name'] == 'small-bookclub-staging'
+assert service['repo'] == 'https://github.com/rferper/small-bookclub'
+assert service['serviceDetails']['plan'] == 'free'
+assert service['autoDeploy'] == 'no'
+previous = api('/services/'+service_id+'/deploys/'+target_deploy)
+assert previous['status'] in ('live', 'deactivated')
+result = api('/services/'+service_id+'/rollback', {'deployId': target_deploy})
+print(json.dumps({key: result.get(key) for key in ('id','status','createdAt')}))
+'@ | uv run --project backend python -
+```
+
+Poll the returned rollback deployment ID until live, verify the expected source
+revision and rerun public smoke. Do not retry an uncertain POST blindly: inspect
+deployment metadata first. API rollback leaves auto-deploy settings unchanged;
+keep them off. A rollback does not reverse database migrations. The demonstrated
+`43faf1d`/`4cbb767` pair has identical application code and schema; new instances
+initialize a fresh fictional database. For future schema changes, verify the
+older image can initialize its own compatible fixtures before rollback; never
+attach a newer retained database to older code without a tested recovery plan.
+
+## Local artifact verification
 
 With Docker, frontend dependencies and Chromium installed, run from the root:
 
@@ -198,9 +295,9 @@ ratings or reading progress were changed. The check guarded demo availability
 before sign-in and refused restoration over an unexpected concurrent display-name
 edit. Temporary script/screenshots contain only fictional data and stay outside git.
 
-The owner copied each service's successful Events entry: `43faf1d`, live on
-2026-10-16 at 10:03 Europe/Madrid (08:03 UTC). This is owner-reported provider
-revision evidence; the verifier has no Render account access.
+The owner initially copied each service's successful Events entry: `43faf1d`, live
+on 2026-10-16 at 10:03 Europe/Madrid (08:03 UTC). Subsequent owner-authorized CLI/API
+access independently confirmed both initial deploys and the rollout below.
 [Full source CI passed](https://github.com/rferper/small-bookclub/actions/runs/38869216657).
 
 An independent risk-focused security review found no blocking findings in the
@@ -209,13 +306,79 @@ session reads at `2026-10-16T08:06:40Z` verified anonymous guarded-demo bootstra
 Secure CSRF and privacy/HSTS headers on both hosts, including requests carrying
 client-supplied forwarding headers.
 
-These observations demonstrate public UI/API operation and profile/session
-separation. They do not establish private Render settings or distinct secret
-values, media filesystem configuration, migrations in provider logs, hosted
-restart/reset/reseed, staged promotion or rollback behavior. The scoped security
-review does not close those remaining acceptance criteria.
+The later independent review also checked actual provider metadata: both services
+are Free/manual/demo with distinct nonempty secrets, blank Discord credentials,
+expected ephemeral storage and no persistent disks. The `small-bookclub-demos`
+Blueprint (`exs-db8tinjl550s73f5clqg`) has Auto Sync off. Secret values were compared
+in memory only, never recorded. Provider settings and hosted behavior are now
+supported by the following additional evidence, rather than the initial public
+read-only observation alone.
 
-## Hosted release and rollback evidence still required
+### Hosted rollout and rollback evidence
+
+All times below are UTC on 2026-10-16. Full candidate source:
+`4cbb767c90d31b8ef54341ca40d8390d3d229a65`; previous known-good source:
+`43faf1da5fe37ddd298ac4bc3f9b550b5ef58699`. They have identical application/image
+inputs and schema; differences are deployment documentation. Later verification
+error-redaction/documentation commits do not change the deployed application.
+
+| Operation | Source | Provider deploy ID | Live at | Result |
+| --- | --- | --- | --- | --- |
+| Initial staging | `43faf1d` | `dep-db8tjejbc2fs73c55eug` | 08:03:19.378111 | Smoke PASS |
+| Initial production-demo | `43faf1d` | `dep-db8tjerbc2fs73c55fn0` | 08:03:43.966298 | Smoke PASS |
+| Candidate staging | `4cbb767` | `dep-db8u90mq1p3s739dtjc0` | 08:48:26.071590 | Smoke PASS; screenshot 08:48:53 |
+| Actual staging rollback | `43faf1d` | `dep-db8uasqvcj2c73b8hntg` | 08:52:23.502336 | `trigger: rollback`; smoke PASS; screenshot 08:53:41 |
+| Restore staging candidate | `4cbb767` | `dep-db8ucf0n74is73csaro0` | 08:55:55.100777 | Smoke PASS; screenshot 08:56:36 |
+| Promote production-demo | `4cbb767` | `dep-db8udjjbc2fs73c7ruqg` | 08:58:21.379793 | Smoke PASS; screenshot 08:59:04 |
+
+Only after each exact deployment was live was its public URL checked with
+`DEMO_URL=<that HTTPS origin> node deploy/smoke-demo.mjs`. Every smoke passed
+strict TLS, actual UI/API member sign-in/home/library/sign-out, cookies/privacy,
+layout and browser/network checks. The screenshots were inspected. Production-demo
+stayed on its initial known-good version throughout the staging candidate/rollback/
+restore sequence, then received the same candidate after staging smoke passed.
+
+At `08:50:33.464Z`, a controlled terminal Playwright check saved a fictional staging
+display-name marker and a generated 16x16 PNG avatar through the native profile UI.
+They survived reload; the authenticated avatar request returned 200, an anonymous
+request returned 401 and the same path on production-demo returned 404. The demo's
+profile/avatar stayed unchanged. This marker was intentionally retained across
+the immediately following provider rollback. At `08:53:44.525Z`, after that rollback
+was live, the original seeded name/no-avatar had returned, the old avatar path
+returned 404 to an authenticated member, production-demo remained unchanged,
+fresh-seed club ratings were exactly locked, and foreign sessions were rejected
+with 401 in both directions. Verification sessions signed out.
+
+Allowlisted provider startup events independently showed 55 successful migrations
+and `Demo ficticia creada.` at `08:52:01.19522128Z`, before rollback became live.
+Production-demo promotion likewise recorded 55 successful migrations and fresh
+seeding at `08:57:56.273626359Z`, before it became live. Raw provider logs and token/
+environment values are not published. This confirms fresh hosted initialization,
+not recovery of discarded reviewer writes.
+
+After promotion, native profile UI edits survived reload and matched the API on
+staging at `08:59:08.593Z` and production-demo at `08:59:19.152Z`; both original
+names were restored and sessions signed out. Hosted checks do not assume a shared
+public reviewer account stays permanently locked: the exact locked assertion above
+was specific to the controlled fresh-seed rollback state. Ongoing eligibility
+may legitimately change when public reviewers complete/rate a book.
+
+An additional staging-only restart test prepared another fictional profile/avatar
+marker at `08:59:41.261Z`, then successfully ran
+`render restart srv-db8tjebbc2fs73c55du0 -o json --confirm`. Render kept deployment
+`dep-db8ucf0n74is73csaro0` and reported replacement instance
+`srv-db8tjebbc2fs73c55du0-m5h2n`, created at `09:00:22Z`. Public smoke passed after
+restart. The first generic reset verification returned failure without identifying
+the assertion/request; its cause is unknown. Separate reads at `09:02:14.742Z`
+confirmed the original seeded name, no avatar, old upload 404 and locked ratings.
+Bounded provider logs recorded 55 migration successes and fresh seed creation at
+`09:01:20.736932378Z` for that restart.
+The complete reset/session-isolation check then passed at `09:02:58.578Z`, including
+unchanged production-demo and foreign-session rejection in both directions.
+Verification sessions signed out; no marker/upload remains. This records observed
+restart reset/reseed behavior separately from the already successful rollback.
+
+## Repeatable release and rollback procedure
 
 Record provider service identifiers and actual deployed revisions, then carry out
 this sequence on fictional data only:
@@ -237,8 +400,6 @@ this sequence on fictional data only:
    uncertain, stop writers and recover the matching snapshot into new isolated
    storage before cutover, as described in [deployment.md](deployment.md).
 
-The accepted Render reset policy does not recover discarded writes. Do not install
-automatic CD until #76 has actual hosted
-evidence; #77 will gate delivery on CI and reuse this smoke command. Public URLs
-and a demonstrated rollback remain open acceptance criteria, not documentation-only
-checkboxes.
+The accepted Render reset policy does not recover discarded writes. Automated CD
+remains #77 and will gate delivery on CI and reuse the smoke command. Keep service
+auto-deploy and Blueprint Auto Sync off until that delivery flow is verified.

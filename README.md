@@ -226,7 +226,7 @@ maintenance and recovery. The public fictional demos run on Render Free:
 button to enter without Discord. Free services can take about a minute to wake;
 fictional edits and uploads reset on restart, redeploy or spin-down.
 See the [Render deployment and verification guide](docs/public-demo.md) for manual
-rollout, storage limits and the hosted rollback evidence still required by #76.
+rollout, storage limits and the verified hosted rollout/rollback evidence for #76.
 See [fictional demo operation](docs/demo.md) for opt-in seeding.
 
 ## How AI was used *(to do)*
