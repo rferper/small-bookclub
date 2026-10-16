@@ -14,6 +14,8 @@ DATA = "/tmp/bookclub-render"
 def configure(environ):
     """Refuse retained/real-club configuration before starting Django."""
     env = dict(environ)
+    if not re.fullmatch(r"[a-f0-9]{40}", env.get("RENDER_GIT_COMMIT", "")):
+        raise ValueError("A full provider revision is required")
     if env.get("DEMO_MODE", "").lower() != "true":
         raise ValueError("Render image requires explicit fictional demo mode")
     host = env.get("RENDER_EXTERNAL_HOSTNAME", "")
@@ -115,7 +117,9 @@ def main():
         Path(DATA).mkdir(mode=0o700, exist_ok=True)
         template = Path("/app/render/nginx.conf").read_text()
         Path("/tmp/render-nginx.conf").write_text(
-            template.replace("__PORT__", env["PORT"])
+            template.replace("__PORT__", env["PORT"]).replace(
+                "__REVISION__", env["RENDER_GIT_COMMIT"]
+            )
         )
         for command in ("migrate", "seed_demo"):
             arguments = [sys.executable, "manage.py", command]

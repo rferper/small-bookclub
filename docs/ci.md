@@ -3,7 +3,9 @@
 `.github/workflows/ci.yml` runs on every push (including main), every pull request
 and manual dispatch. It replaces the separate backend/frontend workflows while
 retaining their checks. Read-only repository permissions apply to every job;
-there are no deployment credentials, provider accounts or publishing steps.
+application checks receive no deployment credentials. After the required aggregate
+succeeds, trusted main pushes call the [staged delivery workflow](release-process.md);
+only its release steps receive the corresponding service deploy hook.
 
 Backend and frontend jobs run independently with 20-minute limits. Backend
 installs Node 24/frontend dependencies for the real HTTP bridge, uv 0.12.7 and
@@ -19,12 +21,13 @@ After both jobs succeed, the container job validates Compose and builds both
 multi-stage images with Buildx. It does not push images or start a deployment.
 The final **All CI checks passed** job runs even when prerequisites fail and
 requires all three results to be `success`; failed, skipped or cancelled jobs
-cannot produce a green aggregate result. This is the check suitable for later
-branch protection/release gating; no repository protection settings are changed.
+cannot produce a green aggregate result. Delivery requires this successful result;
+no repository protection settings are changed.
 
 All shell steps use Bash's fail-fast behavior. No test/check uses
-`continue-on-error` or masks its exit status. New pushes cancel older runs for
-the same branch/PR, avoiding redundant work without accepting partial results.
+`continue-on-error` or masks its exit status. New branch/PR pushes cancel older runs. Main runs queue without cancellation so
+an active staged release can finish safely. Offline delivery guards and failure
+boundaries run in the backend job with Node's built-in test runner.
 
 Use `gh run list --workflow ci.yml` and `gh run view <run-id> --log-failed` to
 inspect results. Reproduce individual commands using [testing.md](testing.md);

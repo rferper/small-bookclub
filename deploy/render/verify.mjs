@@ -64,7 +64,7 @@ try {
     const cert = await ready(world)
     world.origin = `https://localhost:${world.httpsPort}`
     const smoke = spawnSync(process.execPath, [join(root, 'deploy/smoke-demo.mjs')], {
-      cwd: root, env: { ...process.env, DEMO_URL: world.origin, SMOKE_LOCAL_CA: cert, SMOKE_SCREENSHOT: join(evidence, `${world.name}.png`) },
+      cwd: root, env: { ...process.env, DEMO_URL: world.origin, SMOKE_LOCAL_CA: cert, SMOKE_EXPECTED_REVISION: '1'.repeat(40), SMOKE_SCREENSHOT: join(evidence, `${world.name}.png`) },
       timeout: 180000, stdio: 'inherit',
     })
     assert.ok(!smoke.error && smoke.status === 0, `${world.name} smoke passed`)
@@ -75,6 +75,7 @@ try {
     world.context = await browser.newContext({ ignoreHTTPSErrors: true, baseURL: world.origin })
     world.context.setDefaultTimeout(15000)
     const bootstrap = await world.context.request.get('/api/session')
+    assert.equal(bootstrap.headers()['x-bookclub-revision'], undefined, 'Revision marker must not change JSON API headers')
     assert.equal((await bootstrap.json()).demoSignInAvailable, true)
     const csrf = (await world.context.cookies()).find(cookie => cookie.name === 'csrftoken').value
     assert.equal((await world.context.request.post('/api/auth/demo', { headers: { Origin: world.origin, 'X-CSRFToken': csrf } })).status(), 204)

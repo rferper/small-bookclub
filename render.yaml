@@ -1,10 +1,10 @@
-# Fictional, resetting demos only. Manual rollout until gated CD in #77.
+# Fictional, resetting demos only. CI controls delivery; native auto-deploy is off.
 services:
   - type: web
     name: small-bookclub-staging
     runtime: docker
     plan: free
-    branch: issue-76-public-demo
+    branch: main
     dockerfilePath: ./deploy/render/Dockerfile
     dockerContext: .
     autoDeployTrigger: 'off'
@@ -20,7 +20,7 @@ services:
     name: small-bookclub-demo
     runtime: docker
     plan: free
-    branch: issue-76-public-demo
+    branch: main
     dockerfilePath: ./deploy/render/Dockerfile
     dockerContext: .
     autoDeployTrigger: 'off'

@@ -18,6 +18,7 @@ def environment(**changes):
         "DEMO_MODE": "true",
         "RENDER_EXTERNAL_HOSTNAME": "fictional-demo.onrender.com",
         "SECRET_KEY": "fictional-deployment-test-key",
+        "RENDER_GIT_COMMIT": "1" * 40,
         **changes,
     }
 
@@ -26,6 +27,10 @@ def environment(**changes):
     "changes",
     [
         {"DEMO_MODE": "false"},
+        {"RENDER_GIT_COMMIT": ""},
+        {"RENDER_GIT_COMMIT": "abc123"},
+        {"RENDER_GIT_COMMIT": "x" * 40},
+        {"RENDER_GIT_COMMIT": "1" * 40 + "; invalid"},
         {"SECRET_KEY": ""},
         {"RENDER_EXTERNAL_HOSTNAME": "*"},
         {"RENDER_EXTERNAL_HOSTNAME": "https://example.invalid"},

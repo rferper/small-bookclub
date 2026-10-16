@@ -15,9 +15,9 @@ The real club remains separate and must use retained storage before real data en
 The root `render.yaml` declares two separate Docker web services, each explicitly
 `plan: free`, with its own generated secret and isolated SQLite/media filesystem.
 No database, persistent disk, cron service, paid environment or custom domain is
-requested. Automatic deployment is off until gated delivery in #77. The current
-review branch is explicit so the first deployment does not depend on merging an
-issue whose hosted acceptance evidence is still outstanding.
+requested. Native service auto-deploy and Blueprint Auto Sync stay off;
+[GitHub delivery](release-process.md) controls the tested staging-to-demo order.
+The Blueprint tracks main; hook triggers explicitly pin the tested commit.
 
 Conditions rechecked 2026-10-16: free services sleep after 15 idle minutes; their
 filesystem is discarded on spin-down/restart/redeploy. Both demos share 750 included
@@ -61,9 +61,9 @@ authentication choice is separate; the public demo needs no Discord account.
 
 ## Account connection and first deployment
 
-For a fresh installation after reviewing passing checks, open this branch-specific Blueprint:
+For a fresh installation after reviewing passing checks, open the main Blueprint:
 
-[Review the Render Free deployment](https://render.com/deploy?repo=https://github.com/rferper/small-bookclub/tree/issue-76-public-demo)
+[Review the Render Free deployment](https://render.com/deploy?repo=https://github.com/rferper/small-bookclub/tree/main)
 
 Sign up/sign in to Render in the owner's own browser. This does not require a
 connected browser session in the coding agent or sharing a password/API key. Review
@@ -71,7 +71,7 @@ that both listed services are **Free**, have distinct names/generated secrets, a
 no paid add-ons or payment method. Then approve their creation. The public GitHub
 source is sufficient; authorize only this repository if Render asks for GitHub
 access. Check that Blueprint Auto Sync is off as well as service auto-deploys,
-so later source/config changes require a deliberate rollout until #77.
+so source/config changes follow the gated GitHub release process.
 
 Render supplies each actual `onrender.com` hostname; it may append a suffix if a
 name is already taken. No DNS purchase or hardcoded hostname is needed. Record the
@@ -111,7 +111,7 @@ not a browser connected to the agent. The CLI stores its token locally outside
 the repository; never paste it, its configuration file or an API key into chat,
 git or logs. After login, the agent can inspect the two known services and their
 deployment metadata before operating on their exact IDs. Do not create replacement
-services or modify unrelated resources. Automatic deployments remain off until #77.
+services or modify unrelated resources. Native automatic deployments remain off; see [GitHub delivery](release-process.md).
 See the [official CLI setup and command reference](https://render.com/docs/cli).
 
 The CLI/API access is now owner-authorized. Before any mutation, check the exact
@@ -400,6 +400,6 @@ this sequence on fictional data only:
    uncertain, stop writers and recover the matching snapshot into new isolated
    storage before cutover, as described in [deployment.md](deployment.md).
 
-The accepted Render reset policy does not recover discarded writes. Automated CD
-remains #77 and will gate delivery on CI and reuse the smoke command. Keep service
-auto-deploy and Blueprint Auto Sync off until that delivery flow is verified.
+The accepted Render reset policy does not recover discarded writes.
+[Continuous delivery](release-process.md) gates GitHub releases on CI and reuses
+the smoke command. Keep native service auto-deploy and Blueprint Auto Sync off.

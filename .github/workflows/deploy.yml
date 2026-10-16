@@ -1,0 +1,82 @@
+name: Deliver fictional demos
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        required: true
+        type: string
+      ci_passed:
+        required: true
+        type: boolean
+    secrets:
+      RENDER_STAGING_DEPLOY_HOOK:
+        required: true
+      RENDER_DEMO_DEPLOY_HOOK:
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  staging:
+    if: inputs.ci_passed && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      delivered: ${{ steps.release.outputs.delivered }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - id: release
+        run: node deploy/render/release.mjs
+        env:
+          CI_PASSED: ${{ inputs.ci_passed }}
+          RELEASE_SHA: ${{ inputs.sha }}
+          RELEASE_TARGET: staging
+          RELEASE_SCREENSHOT: frontend/test-results/cd/staging.png
+          GITHUB_TOKEN: ${{ github.token }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+
+  production-demo:
+    needs: staging
+    if: inputs.ci_passed && needs.staging.outputs.delivered == 'true' && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: node deploy/render/release.mjs
+        env:
+          CI_PASSED: ${{ inputs.ci_passed }}
+          RELEASE_SHA: ${{ inputs.sha }}
+          RELEASE_TARGET: production-demo
+          RELEASE_SCREENSHOT: frontend/test-results/cd/production-demo.png
+          GITHUB_TOKEN: ${{ github.token }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEMO_DEPLOY_HOOK }}

@@ -11,6 +11,11 @@ Living document: update it when we learn something about how tests should be wri
   a disposable real Compose stack; only the external Discord boundary is mocked.
   See [browser-tests.md](browser-tests.md) for isolation, fixtures and evidence.
 - CI runs all of them on every push and pull request.
+- Operator delivery tests: `node --test deploy/render/release.test.mjs` from the root
+  runs offline with Node's built-in runner and injected HTTP/clock/smoke boundaries.
+  It checks the actual workflow guard expressions, credential boundaries, exact
+  target/revision readiness and failure propagation. Backend CI runs it before
+  application suites; public deployment is not a dependency of these tests.
 
 ## Browser verification
 
