@@ -231,6 +231,8 @@ rollout, storage limits and the verified hosted rollout/rollback evidence for #7
 See [continuous delivery](docs/release-process.md) for the tested main-to-staging-to-demo
 workflow, activation requirements and failure recovery.
 See [fictional demo operation](docs/demo.md) for opt-in seeding.
+See [local private observability](ops/observability/README.md) for the opt-in
+OpenTelemetry stack, read-only Grafana dashboard and disposable verification.
 
 ## How AI was used *(to do)*
 
