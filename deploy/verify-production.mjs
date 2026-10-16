@@ -25,6 +25,7 @@ async function port() {
 const httpPort = await port(), httpsPort = await port()
 await Promise.all(servers.map(server => new Promise(resolve => server.close(resolve))))
 const env = { ...process.env, SECRET_KEY: randomBytes(48).toString('hex'), BOOKCLUB_HOST: 'localhost', BACKUP_DIRECTORY: backups,
+  BOOKCLUB_REVISION: '2'.repeat(40),
   BOOKCLUB_BIND_IP: '127.0.0.1', BOOKCLUB_HTTP_PORT: String(httpPort), BOOKCLUB_HTTPS_PORT: String(httpsPort), TLS_ISSUER: 'internal', DEMO_MODE: 'false',
   DISCORD_CLIENT_ID: '', DISCORD_CLIENT_SECRET: '' }
 const args = ['compose', '-p', project, '-f', 'docker-compose.yml', '-f', 'deploy/compose.production.yml']
@@ -84,7 +85,7 @@ try {
   assert.equal(redirect.headers.location, 'https://localhost/api/health')
   const health = await https('/api/health', 'GET', { 'X-Forwarded-Proto': 'http', 'X-Forwarded-For': '203.0.113.10' })
   assert.equal(health.status, 200, 'Forged forwarding headers cannot cause an HTTPS redirect loop')
-  assert.deepEqual(JSON.parse(health.body), { status: 'ok' })
+  assert.deepEqual(JSON.parse(health.body), { status: 'ok', environment: 'production', version: `release-${'2'.repeat(40)}` })
   for (const path of ['/', '/biblioteca', '/api/session']) {
     const response = await https(path)
     assert.equal(response.status, 200)
