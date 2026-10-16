@@ -246,6 +246,11 @@ contains only approved method/path pairs, status codes or allowlisted browser
 network codes. Raw exceptions and their automatic cookie headers stay suppressed.
 The optional `staging-verifier.png` records the fictional profile page separately
 from the native-smoke screenshots; CI retains only these named PNGs for three days.
+Successful container verification also retains only `production-https.png`,
+`staging.png` and `production-demo.png` in `native-browser-verification` for
+three days, allowing inspection on the actual Linux runner. Failure uploads
+are unchanged; successful uploads contain no test reports, traces, databases,
+backups, certificates or cookie state.
 
 To exercise failure handling in real disposable stacks, the local verifier accepts
 only these explicit probes (each is expected to exit **1**):

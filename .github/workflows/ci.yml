@@ -111,6 +111,16 @@ jobs:
             /tmp/bookclub-render-check-*/production-demo.png
             /tmp/bookclub-render-check-*/staging-verifier.png
           retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: native-browser-verification
+          path: |
+            /tmp/bookclub-production-check-*/production-https.png
+            /tmp/bookclub-render-check-*/staging.png
+            /tmp/bookclub-render-check-*/production-demo.png
+          if-no-files-found: error
+          retention-days: 3
 
   required:
     name: All CI checks passed
