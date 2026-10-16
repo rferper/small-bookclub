@@ -34,6 +34,8 @@ while (Date.now() < deadline) {
 assert.ok(ready, 'Django health must respond over verified TLS within 120 seconds')
 const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
 const browser = await chromium.launch()
+let page
+const errors = [], failed = [], bad = []
 try {
   // Public smoke never bypasses certificate validation. Local disposable testing
   // verifies TLS above, then scopes its fictional CA exception to this context.
@@ -44,8 +46,7 @@ try {
   assert.equal((await bootstrap.json()).demoSignInAvailable, true, 'Refuse sign-in unless the server advertises its guarded fictional demo')
   const csrf = (await context.cookies()).find(cookie => cookie.name === 'csrftoken')
   assert.ok(csrf?.secure && csrf.sameSite === 'Lax', 'Production CSRF cookie must be Secure/Lax')
-  const page = await context.newPage()
-  const errors = [], failed = [], bad = []
+  page = await context.newPage()
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   page.on('requestfailed', req => failed.push(new URL(req.url()).pathname))
@@ -56,11 +57,15 @@ try {
   assert.match(html.headers()['x-robots-tag'], /noindex/)
   assert.equal(html.headers()['x-frame-options'], 'DENY')
   await page.getByRole('heading', { name: 'Versión de demostración', exact: true }).waitFor()
-  const home = page.waitForResponse(response => new URL(response.url()).pathname === '/api/home' && response.request().method() === 'GET')
-  const login = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/demo' && response.request().method() === 'POST')
-  await page.getByRole('button', { name: 'Entrar con una cuenta de prueba', exact: true }).click()
-  assert.equal((await login).status(), 204)
-  assert.equal((await home).status(), 200)
+  // Observe every concurrent operation immediately: a missing home request must
+  // not become an unhandled rejection that hides a failed sign-in or click.
+  await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/home' && response.request().method() === 'GET')
+      .then(response => assert.equal(response.status(), 200, 'Home API after demo sign-in')),
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/demo' && response.request().method() === 'POST')
+      .then(response => assert.equal(response.status(), 204, 'Demo sign-in API')),
+    page.getByRole('button', { name: 'Entrar con una cuenta de prueba', exact: true }).click(),
+  ])
   await page.getByRole('heading', { name: 'Inicio', exact: true }).waitFor()
   const session = await context.request.get(new URL('/api/session', url).href)
   const identity = await session.json()
@@ -84,6 +89,14 @@ try {
   assert.deepEqual(failed, [])
   assert.deepEqual(bad, [])
   console.log(`PASS: verified TLS, fictional member UI sign-in/library/sign-out, Secure cookies and browser/network checks at ${url.origin}`)
+} catch (error) {
+  // Report paths/statuses only; never dump headers, cookies or response bodies.
+  console.error('Smoke network failures:', JSON.stringify({ failed, bad }))
+  if (page && process.env.SMOKE_SCREENSHOT) {
+    try { await page.screenshot({ path: process.env.SMOKE_SCREENSHOT, fullPage: true, timeout: 5000 }) }
+    catch { console.error('Smoke failure screenshot unavailable') }
+  }
+  throw error
 } finally {
   await browser.close()
 }

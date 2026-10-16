@@ -101,7 +101,11 @@ jobs:
         if: failure()
         with:
           name: native-browser-failures
-          path: frontend/test-results/e2e/
+          path: |
+            frontend/test-results/e2e/
+            /tmp/bookclub-production-check-*/production-https.png
+            /tmp/bookclub-render-check-*/staging.png
+            /tmp/bookclub-render-check-*/production-demo.png
           retention-days: 3
 
   required:
