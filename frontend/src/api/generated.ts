@@ -9,7 +9,7 @@ export interface paths {
         };
         /**
          * Public process liveness
-         * @description Implemented bootstrap; does not query the database or external providers.
+         * @description Public process liveness and validated source/deployment identity; no database or provider access.
          */
         get: operations["getHealth"];
         put?: never;
@@ -4344,12 +4344,17 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "status": "ok"
+                     *       "status": "ok",
+                     *       "environment": "development",
+                     *       "version": "unversioned"
                      *     }
                      */
                     "application/json": {
                         /** @constant */
                         status: "ok";
+                        /** @enum {string} */
+                        environment: "development" | "test" | "demo" | "production" | "staging" | "production-demo";
+                        version: string;
                     };
                 };
             };

@@ -9,6 +9,7 @@ services:
       MEDIA_ROOT: /tmp/bookclub-render/private_media
       RENDER_EXTERNAL_HOSTNAME: ${BOOKCLUB_HOST}
       RENDER_GIT_COMMIT: '1111111111111111111111111111111111111111'
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:?Set the fictional verification world}
       DISCORD_CLIENT_ID: ''
       DISCORD_CLIENT_SECRET: ''
     volumes: !reset []

@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -44,7 +45,7 @@ jobs:
       - run: uv python install 3.13
       - run: uv sync --locked
       - run: uv run python manage.py check
-      - run: node --test ../deploy/render/release.test.mjs ../deploy/render/verify-diagnostics.test.mjs
+      - run: node --test ../deploy/render/release.test.mjs ../deploy/render/record-release.test.mjs ../deploy/render/verify-diagnostics.test.mjs
       - run: uv run ruff check . ../deploy/render/entrypoint.py
       - run: uv run ruff format --check . ../deploy/render/entrypoint.py
       - run: uv run pytest -m "not integration"
@@ -110,6 +111,16 @@ jobs:
             /tmp/bookclub-render-check-*/production-demo.png
             /tmp/bookclub-render-check-*/staging-verifier.png
           retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: native-browser-verification
+          path: |
+            /tmp/bookclub-production-check-*/production-https.png
+            /tmp/bookclub-render-check-*/staging.png
+            /tmp/bookclub-render-check-*/production-demo.png
+          if-no-files-found: error
+          retention-days: 3
 
   required:
     name: All CI checks passed
@@ -130,6 +141,8 @@ jobs:
 
   deploy:
     needs: required
+    permissions:
+      contents: write # Reusable workflow narrows this to its final tag job.
     if: needs.required.result == 'success' && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy.yml
     with:

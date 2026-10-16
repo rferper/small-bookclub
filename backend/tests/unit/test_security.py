@@ -11,7 +11,7 @@ from config.security import SafeLogFormatter
 from core.images import encode_image
 
 
-def test_safe_logs_exclude_message_arguments_request_and_traceback():
+def test_safe_logs_exclude_message_arguments_request_and_traceback(settings):
     try:
         raise ValueError("fictional sensitive quote")
     except ValueError:
@@ -30,7 +30,31 @@ def test_safe_logs_exclude_message_arguments_request_and_traceback():
     assert json.loads(SafeLogFormatter().format(record)) == {
         "level": "ERROR",
         "event": "backend_event",
+        "environment": settings.DEPLOYMENT_ENVIRONMENT,
+        "version": settings.RELEASE_VERSION,
     }
+
+
+def test_startup_emits_closed_release_identity(settings, caplog):
+    from django.apps import apps
+
+    settings.DEPLOYMENT_ENVIRONMENT = "staging"
+    settings.RELEASE_VERSION = "release-" + "a" * 40
+    with caplog.at_level(logging.INFO, logger="bookclub.release"):
+        handler = logging.StreamHandler(io.StringIO())
+        handler.setFormatter(SafeLogFormatter())
+        logger = logging.getLogger("bookclub.release")
+        logger.addHandler(handler)
+        try:
+            apps.get_app_config("core").ready()
+            assert json.loads(handler.stream.getvalue()) == {
+                "level": "INFO",
+                "event": "backend_start",
+                "environment": "staging",
+                "version": "release-" + "a" * 40,
+            }
+        finally:
+            logger.removeHandler(handler)
 
 
 def test_production_security_settings_are_explicit(tmp_path):

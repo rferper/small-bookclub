@@ -1,5 +1,6 @@
 """Explicit environment configuration, independently testable without Django."""
 
+import re
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -16,6 +17,16 @@ def configure(environ, base_dir):
     demo_text = environ.get("DEMO_MODE", "false").lower()
     if demo_text not in {"true", "false"}:
         raise ImproperlyConfigured("DEMO_MODE must be true or false")
+    deployment = environ.get("DEPLOYMENT_ENVIRONMENT", environment)
+    if deployment not in {environment, "staging", "production-demo"} or (
+        deployment in {"staging", "production-demo"}
+        and (not production or demo_text != "true")
+    ):
+        raise ImproperlyConfigured("Invalid DEPLOYMENT_ENVIRONMENT")
+    revision = environ.get("BOOKCLUB_REVISION", "")
+    if revision and not re.fullmatch(r"[a-f0-9]{40}", revision):
+        raise ImproperlyConfigured("BOOKCLUB_REVISION must be a full lowercase SHA")
+    version = f"release-{revision}" if revision else "unversioned"
     debug_text = environ.get(
         "DEBUG", "true" if environment == "development" else "false"
     )
@@ -53,6 +64,8 @@ def configure(environ, base_dir):
         media_root = str(base_dir / media_root)
     return {
         "ENVIRONMENT": environment,
+        "DEPLOYMENT_ENVIRONMENT": deployment,
+        "RELEASE_VERSION": version,
         "DEMO_MODE": demo_text == "true",
         "MEDIA_ROOT": media_root,
         "SECRET_KEY": secret or "public-development-only-key-never-use-in-production",

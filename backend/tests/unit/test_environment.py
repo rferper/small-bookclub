@@ -72,7 +72,45 @@ def test_custom_timezone_database_hosts_and_boolean_are_parsed():
 def test_memory_database_and_defaults_do_not_depend_on_machine_timezone():
     settings = configure({"DATABASE_PATH": ":memory:"}, BASE)
     assert settings["TIME_ZONE"] == "UTC"
+    assert settings["DEPLOYMENT_ENVIRONMENT"] == "development"
+    assert settings["RELEASE_VERSION"] == "unversioned"
     assert settings["DATABASES"]["default"]["NAME"] == ":memory:"
+
+
+@pytest.mark.parametrize("world", ["staging", "production-demo"])
+def test_fictional_release_identity_requires_production_security(world):
+    env = {
+        "BOOKCLUB_ENV": "production",
+        "DEMO_MODE": "true",
+        "SECRET_KEY": "fictional",
+        "ALLOWED_HOSTS": "example.test",
+        "DEPLOYMENT_ENVIRONMENT": world,
+        "BOOKCLUB_REVISION": "a" * 40,
+    }
+    result = configure(env, BASE)
+    assert result["ENVIRONMENT"] == "production"
+    assert result["DEPLOYMENT_ENVIRONMENT"] == world
+    assert result["RELEASE_VERSION"] == "release-" + "a" * 40
+    assert result["SESSION_COOKIE_SECURE"] and not result["DEBUG"]
+    for change in [{"BOOKCLUB_ENV": "development"}, {"DEMO_MODE": "false"}]:
+        with pytest.raises(ImproperlyConfigured):
+            configure({**env, **change}, BASE)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"BOOKCLUB_REVISION": "secret-value"},
+        {"BOOKCLUB_REVISION": "A" * 40},
+        {"BOOKCLUB_REVISION": "a" * 40 + "\nsecret-value"},
+        {"DEPLOYMENT_ENVIRONMENT": "secret-value"},
+        {"DEPLOYMENT_ENVIRONMENT": "test"},
+    ],
+)
+def test_invalid_release_metadata_fails_without_reflection(change):
+    with pytest.raises(ImproperlyConfigured) as error:
+        configure(change, BASE)
+    assert "secret-value" not in str(error.value)
 
 
 def test_custom_identity_precedes_auth_and_sessions_without_admin_apps(settings):

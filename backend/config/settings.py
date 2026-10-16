@@ -56,6 +56,11 @@ LOGGING = {
     },
     "root": {"handlers": ["safe"], "level": "WARNING"},
     "loggers": {
+        "bookclub.release": {
+            "handlers": ["safe"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "django": {"handlers": ["safe"], "level": "WARNING", "propagate": False},
         "django.server": {
             "handlers": ["safe"],

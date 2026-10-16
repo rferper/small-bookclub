@@ -22,7 +22,7 @@ paths:
     get:
       operationId: getHealth
       summary: Public process liveness
-      description: Implemented bootstrap; does not query the database or external providers.
+      description: Public process liveness and validated source/deployment identity; no database or provider access.
       security: []
       responses:
         "200":
@@ -32,13 +32,21 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [status]
+                required: [status, environment, version]
                 properties:
                   status:
                     type: string
                     const: ok
+                  environment:
+                    type: string
+                    enum: [development, test, demo, production, staging, production-demo]
+                  version:
+                    type: string
+                    pattern: '^(unversioned|release-[a-f0-9]{40})$'
               example:
                 status: ok
+                environment: development
+                version: unversioned
   /api/session:
     get:
       operationId: getSession
