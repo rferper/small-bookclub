@@ -20,9 +20,18 @@ runner. Browser full-stack journeys remain #54.
 After both jobs succeed, the container job validates Compose and builds both
 multi-stage images with Buildx. It does not push images or start a deployment.
 The final **All CI checks passed** job runs even when prerequisites fail and
-requires all three results to be `success`; failed, skipped or cancelled jobs
+requires backend, frontend, containers and observability results to be `success`;
+failed, skipped or cancelled jobs
 cannot produce a green aggregate result. Delivery requires this successful result;
 no repository protection settings are changed.
+
+The observability job also waits for backend/frontend, then runs the existing
+base Compose file with its explicit local monitoring overlay in an exact random
+disposable project. Real fictional requests must reach Prometheus, Loki and Tempo
+through Grafana. Topology, loopback publication, privacy markers, read-only access
+and exact-project cleanup are assertions. Only the fictional dashboard PNG is
+retained for three days; a failed observability job blocks the required aggregate
+and delivery. See [local observability](../ops/observability/README.md).
 
 All shell steps use Bash's fail-fast behavior. No test/check uses
 `continue-on-error` or masks its exit status. New branch/PR pushes cancel older runs. Main runs queue without cancellation so

@@ -65,6 +65,7 @@ try {
   assert.equal(config.networks.dashboard.driver, 'bridge')
   assert.notEqual(config.networks.dashboard.internal, true)
   assert.deepEqual(config.services.backend.networks, { default: null, observability: null })
+  assert.deepEqual(config.services.frontend.networks, { default: null })
   assert.equal(config.services.backend.environment.TELEMETRY_ENABLED, 'true')
   for (const name of ['frontend', 'grafana']) {
     assert.equal(config.services[name].ports.length, 1)
