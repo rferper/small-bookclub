@@ -25,7 +25,7 @@ export function hookFor(raw, target, sha) {
     requireValue(url.protocol === 'https:' && url.hostname === 'api.render.com' && !url.port
       && !url.username && !url.password && !url.hash && url.pathname === `/deploy/${target.id}`
       && [...url.searchParams.keys()].length === 1 && url.searchParams.has('key')
-      && /^[a-zA-Z0-9_-]{16,256}$/u.test(url.searchParams.get('key')) && shaPattern.test(sha), 'invalid-hook')
+      && /^[a-zA-Z0-9_-]{1,256}$/u.test(url.searchParams.get('key') ?? '') && shaPattern.test(sha), 'invalid-hook')
     url.searchParams.set('ref', sha)
     return url
   } catch { throw new ReleaseFailure('invalid-hook') }

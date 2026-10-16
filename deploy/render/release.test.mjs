@@ -76,6 +76,17 @@ test('production uses only its own service hook and public origin', async () => 
   assert.equal(h.calls.find(c => c.options.method === 'POST').url.pathname, `/deploy/${targets['production-demo'].id}`)
   assert.equal(h.smokes[0].origin, targets['production-demo'].origin)
 })
+
+test('a provider key shorter than sixteen characters can deliver without being logged', async () => {
+  const key = 'fixtureAb12'
+  const h = harness()
+  const result = await release(environment({
+    RENDER_DEPLOY_HOOK: `https://api.render.com/deploy/${targets.staging.id}?key=${key}`,
+  }), h.dependencies)
+  assert.equal(result.delivered, true)
+  assert.equal(h.calls.find(c => c.options.method === 'POST').url.searchParams.get('key'), key)
+  assert.equal(h.logs.some(line => line.includes(key)), false)
+})
 test('an invalid GitHub main response fails before the secret hook is used', async () => {
   const h = harness({ main: ['not-a-sha'] })
   await assert.rejects(release(environment(), h.dependencies), { code: 'current-main' })
@@ -94,7 +105,9 @@ for (const raw of [
   `https://user:password@api.render.com/deploy/${targets.staging.id}?key=${secret}`,
   `https://api.render.com/deploy/${targets.staging.id}?key=${secret}&ref=${sha}`,
   `https://api.render.com/deploy/${targets.staging.id}?key=${secret}&key=duplicate`,
-  `https://api.render.com/deploy/${targets.staging.id}?key=short`,
+  `https://api.render.com/deploy/${targets.staging.id}?key=`,
+  `https://api.render.com/deploy/${targets.staging.id}?key=invalid%20key`,
+  `https://api.render.com/deploy/${targets.staging.id}?key=${'x'.repeat(257)}`,
   `https://api.render.com/deploy/${targets.staging.id}?key=${secret}#fragment`,
 ]) test('invalid or wrong-target hook fails closed without leaking it', () => {
   assert.throws(() => hookFor(raw, targets.staging, sha), error => error.code === 'invalid-hook' && !String(error).includes(secret) && !error.cause)
