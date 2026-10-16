@@ -1086,3 +1086,7 @@ After comparing hosting conditions, the owner chose Render Free for now with an 
 ## 2026-10-16: Diagnose demo smoke failures (#76)
 
 Observe sign-in, home response and button click together so an unhandled response-wait rejection cannot mask an earlier failure. On failure, report only failed request paths/statuses and capture the explicitly requested fictional screenshot with a bounded wait. CI retains only the named smoke PNGs alongside existing browser evidence for three days; temporary databases, backups, certificates and cookies are excluded. Keep existing assertions, timeouts and TLS checks unchanged. No new dependency.
+
+## 2026-10-16: Terminal access to Render (#76)
+
+The owner uses a terminal and corrected the plugin-based connection suggestion. Use the official free/open-source Render CLI (Apache-2.0), installed as operator tooling through WinGet's exact Render.CLI package (verified v2.29.0); it is not a backend/frontend runtime dependency. Use owner-authorized `render login` with locally stored CLI credentials outside git/chat/logs, rather than requesting ChatGPT plugins or a connected browser. Restrict operations to the two existing fictional demo services; do not create paid resources or change the selected storage policy. CLI version/help were verified locally; account authentication and hosted operations still await owner login.

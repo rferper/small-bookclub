@@ -94,6 +94,30 @@ an ordinary member and a discarded filesystem safely reseeds at startup.
 
 ## Local artifact verification
 
+### Terminal access to the existing Render services
+
+This project is operated from a terminal; ChatGPT plugin installation/connection
+is not part of the workflow. The free, Apache-2.0 official Render CLI can inspect
+services/deployments and trigger deployment of an explicit commit. On Windows:
+
+```powershell
+winget install --id Render.CLI --exact --source winget
+# Open a new PowerShell tab after installation so PATH is refreshed.
+render --version
+render login
+```
+
+The owner completes the browser's **Authorize CLI** step and selects the workspace
+containing the two existing demo services. This is the owner's ordinary browser,
+not a browser connected to the agent. The CLI stores its token locally outside
+the repository; never paste it, its configuration file or an API key into chat,
+git or logs. After login, the agent can inspect the two known services and their
+deployment metadata before operating on their exact IDs. Do not create replacement
+services or modify unrelated resources. Automatic deployments remain off until #77.
+See the [official CLI setup and command reference](https://render.com/docs/cli).
+
+### Disposable local checks
+
 With Docker, frontend dependencies and Chromium installed, run from the root:
 
 ```sh
