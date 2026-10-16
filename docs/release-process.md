@@ -8,11 +8,12 @@ This flow delivers only the existing resetting fictional Render Free services:
 private club or provisions paid resources. SQLite/uploads remain disposable;
 startup migrates and safely initializes fictional fixtures before serving traffic.
 
-The implementation is prepared on `issue-77-continuous-delivery`. Activation and
-the first automatic main rollout require the two service-specific GitHub secrets
-below, passing checks and the merge. A passing branch check alone does not claim
-that automatic production-demo delivery has happened. Hosted activation evidence
-will be recorded here when that sequence completes.
+Delivery requires the two service-specific GitHub secrets below and this workflow
+on main. The owner-provided hooks were installed through hidden terminal input on
+2026-10-16. A passing branch check alone does not prove that automatic delivery has
+happened. The [issue #77 verification and activation log](https://github.com/rferper/small-bookclub/issues/77)
+records the observed main run, provider revisions and smoke results; use that log
+to distinguish prepared configuration from a completed hosted release.
 
 ## How delivery runs
 
@@ -112,6 +113,17 @@ rollback; verify the older image can initialize its matching fixtures. Broader
 versioned images/tags and release policy remain #78.
 
 ## Verification
+
+The [initial full candidate CI](https://github.com/rferper/small-bookclub/actions/runs/38881729628)
+passed application, contract, accessibility, native browser, HTTPS and Render
+artifact checks. The [isolated assertion-failure probe](https://github.com/rferper/small-bookclub/actions/runs/38882156277)
+failed the required aggregate and skipped delivery; its branch/worktree were
+removed and the failing test was never merged. Local full suites passed with
+1,603 backend tests (one skipped) and 1,273 frontend tests. The final hook-key
+validation adds shorter fictional keys and empty/invalid/oversized rejection;
+all 42 offline release tests pass. Both [initial security review](https://github.com/rferper/small-bookclub/issues/77#issuecomment-6212625537)
+and [key-validation delta review](https://github.com/rferper/small-bookclub/issues/77#issuecomment-6214046561)
+passed. These preparation results do not replace the hosted activation log above.
 
 From the repository root, run the offline release tests:
 
