@@ -9,7 +9,6 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createRequire } from 'node:module'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const evidence = mkdtempSync(join(tmpdir(), 'bookclub-production-check-'))
@@ -35,7 +34,7 @@ function command(extra, capture = false) {
   return result.stdout?.trim()
 }
 const manage = (...extra) => command(['exec', '-T', 'backend', 'python', 'manage.py', ...extra], true)
-let ca, browser
+let ca
 function https(path, method = 'GET', headers = {}) {
   return new Promise((resolve, reject) => {
     const req = request({ hostname: 'localhost', port: httpsPort, path, method, ca, headers, agent: false, timeout: 10000 }, response => {
@@ -128,18 +127,13 @@ try {
   // Compose has no edge health probe; wait for its new TLS listener explicitly.
   await waitForHttps()
   assert.equal(JSON.parse((await https('/api/session')).body).demoSignInAvailable, true)
-  const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
-  browser = await chromium.launch()
-  const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 } })
-  const errors = []
-  page.on('pageerror', error => errors.push(error.message))
-  await page.goto(`https://localhost:${httpsPort}/`)
-  await page.getByRole('button', { name: 'Entrar con una cuenta de prueba', exact: true }).waitFor()
-  await page.screenshot({ path: join(evidence, 'production-https.png'), fullPage: true })
-  assert.deepEqual(errors, [])
+  const smoke = spawnSync(process.execPath, [join(root, 'deploy/smoke-demo.mjs')], {
+    cwd: root, env: { ...env, DEMO_URL: `https://localhost:${httpsPort}`, SMOKE_LOCAL_CA: join(evidence, 'root.crt'), SMOKE_SCREENSHOT: join(evidence, 'production-https.png') },
+    timeout: 180000, stdio: 'inherit',
+  })
+  assert.ok(!smoke.error && smoke.status === 0, 'Fictional demo smoke passed')
   console.log('PASS: TLS/proxy/CSRF/cookies/isolation, fictional backup/recovery/purge dry-run and recreation persistence.')
 } finally {
-  await browser?.close()
   command(['down', '--volumes', '--remove-orphans'])
   console.log(`Fictional evidence/backup retained only at ${evidence}`)
 }
