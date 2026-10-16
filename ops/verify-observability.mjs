@@ -118,6 +118,15 @@ try {
   assert.ok(JSON.stringify(trace).includes(`release-${revision}`))
   assert.ok(!JSON.stringify(trace).includes(marker))
   assert.ok(!JSON.stringify(metrics).includes(marker))
+  start('collector-outage')
+  command(['stop', 'otel-collector'])
+  assert.deepEqual(await json(`${app}/api/health`),
+    { status: 'ok', environment: 'development', version: `release-${revision}` })
+  command(['start', 'otel-collector'])
+  await ready(async () => {
+    const result = await json(proxy('prometheus', `/api/v1/query?query=${encodeURIComponent('bookclub_http_requests_total')}`))
+    return result.data?.result?.some(row => Number(row.value?.[1]) >= 6)
+  })
   start('read-only-dashboard')
   const dashboard = await json(`${grafana}/api/dashboards/uid/bookclub-operations`)
   assert.equal(dashboard.dashboard.uid, 'bookclub-operations')

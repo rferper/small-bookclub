@@ -138,7 +138,9 @@ The verifier creates an exact random project, generated local secret and isolate
 volumes, uses ephemeral loopback ports, and blanks Discord credentials. It checks
 real Prometheus counts/durations, Loki events and a Tempo trace through Grafana,
 release identity, absence of a fictional private marker, denied dashboard writes
-and denied default-admin login. It captures only the fictional dashboard to the
+and denied default-admin login. It stops only its own Collector, verifies the
+application still responds correctly, then restarts export before inspecting the
+dashboard. It captures only the fictional dashboard to the
 printed temporary evidence directory. Success and failure both remove and verify
 the absence of that project's containers, networks and volumes. The required CI
 job runs the same check and retains only that PNG for three days.
