@@ -109,9 +109,10 @@ try {
   assert.equal(fresh.member.displayName, originalStage.member.displayName, 'Recreated demo reseeded fictional data')
   assert.equal((await (await production.context.request.get('/api/me/profile')).json()).member.displayName, originalProduction.member.displayName)
   console.log('PASS: both Render artifacts, member profile reload, environment/session isolation, locked ratings and reset/reseed.')
-} catch (error) {
+} catch {
   failed = true
-  console.error(error)
+  // Playwright errors may contain the explicit cross-environment test cookie.
+  console.error('Render artifact verification failed; raw request details suppressed')
   for (const world of worlds) {
     try { command(world, ['logs', '--tail', '40', 'backend']) } catch { /* Cleanup still runs. */ }
   }

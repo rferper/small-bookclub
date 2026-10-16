@@ -89,14 +89,16 @@ try {
   assert.deepEqual(failed, [])
   assert.deepEqual(bad, [])
   console.log(`PASS: verified TLS, fictional member UI sign-in/library/sign-out, Secure cookies and browser/network checks at ${url.origin}`)
-} catch (error) {
+} catch {
   // Report paths/statuses only; never dump headers, cookies or response bodies.
   console.error('Smoke network failures:', JSON.stringify({ failed, bad }))
   if (page && process.env.SMOKE_SCREENSHOT) {
     try { await page.screenshot({ path: process.env.SMOKE_SCREENSHOT, fullPage: true, timeout: 5000 }) }
     catch { console.error('Smoke failure screenshot unavailable') }
   }
-  throw error
+  // Playwright API errors can include automatic Cookie headers in their call
+  // logs. Keep the failed exit status without propagating the original error.
+  throw new Error('Fictional demo smoke failed; see the path/status diagnostics and optional screenshot')
 } finally {
   await browser.close()
 }
