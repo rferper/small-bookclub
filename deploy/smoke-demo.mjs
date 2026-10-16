@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { request } from 'node:https'
 import { createRequire } from 'node:module'
+import { networkFailureCode } from './smoke-diagnostics.mjs'
 
 const url = new URL(process.env.DEMO_URL ?? '')
 assert.ok(url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash,
@@ -51,7 +52,7 @@ try {
   page = await context.newPage()
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
-  page.on('requestfailed', req => failed.push(new URL(req.url()).pathname))
+  page.on('requestfailed', req => failed.push({ path: new URL(req.url()).pathname, code: networkFailureCode(req.failure()?.errorText) }))
   page.on('response', response => { if (response.status() >= 400) bad.push(`${response.status()} ${new URL(response.url()).pathname}`) })
   const html = await page.goto(url.origin)
   assert.equal(html.status(), 200)

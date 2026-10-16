@@ -3,10 +3,17 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { release, hookFor, targets, trustedPush, smokeEnvironment } from './release.mjs'
+import { networkFailureCode } from '../smoke-diagnostics.mjs'
 
 const { parse } = createRequire(new URL('../../frontend/package.json', import.meta.url))('yaml')
 const sha = 'a'.repeat(40), other = 'b'.repeat(40)
 const secret = 'fictional-deploy-hook-secret'
+test('smoke network diagnostics retain a fixed code without reflecting secret-bearing text', () => {
+  assert.equal(networkFailureCode('net::ERR_CONNECTION_RESET'), 'ERR_CONNECTION_RESET')
+  for (const text of [undefined, secret, `net::ERR_CONNECTION_RESET Cookie: ${secret}`, `net::${secret}`]) {
+    assert.equal(networkFailureCode(text), 'UNKNOWN_NETWORK_FAILURE')
+  }
+})
 const environment = changes => ({
   GITHUB_REPOSITORY: 'rferper/small-bookclub', GITHUB_REF: 'refs/heads/main',
   GITHUB_EVENT_NAME: 'push', CI_PASSED: 'true', GITHUB_SHA: sha, RELEASE_SHA: sha,
