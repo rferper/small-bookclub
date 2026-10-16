@@ -1,0 +1,96 @@
+# Explicit local-only overlay; use with the existing base Compose file.
+services:
+  backend:
+    environment:
+      TELEMETRY_ENABLED: 'true'
+    networks: [default, observability]
+    depends_on:
+      otel-collector:
+        condition: service_started
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.163.0
+    user: '10001:10001'
+    command: [--config=/etc/otelcol/config.yaml]
+    volumes:
+      - ./ops/observability/collector.yaml:/etc/otelcol/config.yaml:ro
+    networks: [observability]
+    mem_limit: 128m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on: [loki, tempo]
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    user: '65534:65534'
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=24h, --storage.tsdb.retention.size=128MB]
+    volumes:
+      - ./ops/observability/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - telemetry_metrics:/prometheus
+    networks: [observability]
+    mem_limit: 256m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  loki:
+    build:
+      context: .
+      dockerfile: ops/observability/Dockerfile.data
+      args:
+        BASE_IMAGE: grafana/loki:3.7.8
+    command: [-config.file=/etc/loki/config.yaml]
+    volumes:
+      - ./ops/observability/loki.yaml:/etc/loki/config.yaml:ro
+      - telemetry_logs:/data
+    networks: [observability]
+    mem_limit: 384m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  tempo:
+    build:
+      context: .
+      dockerfile: ops/observability/Dockerfile.data
+      args:
+        BASE_IMAGE: grafana/tempo:2.10.8
+    command: [-config.file=/etc/tempo/config.yaml]
+    volumes:
+      - ./ops/observability/tempo.yaml:/etc/tempo/config.yaml:ro
+      - telemetry_traces:/data
+    networks: [observability]
+    mem_limit: 384m
+    environment:
+      GOMEMLIMIT: 256MiB
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  grafana:
+    image: grafana/grafana:13.2.4
+    user: '472:472'
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+      GF_AUTH_BASIC_ENABLED: 'false'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+      GF_LOG_MODE: console
+      GF_LOG_LEVEL: error
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/bookclub/dashboard.json
+    ports:
+      - '127.0.0.1:${BOOKCLUB_GRAFANA_PORT:-3300}:3000'
+    volumes:
+      - ./ops/observability/datasources.yaml:/etc/grafana/provisioning/datasources/bookclub.yaml:ro
+      - ./ops/observability/dashboards.yaml:/etc/grafana/provisioning/dashboards/bookclub.yaml:ro
+      - ./ops/observability/dashboard.json:/etc/grafana/bookclub/dashboard.json:ro
+      - telemetry_dashboard:/var/lib/grafana
+    networks: [observability]
+    mem_limit: 512m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on: [prometheus, loki, tempo]
+networks:
+  observability:
+    internal: true
+volumes:
+  telemetry_metrics:
+  telemetry_logs:
+  telemetry_traces:
+  telemetry_dashboard:
