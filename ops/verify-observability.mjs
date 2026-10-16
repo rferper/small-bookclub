@@ -26,7 +26,7 @@ const env = { ...process.env, BOOKCLUB_PORT: String(appPort), BOOKCLUB_GRAFANA_P
   BOOKCLUB_REVISION: revision, DEMO_MODE: 'false', SECRET_KEY: randomBytes(48).toString('hex'),
   DISCORD_CLIENT_ID: '', DISCORD_CLIENT_SECRET: '' }
 const compose = ['compose', '-p', project, '-f', 'docker-compose.yml', '-f', 'ops/compose.observability.yml']
-let phase = 'configuration', browser, failed = false
+let phase = 'configuration', browser, failed = false, httpStatus = null
 function docker(args, capture = false) {
   const result = spawnSync('docker', args, { cwd: root, env, timeout: 300000,
     encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit' })
@@ -38,6 +38,7 @@ const app = `http://127.0.0.1:${appPort}`, grafana = `http://127.0.0.1:${grafana
 const proxy = (uid, path) => `${grafana}/api/datasources/proxy/uid/${uid}${path}`
 async function json(url, options = {}) {
   const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(10000) })
+  httpStatus = response.status
   assert.equal(response.status, 200)
   const body = await response.text()
   assert.ok(body.length <= 2000000)
@@ -51,7 +52,7 @@ async function ready(action) {
   }
   throw new Error('Observability readiness deadline')
 }
-const start = name => { phase = name; console.log(`Observability verification: ${name}`) }
+const start = name => { phase = name; httpStatus = null; console.log(`Observability verification: ${name}`) }
 try {
   console.log(`Disposable observability project: ${project}`)
   console.log(`Observability screenshots: ${evidence}`)
@@ -129,19 +130,27 @@ try {
     const result = await json(proxy('prometheus', `/api/v1/query?query=${encodeURIComponent('bookclub_http_requests_total')}`))
     return result.data?.result?.some(row => Number(row.value?.[1]) >= 6)
   })
-  start('read-only-dashboard')
+  start('dashboard-identity')
   const dashboard = await json(`${grafana}/api/dashboards/uid/bookclub-operations`)
   assert.equal(dashboard.dashboard.uid, 'bookclub-operations')
   assert.equal(dashboard.dashboard.panels.length, 6)
+  start('dashboard-permissions')
   assert.equal(dashboard.meta.canSave, false)
+  start('dashboard-write-denial')
   const write = await fetch(`${grafana}/api/dashboards/db`, { method: 'POST', redirect: 'error',
     signal: AbortSignal.timeout(10000), headers: { 'Content-Type': 'application/json', Origin: grafana },
     body: JSON.stringify({ dashboard: { uid: 'fictional-denied-write', title: 'Fictional denied write' } }) })
+  httpStatus = write.status
   assert.ok([401, 403].includes(write.status))
+  start('default-admin-denial')
   const login = await fetch(`${grafana}/login`, { method: 'POST', redirect: 'error',
     signal: AbortSignal.timeout(10000), headers: { 'Content-Type': 'application/json', Origin: grafana },
     body: JSON.stringify({ user: 'admin', password: 'admin' }) })
-  assert.ok([401, 403].includes(login.status))
+  httpStatus = login.status
+  // Pinned Grafana omits the form client when the login form is disabled.
+  assert.equal(login.status, 400)
+  assert.equal((await login.json()).messageId, 'auth.client.notConfigured')
+  assert.equal(login.headers.get('set-cookie'), null)
   start('screenshot')
   const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
   browser = await chromium.launch()
@@ -153,7 +162,8 @@ try {
   console.log('PASS: real local metrics, logs, traces, version identity, privacy and Viewer dashboard.')
 } catch {
   failed = true
-  console.error(`Observability verification failed in ${phase}; raw data suppressed`)
+  const status = Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : 'none'
+  console.error(`Observability verification failed in ${phase}; HTTP status ${status}; raw data suppressed`)
 } finally {
   try { await browser?.close() } catch { failed = true }
   start('cleanup')
