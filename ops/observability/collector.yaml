@@ -22,12 +22,16 @@ exporters:
     sending_queue:
       queue_size: 64
     retry_on_failure:
+      initial_interval: 1s
+      max_interval: 2s
       max_elapsed_time: 10s
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
     sending_queue:
       queue_size: 64
     retry_on_failure:
+      initial_interval: 1s
+      max_interval: 2s
       max_elapsed_time: 10s
 service:
   telemetry:

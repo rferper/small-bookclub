@@ -77,6 +77,8 @@ try {
     assert.ok(!service.privileged && !service.pid)
     assert.ok(!service.volumes?.some(v => v.source?.includes('docker.sock')))
   }
+  start('collector-configuration')
+  command(['run', '--rm', '--no-deps', 'otel-collector', 'validate', '--config=/etc/otelcol/config.yaml'])
   start('startup')
   command(['up', '--build', '-d', '--wait', '--wait-timeout', '180'])
   const published = JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Ports}}',
