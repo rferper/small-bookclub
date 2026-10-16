@@ -123,6 +123,23 @@
       "id": 6,
       "title": "Trazas del backend",
       "type": "table",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {"Start time": true, "Service": true},
+            "indexByName": {"Trace ID": 0, "Name": 1, "Duration": 2},
+            "renameByName": {"Trace ID": "Traza", "Name": "Solicitud", "Duration": "Duración"}
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Traza"}, "properties": [{"id": "custom.width", "value": 130}]},
+          {"matcher": {"id": "byName", "options": "Duración"}, "properties": [{"id": "custom.width", "value": 90}]}
+        ]
+      },
       "datasource": {
         "type": "tempo",
         "uid": "tempo"

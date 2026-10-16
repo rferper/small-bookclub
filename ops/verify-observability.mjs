@@ -134,6 +134,13 @@ try {
   const dashboard = await json(`${grafana}/api/dashboards/uid/bookclub-operations`)
   assert.equal(dashboard.dashboard.uid, 'bookclub-operations')
   assert.equal(dashboard.dashboard.panels.length, 6)
+  start('dashboard-metric-queries')
+  for (const panel of dashboard.dashboard.panels.filter(panel => panel.datasource.uid === 'prometheus')) {
+    await ready(async () => {
+      const result = await json(proxy('prometheus', `/api/v1/query?query=${encodeURIComponent(panel.targets[0].expr)}`))
+      return result.data?.result?.some(row => Number.isFinite(Number(row.value?.[1])))
+    })
+  }
   start('dashboard-permissions')
   assert.equal(dashboard.meta.canSave, false)
   start('dashboard-write-denial')
@@ -152,7 +159,7 @@ try {
   assert.equal((await login.json()).messageId, 'auth.client.notConfigured')
   assert.equal(login.headers.get('set-cookie'), null)
   start('screenshot')
-  const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
+  const { chromium, expect } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
   browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1440, height: 1500 }, locale: 'es-ES' })
   await page.goto(`${grafana}/d/bookclub-operations`, { waitUntil: 'domcontentloaded' })
@@ -160,6 +167,7 @@ try {
   await page.getByText('Registros operativos sin contenido', { exact: true }).first().waitFor({ timeout: 30000 })
   await page.getByText('http.request', { exact: true }).first().waitFor({ timeout: 30000 })
   await page.getByText(/GET \/api\/health/u).first().waitFor({ timeout: 30000 })
+  await expect(page.getByText(/^(No data|No data found in response)$/u)).toHaveCount(0, { timeout: 30000 })
   await page.screenshot({ path: join(evidence, 'dashboard.png'), fullPage: true, timeout: 10000 })
   console.log('PASS: real local metrics, logs, traces, version identity, privacy and Viewer dashboard.')
 } catch {
