@@ -9,12 +9,20 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { apiRequest, diagnostics, json, VerificationFailure } from './verify-diagnostics.mjs'
+import { apiRequest, diagnostics, faultProbe, json, saveProfile, VerificationFailure } from './verify-diagnostics.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const evidence = mkdtempSync(join(tmpdir(), 'bookclub-render-check-'))
 const diagnostic = diagnostics()
-const phase = (world, name, action) => diagnostic.phase(world?.name ?? 'fixture', name, action)
+let probe
+try { probe = faultProbe(process.argv.slice(2)) }
+catch (error) { diagnostic.fail(error); process.exit(1) }
+const phase = (world, name, action) => diagnostic.phase(world?.name ?? 'fixture', name, async () => {
+  const result = await action()
+  // Cleanup probes run only AFTER down succeeds, so they cannot leak resources.
+  probe(world?.name ?? 'fixture', name)
+  return result
+})
 const reservations = []
 async function port() {
   const server = createServer()
@@ -72,8 +80,8 @@ try {
       const smoke = spawnSync(process.execPath, [join(root, 'deploy/smoke-demo.mjs')], {
         cwd: root, env: { ...process.env, DEMO_URL: world.origin, SMOKE_LOCAL_CA: cert, SMOKE_EXPECTED_REVISION: '1'.repeat(40), SMOKE_SCREENSHOT: join(evidence, `${world.name}.png`) },
         timeout: 180000, stdio: 'inherit',
-    })
-    if (smoke.error || smoke.status !== 0) throw new VerificationFailure('NATIVE_SMOKE')
+      })
+      if (smoke.error || smoke.status !== 0) throw new VerificationFailure('NATIVE_SMOKE')
     })
   }
   const { chromium } = createRequire(new URL('../../frontend/package.json', import.meta.url))('@playwright/test')
@@ -101,9 +109,7 @@ try {
     page.on('response', res => { if (res.status() >= 400) diagnostic.request(res.request().method(), res.url(), res.status()) })
     await page.goto('/mi-perfil')
     await page.getByLabel('Nombre visible', { exact: true }).fill('Prueba ficticia staging')
-    const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/me/profile' && response.request().method() === 'PUT')
-    await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
-    assert.equal((await saved).status(), 200)
+    await saveProfile(page)
   })
   await phase(stage, 'profile-reload', async () => {
     const page = stage.page
