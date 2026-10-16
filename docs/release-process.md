@@ -128,7 +128,7 @@ passed. These preparation results do not replace the hosted activation log above
 From the repository root, run the offline release tests:
 
 ```powershell
-node --test deploy/render/release.test.mjs
+node --test deploy/render/release.test.mjs deploy/render/verify-diagnostics.test.mjs
 ```
 
 They evaluate the actual caller/reusable workflow guards across trusted/untrusted
@@ -143,6 +143,34 @@ The disposable `node deploy/render/verify.mjs` verifies the actual image's root
 revision header, absence of that header on JSON APIs, native browser smoke,
 isolation and reset/reseed. Inspect its fictional screenshots and allow its exact
 temporary projects to clean up; preserve the owner's database/preview.
+
+The verifier prints each environment/phase as it starts and completes. A failure
+reports that active phase, the last completed phase, and a fixed classification
+(request failure, API timeout, browser timeout, assertion, HTTP status, JSON,
+startup/cleanup command, TLS readiness or native smoke). Bounded request context
+contains only approved method/path pairs, status codes or allowlisted browser
+network codes. Raw exceptions and their automatic cookie headers stay suppressed.
+The optional `staging-verifier.png` records the fictional profile page separately
+from the native-smoke screenshots; CI retains only these named PNGs for three days.
+
+To exercise failure handling in real disposable stacks, the local verifier accepts
+only these explicit probes (each is expected to exit **1**):
+
+```powershell
+node deploy/render/verify.mjs --fault=api-bootstrap
+node deploy/render/verify.mjs --fault=profile-edit
+node deploy/render/verify.mjs --fault=cleanup
+```
+
+They inject a controlled failure after the selected staging phase. All temporary
+projects still run cleanup; the cleanup probe injects only after removal succeeds.
+These probes do not deploy publicly or explain earlier CI network failures. The
+normal invocation retains every assertion with no retries or increased timeouts.
+The saved profile response and button click are observed together so a rejected
+response wait cannot terminate Node outside the verifier's safe catch while a
+click remains pending; the subprocess regression distinguishes the former sequence
+from this correction. No evidence currently links that confirmed defect to the
+earlier `/api/home`, `/api/auth/demo` or generic post-smoke failures.
 
 After activation, inspect the automatic main run:
 
