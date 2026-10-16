@@ -8,7 +8,7 @@ services:
       otel-collector:
         condition: service_started
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.163.0
+    image: otel/opentelemetry-collector-contrib:0.162.0
     user: '10001:10001'
     command: [--config=/etc/otelcol/config.yaml]
     volumes:
@@ -67,6 +67,7 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_AUTH_DISABLE_LOGIN_FORM: 'true'
       GF_AUTH_BASIC_ENABLED: 'false'
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: 'true'
       GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_ANALYTICS_REPORTING_ENABLED: 'false'
       GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'

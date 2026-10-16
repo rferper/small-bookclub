@@ -1155,7 +1155,7 @@ just constructor arguments. Explicit resources avoid environment detectors.
 Opt-in defaults off and Render explicitly pins it off. No API/product change or
 new external account/service; ordinary application operation must survive outage.
 
-An explicit base-Compose overlay uses pinned Collector 0.163.0/Prometheus 3.15.0
+An explicit base-Compose overlay uses pinned Collector 0.162.0/Prometheus 3.15.0
 (Apache-2.0), Loki 3.7.8/Tempo 2.10.8/Grafana 13.2.4 (AGPL-3.0) locally.
 Tempo uses the published 2.10.8 patch release for the small single-process fixture;
 the current 3.x evaluation sizing is materially larger. BusyBox 1.37.0 (GPL-2.0)
@@ -1165,4 +1165,4 @@ Viewer is published; collectors/storage are on a private internal network, with
 dedicated named volumes, finite retention/memory and external reporting disabled.
 This local development/evaluation stack is not a public monitoring deployment.
 Dependencies follow the [Python exporter documentation](https://opentelemetry.io/docs/languages/python/exporters/);
-image versions were checked against their official GitHub release metadata.
+image versions were checked against official release metadata and published registry manifests.
