@@ -2,11 +2,13 @@
 
 This recipe targets one Linux machine with Docker Engine and Compose 2.24.4+
 (the override removes inherited ports with `!reset`). It runs the existing
-images with SQLite; it does not select or provision a host. Public staging and
-production URLs, real DNS/provider acceptance and rollout evidence belong to
-#76; automated delivery is #77 and versioned release policy is #78.
-See [public-demo.md](public-demo.md) for the current public-demo preparation,
-hosting decision boundary and reusable HTTPS smoke command.
+images with SQLite. The separate fictional Render Free services are live at
+[staging](https://small-bookclub-staging.onrender.com) and
+[production-demo](https://small-bookclub-demo.onrender.com).
+See [public-demo.md](public-demo.md) for provider-specific setup, migration/seed
+startup, smoke commands, reset/recovery/rollback procedure and verification status.
+Hosted rollout/rollback evidence remains part of #76; automated delivery is #77
+and versioned release policy is #78. The real private club remains deferred.
 
 ## Hosting choices, checked 2026-10-15
 

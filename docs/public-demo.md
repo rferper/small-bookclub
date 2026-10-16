@@ -1,9 +1,14 @@
 # Render Free fictional demos (#76)
 
-Status: the owner selected Render Free and accepted resetting fictional demo data.
-Account connection, public staging/production-demo URLs and hosted rollback evidence
-are still pending. This document does not claim a public deployment exists. The
-real club remains separate and must use retained storage before real data entry.
+Status: the owner created both Render Free services. Public HTTPS smoke and native
+profile/session isolation checks passed on 2026-10-16. The owner confirmed both
+services at revision `43faf1d`; hosted rollout/reset/rollback evidence remains open.
+The real club remains separate and must use retained storage before real data entry.
+
+| Environment | Public URL |
+| --- | --- |
+| Staging | https://small-bookclub-staging.onrender.com |
+| Production-demo | https://small-bookclub-demo.onrender.com |
 
 ## Selected free plan and storage policy
 
@@ -56,7 +61,7 @@ authentication choice is separate; the public demo needs no Discord account.
 
 ## Account connection and first deployment
 
-After reviewing passing checks, the owner can open this branch-specific Blueprint:
+For a fresh installation after reviewing passing checks, open this branch-specific Blueprint:
 
 [Review the Render Free deployment](https://render.com/deploy?repo=https://github.com/rferper/small-bookclub/tree/issue-76-public-demo)
 
@@ -71,8 +76,8 @@ so later source/config changes require a deliberate rollout until #77.
 Render supplies each actual `onrender.com` hostname; it may append a suffix if a
 name is already taken. No DNS purchase or hardcoded hostname is needed. Record the
 two real URLs and deployed source commit after creation, and run the smoke below.
-The account connection is the remaining owner step under AGENTS.md; credentials
-must stay in Render's private settings, outside git/chat/logs/screenshots.
+The owner performs account operations under AGENTS.md; credentials must stay in
+Render's private settings, outside git/chat/logs/screenshots.
 
 For later manual changes, use the service's **Manual Deploy** control to deploy a
 specific reviewed commit. Deploy staging first and verify it before selecting that
@@ -142,10 +147,54 @@ host trust or relaxes public TLS validation. Local success is not public-host
 acceptance evidence. Browser contexts are closed in `finally`; abrupt termination
 can prevent cleanup, so retain a bounded job and inspect failed runs.
 
+## Hosted verification, 2026-10-16
+
+The owner supplied both public URLs. The existing smoke passed against each actual
+host with strict public certificate verification, the real Spanish sign-in UI,
+ordinary-member identity, home/library APIs, Secure/HttpOnly/Lax session cookies,
+Secure/Lax CSRF cookies, HTML privacy headers and sign-out. Both fictional library
+screenshots were inspected. Run from the repository root in PowerShell:
+
+```powershell
+$env:DEMO_URL = 'https://small-bookclub-staging.onrender.com'
+node deploy/smoke-demo.mjs
+$env:DEMO_URL = 'https://small-bookclub-demo.onrender.com'
+node deploy/smoke-demo.mjs
+Remove-Item Env:DEMO_URL
+```
+
+An additional terminal Playwright check passed at `2026-10-16T08:05:39.940Z`:
+both sessions were ordinary fictional members; each host rejected the other host's
+session with 401; finished-book club ratings returned exactly `{ "status": "locked" }`.
+A unique fictional staging display name was saved through the real profile UI,
+survived page reload and matched the native API response, while production-demo's
+display name stayed unchanged. The original staging value was restored, verified
+after reload, and both verification sessions signed out. No uploads, books,
+ratings or reading progress were changed. The check guarded demo availability
+before sign-in and refused restoration over an unexpected concurrent display-name
+edit. Temporary script/screenshots contain only fictional data and stay outside git.
+
+The owner copied each service's successful Events entry: `43faf1d`, live on
+2026-10-16 at 10:03 Europe/Madrid (08:03 UTC). This is owner-reported provider
+revision evidence; the verifier has no Render account access.
+[Full source CI passed](https://github.com/rferper/small-bookclub/actions/runs/38869216657).
+
+An independent risk-focused security review found no blocking findings in the
+reviewed source or observable public behavior. Its separate strict-TLS health/
+session reads at `2026-10-16T08:06:40Z` verified anonymous guarded-demo bootstrap,
+Secure CSRF and privacy/HSTS headers on both hosts, including requests carrying
+client-supplied forwarding headers.
+
+These observations demonstrate public UI/API operation and profile/session
+separation. They do not establish private Render settings or distinct secret
+values, media filesystem configuration, migrations in provider logs, hosted
+restart/reset/reseed, staged promotion or rollback behavior. The scoped security
+review does not close those remaining acceptance criteria.
+
 ## Hosted release and rollback evidence still required
 
-After account connection, record service identifiers and actual URLs here. Carry
-out this sequence on fictional data only:
+Record provider service identifiers and actual deployed revisions, then carry out
+this sequence on fictional data only:
 
 1. Record the source commit and current deployed revision. Verify staging and
    production-demo use distinct hostnames, secrets and database/media storage.

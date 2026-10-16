@@ -216,12 +216,18 @@ npm run build   # type-check and build
 
 CI (`.github/workflows/frontend.yml`) runs these on every push to `main` and every pull request. Backend tests: *(to do)*
 
-## Deployment and demo *(to do: Phase 3)*
+## Deployment and demo
 
 See the [portable production deployment guide](docs/deployment.md) for the
 explicit HTTPS Compose override, SQLite/media persistence, hosting comparison,
-maintenance and recovery. Public cloud provisioning and working staging/production
-URLs remain #76. See [fictional demo operation](docs/demo.md) for opt-in seeding.
+maintenance and recovery. The public fictional demos run on Render Free:
+[reviewer demo](https://small-bookclub-demo.onrender.com) and
+[staging](https://small-bookclub-staging.onrender.com). Use the Spanish trial-account
+button to enter without Discord. Free services can take about a minute to wake;
+fictional edits and uploads reset on restart, redeploy or spin-down.
+See the [Render deployment and verification guide](docs/public-demo.md) for manual
+rollout, storage limits and the hosted rollback evidence still required by #76.
+See [fictional demo operation](docs/demo.md) for opt-in seeding.
 
 ## How AI was used *(to do)*
 
