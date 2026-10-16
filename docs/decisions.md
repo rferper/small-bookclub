@@ -1173,3 +1173,9 @@ on the internal observability network and assert this topology in the executable
 verifier. Only Grafana publishes a loopback port; application networking is not
 shared with the dashboard bridge. This corrects observed unreachable ingress
 without publishing any storage/OTLP endpoint or changing the host daemon.
+
+Use a Tempo TraceQL search table for the dashboard trace list; Grafana's trace
+viewer expects an individual trace frame and cannot render these search rows.
+Wait for visible HTTP trace names and closed log events before screenshot capture.
+Use short Spanish metric legends. Show zero 5xx rate only when an overall request
+rate exists, preserving missing-data state when baseline metrics are unavailable.

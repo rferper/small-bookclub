@@ -158,6 +158,8 @@ try {
   await page.goto(`${grafana}/d/bookclub-operations`, { waitUntil: 'domcontentloaded' })
   await page.getByText('Solicitudes por segundo', { exact: true }).first().waitFor({ timeout: 30000 })
   await page.getByText('Registros operativos sin contenido', { exact: true }).first().waitFor({ timeout: 30000 })
+  await page.getByText('http.request', { exact: true }).first().waitFor({ timeout: 30000 })
+  await page.getByText(/GET \/api\/health/u).first().waitFor({ timeout: 30000 })
   await page.screenshot({ path: join(evidence, 'dashboard.png'), fullPage: true, timeout: 10000 })
   console.log('PASS: real local metrics, logs, traces, version identity, privacy and Viewer dashboard.')
 } catch {
@@ -176,4 +178,5 @@ try {
     ]) assert.equal(docker(args, true), '')
   } catch { failed = true; console.error('Observability exact-project cleanup failed') }
 }
+console.log(failed ? 'FAIL: observability verification.' : 'PASS: exact-project cleanup verified.')
 process.exitCode = failed ? 1 : 0

@@ -27,7 +27,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(bookclub_http_requests_total[5m]))"
+          "expr": "sum(rate(bookclub_http_requests_total[5m]))",
+          "legendFormat": "Solicitudes/s"
         }
       ]
     },
@@ -48,7 +49,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))"
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95"
         }
       ]
     },
@@ -69,7 +71,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (http_response_status_code, deployment_environment_name) (bookclub_http_requests_total)"
+          "expr": "sum by (http_response_status_code, deployment_environment_name) (bookclub_http_requests_total)",
+          "legendFormat": "{{http_response_status_code}} · {{deployment_environment_name}}"
         }
       ]
     },
@@ -90,7 +93,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(bookclub_http_requests_total{http_response_status_code=~\"5..\"}[5m]))"
+          "expr": "sum(rate(bookclub_http_requests_total{http_response_status_code=~\"5..\"}[5m])) or (0 * sum(rate(bookclub_http_requests_total[5m])))",
+          "legendFormat": "5xx/s"
         }
       ]
     },
@@ -118,7 +122,7 @@
     {
       "id": 6,
       "title": "Trazas del backend",
-      "type": "traces",
+      "type": "table",
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
@@ -133,7 +137,9 @@
         {
           "refId": "A",
           "query": "{ resource.service.name = \"small-bookclub-backend\" }",
-          "queryType": "traceqlSearch"
+          "queryType": "traceql",
+          "tableType": "traces",
+          "limit": 20
         }
       ]
     }
