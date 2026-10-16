@@ -58,6 +58,8 @@ jobs:
     if: inputs.ci_passed && needs.staging.outputs.delivered == 'true' && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      delivered: ${{ steps.release.outputs.delivered }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +74,8 @@ jobs:
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: node deploy/render/release.mjs
+      - id: release
+        run: node deploy/render/release.mjs
         env:
           CI_PASSED: ${{ inputs.ci_passed }}
           RELEASE_SHA: ${{ inputs.sha }}
@@ -80,3 +83,26 @@ jobs:
           RELEASE_SCREENSHOT: frontend/test-results/cd/production-demo.png
           GITHUB_TOKEN: ${{ github.token }}
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEMO_DEPLOY_HOOK }}
+
+  record-release:
+    needs: [staging, production-demo]
+    if: inputs.ci_passed && needs.staging.outputs.delivered == 'true' && needs['production-demo'].outputs.delivered == 'true' && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node deploy/render/record-release.mjs
+        env:
+          CI_PASSED: ${{ inputs.ci_passed }}
+          RELEASE_SHA: ${{ inputs.sha }}
+          STAGING_DELIVERED: ${{ needs.staging.outputs.delivered }}
+          PRODUCTION_DELIVERED: ${{ needs.production-demo.outputs.delivered }}
+          GITHUB_TOKEN: ${{ github.token }}

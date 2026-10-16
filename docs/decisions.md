@@ -1112,3 +1112,23 @@ Preserve every required assertion and timeout while reporting a closed environme
 ## 2026-10-16: Observe profile-save promises and prove failure cleanup (#77)
 
 Observe the profile-save response wait and click together using Promise.all. A controlled subprocess reproduction proves that the former sequence can terminate through an unhandled rejection while the click is pending; the correction reaches the safe verifier catch and preserves a failed result. This is a confirmed verifier defect, not an established cause of historical CI failures. Keep the browser workflow/assertions/timeouts unchanged. Add only closed local fixture fault flags for bootstrap, profile action and cleanup; invalid flags fail before provisioning, every fault stays nonzero, and cleanup injection occurs after down removes resources. These explicit probes never run the public release runner. Earlier home/auth network failures and the later generic post-smoke failure remain distinct unexplained observations unless new phase evidence links them. No new dependency.
+
+## 2026-10-16: Environment identity and immutable source releases (#78)
+
+Keep the existing production security mode and automatic same-SHA staging-to-demo
+promotion. Add contract-first closed public health environment/version metadata;
+optional validated BOOKCLUB_REVISION produces release-<full SHA>, otherwise
+unversioned. Render overrides revision from its validated provider SHA and maps
+only the two known provider service IDs to staging/production-demo; the explicit
+loopback fixture remains independently labeled. Safe structured logs and an INFO
+startup event share that validated identity without formatting messages or extras.
+Require matching backend identity before smoke/promotion. After both successful
+delivery outputs, a separate step-scoped contents:write GitHub-token job verifies
+both live identities and records a create-only lightweight release-<SHA> tag,
+with current-main checks before reads and immediately before a new tag write.
+Read-only delivery jobs retain their own service hook; the tag job has no provider
+credentials, installs no dependencies and never authenticates public reads.
+Conflicting refs fail; matching refs are idempotent; no force/delete/retry write.
+Source tags do not promise reproducible image bytes or persistent demo edits.
+Document the unavoidable final read/write race and failed-tag recovery. No new
+dependency, paid registry, account, secret or hosted configuration change.

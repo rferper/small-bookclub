@@ -5,6 +5,7 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       BOOKCLUB_ENV: development
+      BOOKCLUB_REVISION: ${BOOKCLUB_REVISION:-}
       DEBUG: "false"
       DEMO_MODE: ${DEMO_MODE:-false}
       SECRET_KEY: ${SECRET_KEY:-local-compose-only-key-never-deploy}

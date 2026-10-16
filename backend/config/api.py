@@ -146,6 +146,10 @@ api = NinjaAPI(
 class Health(Schema):
     model_config = ConfigDict(extra="forbid")
     status: Literal["ok"]
+    environment: Literal[
+        "development", "test", "demo", "production", "staging", "production-demo"
+    ]
+    version: str = Field(pattern=r"^(unversioned|release-[a-f0-9]{40})$")
 
 
 @api.get(
@@ -156,7 +160,11 @@ class Health(Schema):
     openapi_extra={"security": []},
 )
 def health(request):
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "environment": settings.DEPLOYMENT_ENVIRONMENT,
+        "version": settings.RELEASE_VERSION,
+    }
 
 
 @api.get(

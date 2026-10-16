@@ -19,6 +19,7 @@ def environment(**changes):
         "RENDER_EXTERNAL_HOSTNAME": "fictional-demo.onrender.com",
         "SECRET_KEY": "fictional-deployment-test-key",
         "RENDER_GIT_COMMIT": "1" * 40,
+        "RENDER_SERVICE_ID": "srv-db8tjebbc2fs73c55du0",
         **changes,
     }
 
@@ -27,6 +28,8 @@ def environment(**changes):
     "changes",
     [
         {"DEMO_MODE": "false"},
+        {"RENDER_SERVICE_ID": "fictional-unknown-service"},
+        {"RENDER_SERVICE_ID": ""},
         {"RENDER_GIT_COMMIT": ""},
         {"RENDER_GIT_COMMIT": "abc123"},
         {"RENDER_GIT_COMMIT": "x" * 40},
@@ -60,3 +63,28 @@ def test_render_pins_private_production_defaults_without_mutating_input():
     assert result["TRUST_HTTPS_PROXY"] == "true"
     assert result["DISCORD_CLIENT_ID"] == result["DISCORD_CLIENT_SECRET"] == ""
     assert original["DEBUG"] == "true"
+    assert result["BOOKCLUB_REVISION"] == "1" * 40
+    assert result["DEPLOYMENT_ENVIRONMENT"] == "staging"
+
+
+def test_render_identity_cannot_be_overridden_and_local_world_is_explicit():
+    result = startup.configure(
+        environment(
+            RENDER_SERVICE_ID="srv-db8tjebbc2fs73c55dtg",
+            DEPLOYMENT_ENVIRONMENT="staging",
+            BOOKCLUB_REVISION="a" * 40,
+        )
+    )
+    assert result["DEPLOYMENT_ENVIRONMENT"] == "production-demo"
+    assert result["BOOKCLUB_REVISION"] == "1" * 40
+    local = environment(RENDER_SERVICE_ID="", RENDER_EXTERNAL_HOSTNAME="localhost")
+    for world in ["staging", "production-demo"]:
+        assert (
+            startup.configure({**local, "DEPLOYMENT_ENVIRONMENT": world})[
+                "DEPLOYMENT_ENVIRONMENT"
+            ]
+            == world
+        )
+    for world in ["development", "fictional-secret", ""]:
+        with pytest.raises(ValueError):
+            startup.configure({**local, "DEPLOYMENT_ENVIRONMENT": world})

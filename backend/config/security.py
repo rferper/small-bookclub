@@ -28,7 +28,16 @@ if settings.DEMO_MODE:
 class SafeLogFormatter(logging.Formatter):
     def format(self, record):
         # Never format messages, arguments, exceptions or request objects.
-        return json.dumps({"level": record.levelname, "event": "backend_event"})
+        return json.dumps(
+            {
+                "level": record.levelname,
+                "event": "backend_start"
+                if record.name == "bookclub.release"
+                else "backend_event",
+                "environment": settings.DEPLOYMENT_ENVIRONMENT,
+                "version": settings.RELEASE_VERSION,
+            }
+        )
 
 
 class PrivacyHeadersMiddleware:

@@ -21,7 +21,7 @@ const environment = changes => ({
   RENDER_DEPLOY_HOOK: `https://api.render.com/deploy/${targets.staging.id}?key=${secret}`,
   ...changes,
 })
-function harness({ revisions = [sha], main = [sha], triggerStatus = 200, triggerBody = { deploy: { id: 'dep-fictional123' } }, smokeFails = false, healthFails = false } = {}) {
+function harness({ revisions = [sha], main = [sha], triggerStatus = 200, triggerBody = { deploy: { id: 'dep-fictional123' } }, smokeFails = false, healthFails = false, healthVersion = `release-${sha}`, healthEnvironment } = {}) {
   const calls = [], logs = [], smokes = []
   let time = 0, revisionIndex = 0, mainIndex = 0
   return {
@@ -38,7 +38,8 @@ function harness({ revisions = [sha], main = [sha], triggerStatus = 200, trigger
         if (url.hostname === 'api.github.com') return Response.json({ sha: main[Math.min(mainIndex++, main.length - 1)] })
         if (url.hostname === 'api.render.com') return Response.json(triggerBody, { status: triggerStatus })
         if (url.pathname === '/') return new Response(null, { headers: { 'X-Bookclub-Revision': revisions[Math.min(revisionIndex++, revisions.length - 1)] } })
-        if (url.pathname === '/api/health') return Response.json({ status: healthFails ? 'unready' : 'ok' })
+        if (url.pathname === '/api/health') return Response.json({ status: healthFails ? 'unready' : 'ok',
+          version: healthVersion, environment: healthEnvironment ?? (url.origin === targets.staging.origin ? 'staging' : 'production-demo') })
         throw new Error('Unexpected fake request')
       },
     },
@@ -152,6 +153,16 @@ test('candidate header without successful migrated health never passes', async (
   await assert.rejects(release(environment(), h.dependencies), { code: 'candidate-readiness' })
   assert.equal(h.smokes.length, 0)
 })
+
+for (const change of [{ healthVersion: `release-${other}` }, { healthVersion: 'unversioned' },
+  { healthEnvironment: 'production-demo' }, { healthEnvironment: 'production' }]) {
+  test('candidate header cannot substitute for matching backend version and environment', async () => {
+    const h = harness(change)
+    await assert.rejects(release(environment(), h.dependencies), { code: 'candidate-readiness' })
+    assert.equal(h.smokes.length, 0)
+    assert.equal(h.calls.filter(c => c.options.method === 'POST').length, 1)
+  })
+}
 test('an uncertain POST is not retried and raw secret-bearing errors are suppressed', async () => {
   const h = harness(), original = h.dependencies.fetch
   h.dependencies.fetch = async (input, options) => {

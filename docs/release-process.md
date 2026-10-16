@@ -1,4 +1,4 @@
-# Continuous delivery (#77)
+# Continuous delivery and source releases (#77, #78)
 
 ## Scope and activation status
 
@@ -38,6 +38,11 @@ to distinguish prepared configuration from a completed hosted release.
 6. Only a delivered staging result permits the production-demo job. That job has
    only its own hook and repeats the current-main, exact-revision, health and
    browser checks for the same tested commit.
+7. Only successful delivery outputs from both jobs permit `record-release`.
+   It rechecks both live root revisions and backend identities, then records
+   immutable lightweight tag `release-<full SHA>` at that exact tested commit.
+   A superseded candidate is skipped, and main is checked again immediately
+   before a new ref write. A failed/skipped delivery cannot record a tag.
 
 Main CI/delivery is serialized with `cancel-in-progress: false`; branch and PR
 checks remain cancellable. New pushes do not interrupt an active promotion midway.
@@ -49,7 +54,90 @@ No untested latest-branch build is substituted for the explicit SHA.
 The running revision comes from Render's validated 40-hex `RENDER_GIT_COMMIT`.
 Nginx exposes `X-Bookclub-Revision` only for an exact `/` request, preserving all
 privacy headers and leaving JSON APIs unchanged. It contains a public source SHA,
-not a credential. Normal UI text and API payloads are unchanged.
+not a credential. Normal UI text is unchanged. Issue #78 adds the matching
+backend identity to public health as documented below.
+
+## Environments and versions
+
+`BOOKCLUB_ENV` remains the security/configuration mode: `development`, `test`,
+`demo` or `production`. The existing settings reject production debug, require
+explicit secret/hosts and keep SQLite/media independently configured. Demo
+login still requires explicit `DEMO_MODE`; version metadata grants no access.
+
+`BOOKCLUB_REVISION` is an optional full lowercase 40-hex source SHA; absent/empty
+means `unversioned`. Compose passes it through from the operator environment.
+For generic versioned Compose deployment, check out the intended commit and set
+`BOOKCLUB_REVISION` to `git rev-parse HEAD` in the private deployment env file.
+It is source identity supplied by the operator, not an image digest or an
+automatic proof that arbitrary local files match the declared revision.
+
+`DEPLOYMENT_ENVIRONMENT` defaults to `BOOKCLUB_ENV`. Only a production-mode,
+explicitly fictional demo may instead identify as `staging` or `production-demo`.
+Arbitrary labels and invalid revisions fail startup without echoing their value.
+The Render entrypoint overrides both metadata inputs: revision comes from
+validated `RENDER_GIT_COMMIT`, and the exact two allowlisted `RENDER_SERVICE_ID`
+values determine the world. These [provider-supplied variables](https://render.com/docs/environment-variables)
+need no new account, service secret or Blueprint sync. Only the disposable
+`localhost` fixture may supply its world explicitly without a provider service ID.
+Both real demo services still run with production security settings and separate
+generated secrets/ephemeral filesystems; no real-club instance is deployed.
+
+Anonymous health stays database/provider/session independent and closed:
+
+```json
+{"status":"ok","environment":"staging","version":"release-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+```
+
+Local defaults report `development`/`unversioned`; test defaults report
+`test`/`unversioned`. Backend structured events and the INFO `backend_start`
+event carry exactly `level`, `event`, `environment` and `version`. Request
+objects, messages, arguments, exceptions and arbitrary logging extras remain
+excluded. Health exposes no club data, secrets, hostnames or provider IDs.
+The existing native smoke is unchanged; delivery readiness now requires the
+backend's exact `release-<SHA>` and target environment as well as root revision,
+successful health and strict TLS. A mislabeled or old backend cannot promote.
+
+## Source release tags and inspection
+
+The version string names a candidate before delivery; presence of the matching
+Git tag records that both worlds passed delivery and were verified at recording
+time. Tags are source-revision records, not SemVer, GitHub Releases, signed
+attestations, permanent running-state guarantees or immutable image digests.
+Render rebuilds from source and base images/dependency resolution may vary.
+Do not assume rebuilding an old tag produces identical image bytes.
+
+```powershell
+gh api repos/rferper/small-bookclub/git/matching-refs/tags/release-
+gh api repos/rferper/small-bookclub/git/ref/tags/release-<full-sha>
+Invoke-RestMethod https://small-bookclub-staging.onrender.com/api/health
+Invoke-RestMethod https://small-bookclub-demo.onrender.com/api/health
+```
+
+Use the tag's exact commit and the corresponding CI/deploy job log to inspect
+promotion order; current health says what runs now. Existing matching tags are
+idempotent. A mismatched SHA, annotated tag or unexpected ref fails closed;
+the runner never updates, force-moves or deletes a tag. [GitHub's ref API](https://docs.github.com/en/rest/git/refs)
+receives one create request, then an exact ref read. A `422` only succeeds if
+the read proves an identical concurrently created ref. An uncertain write is
+not repeated within the job. There is no atomic transaction across GitHub main,
+two public services and tag creation: main may advance after its final check.
+The tag still names a previously tested revision; it does not authorize a new
+deployment. Main delivery remains serialized.
+
+The CI caller permits `contents: write` only on its trusted-main reusable
+delivery call. That workflow defaults back to read-only for staging and
+production; only the final tag job receives write permission. Its token is
+step-scoped, checkout does not persist credentials and it receives neither
+Render hook. It installs no project dependencies. Public readiness reads never
+receive the GitHub token. Branch/PR tests retain read-only tokens; tag pushes
+are excluded from CI's push filter and can never enter the main deployment guard.
+
+If tag recording fails after both deployments succeed, services stay deployed
+and the job stays failed. Inspect CI, current health and the exact tag ref first.
+Rerun only the failed tag job when both services still serve the same successful
+current-main SHA; it checks live identities again and accepts an already matching
+tag. If main has advanced, it skips; do not force a historical success record.
+An absent tag does not prove that a candidate never reached a service.
 
 ## One-time terminal setup
 
@@ -109,8 +197,11 @@ For rollback, use the previously tested
 [actual provider rollback and reset procedure](public-demo.md#actual-provider-rollback-from-the-terminal).
 Free retains only two previous build artifacts. The database/media are reset and
 reseeded, not recovered reviewer edits. Application rollback is not database
-rollback; verify the older image can initialize its matching fixtures. Broader
-versioned images/tags and release policy remain #78.
+rollback; verify the older image can initialize its matching fixtures. Inspect
+the selected source release tag before using the provider's retained artifact;
+do not move tags or assume source tags retain old provider images. A rollback
+to an older previously recorded revision does not create a new success tag or
+rewrite history; inspect current health and run the documented native smoke.
 
 ## Verification
 
@@ -128,7 +219,7 @@ passed. These preparation results do not replace the hosted activation log above
 From the repository root, run the offline release tests:
 
 ```powershell
-node --test deploy/render/release.test.mjs deploy/render/verify-diagnostics.test.mjs
+node --test deploy/render/release.test.mjs deploy/render/record-release.test.mjs deploy/render/verify-diagnostics.test.mjs
 ```
 
 They evaluate the actual caller/reusable workflow guards across trusted/untrusted
@@ -137,6 +228,9 @@ They also exercise exact-ref triggers, stale main, old running revisions, deadli
 health/trigger/smoke failure, wrong-service hooks and secret-safe error/child-env
 handling. They require no Render account or public network. Backend CI runs them
 before its application tests.
+Tag regressions additionally cover missing delivery outputs, stale main before
+and during verification, both backend identities, immutable/idempotent/conflicting
+refs, `422` races, uncertain writes, secret-safe failures and actual job permissions.
 
 Run the existing full application checks as documented in [testing.md](testing.md).
 The disposable `node deploy/render/verify.mjs` verifies the actual image's root

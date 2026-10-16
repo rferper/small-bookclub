@@ -9,6 +9,10 @@ import time
 from pathlib import Path
 
 DATA = "/tmp/bookclub-render"
+SERVICES = {
+    "srv-db8tjebbc2fs73c55du0": "staging",
+    "srv-db8tjebbc2fs73c55dtg": "production-demo",
+}
 
 
 def configure(environ):
@@ -16,6 +20,21 @@ def configure(environ):
     env = dict(environ)
     if not re.fullmatch(r"[a-f0-9]{40}", env.get("RENDER_GIT_COMMIT", "")):
         raise ValueError("A full provider revision is required")
+    service = env.get("RENDER_SERVICE_ID", "")
+    if service:
+        deployment = SERVICES.get(service)
+        if deployment is None:
+            raise ValueError("Unknown fictional demo service")
+    else:
+        # Only the existing disposable loopback verifier uses this alternative.
+        deployment = env.get("DEPLOYMENT_ENVIRONMENT")
+        if (
+            env.get("RENDER_EXTERNAL_HOSTNAME") != "localhost"
+            or deployment not in SERVICES.values()
+        ):
+            raise ValueError(
+                "An exact demo service or explicit local world is required"
+            )
     if env.get("DEMO_MODE", "").lower() != "true":
         raise ValueError("Render image requires explicit fictional demo mode")
     host = env.get("RENDER_EXTERNAL_HOSTNAME", "")
@@ -54,6 +73,8 @@ def configure(environ):
         DISCORD_CLIENT_SECRET="",
         DISCORD_REDIRECT_URI="",
         PORT=str(int(port)),
+        BOOKCLUB_REVISION=env["RENDER_GIT_COMMIT"],
+        DEPLOYMENT_ENVIRONMENT=deployment,
     )
     return env
 

@@ -38,6 +38,7 @@ for (const name of ['staging', 'production-demo']) {
 await Promise.all(reservations.map(server => new Promise(resolve => server.close(resolve))))
 function command(world, extra, capture = false) {
   const env = { ...process.env, SECRET_KEY: world.secret, BOOKCLUB_HOST: 'localhost', BACKUP_DIRECTORY: evidence,
+    DEPLOYMENT_ENVIRONMENT: world.name,
     BOOKCLUB_BIND_IP: '127.0.0.1', BOOKCLUB_HTTP_PORT: String(world.httpPort), BOOKCLUB_HTTPS_PORT: String(world.httpsPort),
     TLS_ISSUER: 'internal', DEMO_MODE: 'true', DISCORD_CLIENT_ID: '', DISCORD_CLIENT_SECRET: '' }
   const args = ['compose', '-p', world.project, '-f', 'docker-compose.yml', '-f', 'deploy/compose.production.yml', '-f', 'tests/render/compose.yml', ...extra]
@@ -96,6 +97,8 @@ try {
     await apiRequest(world.context, 'POST', '/api/auth/demo', { headers: { Origin: world.origin, 'X-CSRFToken': csrf } }, 204, diagnostic, world.origin)
     const response = await get(world, '/api/me/profile')
     assert.equal(response.status(), 200)
+    const health = await json(await get(world, '/api/health'))
+    assert.deepEqual(health, { status: 'ok', environment: world.name, version: `release-${'1'.repeat(40)}` })
     return json(response)
   }
   const get = (world, path, expected = 200, context = world.context, options) => apiRequest(context, 'GET', path, options, expected, diagnostic, world.origin)

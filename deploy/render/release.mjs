@@ -89,7 +89,9 @@ export async function release(env, {
         const root = await send(`${target.origin}/`, { method: 'HEAD', redirect: 'error', signal: timeout(), cache: 'no-store' })
         if (root.status === 200 && root.headers.get('x-bookclub-revision') === sha && now() < deadline) {
           const health = await send(`${target.origin}/api/health`, { redirect: 'error', signal: timeout(), cache: 'no-store' })
-          ready = health.status === 200 && (await health.json()).status === 'ok' && now() <= deadline
+          const identity = await health.json()
+          ready = health.status === 200 && identity.status === 'ok'
+            && identity.environment === env.RELEASE_TARGET && identity.version === `release-${sha}` && now() <= deadline
           if (ready) break
         }
       } catch { /* Only readiness reads retry; public TLS is never bypassed. */ }

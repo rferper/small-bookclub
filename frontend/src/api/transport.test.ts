@@ -21,9 +21,11 @@ describe('central HTTP operation transport', () => {
     } finally { vi.unstubAllGlobals() }
   })
   it('sends same-origin JSON health and returns the generated body', async () => {
-    const send = vi.fn<typeof fetch>(async () => ok({ status: 'ok' }))
+    const send = vi.fn<typeof fetch>(async () => ok({ status: 'ok', environment: 'test', version: 'unversioned' }))
     const result = await createTransport({ fetch: send })<'getHealth'>(health)
     expect(result.status).toBe('ok')
+    expect(result.environment).toBe('test')
+    expect(result.version).toBe('unversioned')
     const [url, init] = send.mock.calls[0]
     expect(url).toBe('/api/health')
     expect(init).toMatchObject({ method: 'GET', credentials: 'same-origin', redirect: 'error' })
