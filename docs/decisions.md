@@ -1179,3 +1179,6 @@ viewer expects an individual trace frame and cannot render these search rows.
 Wait for visible HTTP trace names and closed log events before screenshot capture.
 Use short Spanish metric legends. Show zero 5xx rate only when an overall request
 rate exists, preserving missing-data state when baseline metrics are unavailable.
+## 2026-10-16: Bounded Linux transport investigation (#110)
+
+Use up to three serial actual Linux CI baseline invocations with opt-in, loopback-only closed CDP transport evidence and exact own-container/cgroup state snapshots before selecting any evidence-connected perturbation. Preserve all application/proxy behavior, assertions, timeouts and required gates. No concurrent dependency installs, public-service experiments or new dependency. Do not open a duplicate-CI PR before a justified repair. The hypothesis matrix, historical limits and mandatory unresolved checkpoint are recorded in [the investigation report](../ops/render-verification-investigation.md); generic diagnostics or green samples are not a repair.

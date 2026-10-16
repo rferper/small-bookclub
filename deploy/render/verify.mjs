@@ -5,19 +5,22 @@ import { randomBytes } from 'node:crypto'
 import { mkdtempSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { request } from 'node:https'
-import { tmpdir } from 'node:os'
+import { cpus, release, tmpdir, totalmem } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { apiRequest, diagnostics, faultProbe, json, saveProfile, VerificationFailure } from './verify-diagnostics.mjs'
+import { containerState, observeTransport, version } from './transport-evidence.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const evidence = mkdtempSync(join(tmpdir(), 'bookclub-render-check-'))
 const diagnostic = diagnostics()
+const collectEvidence = process.env.BOOKCLUB_RENDER_EVIDENCE === '1'
 let probe
 try { probe = faultProbe(process.argv.slice(2)) }
 catch (error) { diagnostic.fail(error); process.exit(1) }
 const phase = (world, name, action) => diagnostic.phase(world?.name ?? 'fixture', name, async () => {
+  if (world) world.transportPhase = name
   const result = await action()
   // Cleanup probes run only AFTER down succeeds, so they cannot leak resources.
   probe(world?.name ?? 'fixture', name)
@@ -36,15 +39,60 @@ for (const name of ['staging', 'production-demo']) {
     secret: randomBytes(48).toString('hex') })
 }
 await Promise.all(reservations.map(server => new Promise(resolve => server.close(resolve))))
-function command(world, extra, capture = false) {
-  const env = { ...process.env, SECRET_KEY: world.secret, BOOKCLUB_HOST: 'localhost', BACKUP_DIRECTORY: evidence,
+function composeEnv(world) {
+  return { ...process.env, SECRET_KEY: world.secret, BOOKCLUB_HOST: 'localhost', BACKUP_DIRECTORY: evidence,
     DEPLOYMENT_ENVIRONMENT: world.name,
     BOOKCLUB_BIND_IP: '127.0.0.1', BOOKCLUB_HTTP_PORT: String(world.httpPort), BOOKCLUB_HTTPS_PORT: String(world.httpsPort),
     TLS_ISSUER: 'internal', DEMO_MODE: 'true', DISCORD_CLIENT_ID: '', DISCORD_CLIENT_SECRET: '' }
-  const args = ['compose', '-p', world.project, '-f', 'docker-compose.yml', '-f', 'deploy/compose.production.yml', '-f', 'tests/render/compose.yml', ...extra]
-  const result = spawnSync('docker', args, { cwd: root, env, timeout: 300000, encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' })
+}
+function composeArgs(world, extra) {
+  return ['compose', '-p', world.project, '-f', 'docker-compose.yml', '-f', 'deploy/compose.production.yml', '-f', 'tests/render/compose.yml', ...extra]
+}
+function command(world, extra, capture = false) {
+  const result = spawnSync('docker', composeArgs(world, extra), { cwd: root, env: composeEnv(world), timeout: 300000, encoding: 'utf8', stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' })
   if (result.error || result.status !== 0) throw new VerificationFailure('COMMAND_FAILED')
   return result.stdout?.trim()
+}
+function quietDocker(args, world) {
+  const result = spawnSync('docker', args, { cwd: root, env: world ? composeEnv(world) : process.env,
+    timeout: 30000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  return result.error || result.status !== 0 ? '' : `${result.stdout}\n${result.stderr}`.trim()
+}
+function snapshot(world, point) {
+  if (!collectEvidence) return
+  for (const service of ['backend', 'frontend', 'caddy']) {
+    const id = quietDocker(composeArgs(world, ['ps', '-a', '-q', service]), world)
+    let state = null
+    if (/^[a-f0-9]{64}$/u.test(id)) {
+      // Deliberately request only these fields, never Config.Env/State.Error.
+      const format = '{"status":{{json .State.Status}},"running":{{.State.Running}},"oomKilled":{{.State.OOMKilled}},"exitCode":{{.State.ExitCode}},"restartCount":{{.RestartCount}}}'
+      try { state = JSON.parse(quietDocker(['inspect', '--format', format, id])) } catch { /* Fixed unavailable state below. */ }
+    }
+    console.log(`Render container evidence: ${JSON.stringify({ environment: world.name, point, service,
+      available: state !== null, ...containerState(state) })}`)
+  }
+  const events = quietDocker(composeArgs(world, ['exec', '-T', 'backend', 'cat', '/sys/fs/cgroup/memory.events']), world)
+  const memory = {}
+  for (const name of ['low', 'high', 'max', 'oom', 'oom_kill']) {
+    const match = events.match(new RegExp(`^${name} (\\d{1,15})$`, 'mu'))
+    memory[name] = match ? Number(match[1]) : -1
+  }
+  const peak = quietDocker(composeArgs(world, ['exec', '-T', 'backend', 'cat', '/sys/fs/cgroup/memory.peak']), world)
+  console.log(`Render resource evidence: ${JSON.stringify({ environment: world.name, point,
+    peakBytes: /^\d{1,15}$/u.test(peak) ? Number(peak) : -1, ...memory })}`)
+}
+function versions(world) {
+  if (!collectEvidence) return
+  const nginx = service => version(quietDocker(composeArgs(world, ['exec', '-T', service, 'nginx', '-v']), world).match(/nginx\/(\d+\.\d+\.\d+)/u)?.[1])
+  const python = quietDocker(composeArgs(world, ['exec', '-T', 'backend', 'python', '-c', 'import json,platform,importlib.metadata as m; print(json.dumps({"python":platform.python_version(),"django":m.version("Django"),"gunicorn":m.version("gunicorn")}))']), world)
+  let runtime = {}
+  try { runtime = JSON.parse(python) } catch { /* Fixed unknown versions below. */ }
+  console.log(`Render version evidence: ${JSON.stringify({ environment: world.name,
+    docker: version(quietDocker(['version', '--format', '{{.Server.Version}}'])),
+    compose: version(quietDocker(['compose', 'version', '--short'])),
+    backendNginx: nginx('backend'), frontendNginx: nginx('frontend'),
+    caddy: version(quietDocker(composeArgs(world, ['exec', '-T', 'caddy', 'caddy', 'version']), world).match(/^(v\d+\.\d+\.\d+)/u)?.[1]),
+    python: version(runtime.python), django: version(runtime.django), gunicorn: version(runtime.gunicorn) })}`)
 }
 async function ready(world) {
   const cert = join(evidence, `${world.name}.crt`)
@@ -66,6 +114,9 @@ async function ready(world) {
 let browser, failed = false
 try {
   console.log(`Render fixture evidence: ${evidence}`)
+  if (collectEvidence) console.log(`Render runner evidence: ${JSON.stringify({ node: version(process.version),
+    os: ['linux', 'win32', 'darwin'].includes(process.platform) ? process.platform : 'unknown',
+    kernel: version(release().match(/^\d+\.\d+\.\d+/u)?.[0]), cpus: cpus().length, memoryMB: Math.floor(totalmem() / 1000000) })}`)
   for (const world of worlds) {
     console.log(`Disposable Render artifact: ${world.project}`)
     await phase(world, 'configuration', async () => {
@@ -75,11 +126,13 @@ try {
       assert.equal(config.services.backend.environment.DISCORD_CLIENT_SECRET, '')
     })
     await phase(world, 'startup', async () => command(world, ['up', '--build', '-d', '--wait', '--wait-timeout', '180']))
+    versions(world)
+    snapshot(world, 'before-smoke')
     const cert = await phase(world, 'tls-readiness', () => ready(world))
     world.origin = `https://localhost:${world.httpsPort}`
     await phase(world, 'native-smoke', async () => {
       const smoke = spawnSync(process.execPath, [join(root, 'deploy/smoke-demo.mjs')], {
-        cwd: root, env: { ...process.env, DEMO_URL: world.origin, SMOKE_LOCAL_CA: cert, SMOKE_EXPECTED_REVISION: '1'.repeat(40), SMOKE_SCREENSHOT: join(evidence, `${world.name}.png`) },
+        cwd: root, env: { ...process.env, BOOKCLUB_RENDER_WORLD: world.name, DEMO_URL: world.origin, SMOKE_LOCAL_CA: cert, SMOKE_EXPECTED_REVISION: '1'.repeat(40), SMOKE_SCREENSHOT: join(evidence, `${world.name}.png`) },
         timeout: 180000, stdio: 'inherit',
       })
       if (smoke.error || smoke.status !== 0) throw new VerificationFailure('NATIVE_SMOKE')
@@ -108,6 +161,8 @@ try {
   await phase(stage, 'profile-edit', async () => {
     const page = await stage.context.newPage()
     stage.page = page
+    if (collectEvidence) stage.transport = await observeTransport(stage.context, page, { environment: stage.name,
+      origin: stage.origin, phase: () => stage.transportPhase })
     page.on('requestfailed', req => diagnostic.request(req.method(), req.url(), req.failure()?.errorText))
     page.on('response', res => { if (res.status() >= 400) diagnostic.request(res.request().method(), res.url(), res.status()) })
     await page.goto('/mi-perfil')
@@ -160,6 +215,7 @@ try {
     try { command(world, ['logs', '--tail', '40', 'backend']) } catch { /* Cleanup still runs. */ }
   }
 } finally {
+  for (const world of worlds) { world.transport?.flush(); snapshot(world, 'before-cleanup') }
   try { await phase(null, 'cleanup', async () => browser?.close()) }
   catch (error) { failed = true; diagnostic.fail(error) }
   for (const world of worlds.reverse()) {

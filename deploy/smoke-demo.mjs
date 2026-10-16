@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { request } from 'node:https'
 import { createRequire } from 'node:module'
 import { networkFailureCode } from './smoke-diagnostics.mjs'
+import { evidenceEnabled, observeTransport, version } from './render/transport-evidence.mjs'
 
 const url = new URL(process.env.DEMO_URL ?? '')
 assert.ok(url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash,
@@ -38,6 +39,8 @@ assert.ok(ready, 'Django health must respond over verified TLS within 120 second
 const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
 const browser = await chromium.launch()
 let page
+let transport, transportPhase = 'bootstrap'
+const collectEvidence = evidenceEnabled(process.env, url.origin, localCa)
 const errors = [], failed = [], bad = []
 try {
   // Public smoke never bypasses certificate validation. Local disposable testing
@@ -50,10 +53,18 @@ try {
   const csrf = (await context.cookies()).find(cookie => cookie.name === 'csrftoken')
   assert.ok(csrf?.secure && csrf.sameSite === 'Lax', 'Production CSRF cookie must be Secure/Lax')
   page = await context.newPage()
+  if (collectEvidence) {
+    console.log(`Render browser evidence: ${JSON.stringify({ environment: process.env.BOOKCLUB_RENDER_WORLD,
+      node: version(process.version), playwright: version(createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test/package.json').version),
+      chromium: version(browser.version()) })}`)
+    transport = await observeTransport(context, page, { environment: process.env.BOOKCLUB_RENDER_WORLD,
+      origin: url.origin, phase: () => transportPhase })
+  }
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   page.on('requestfailed', req => failed.push({ path: new URL(req.url()).pathname, code: networkFailureCode(req.failure()?.errorText) }))
   page.on('response', response => { if (response.status() >= 400) bad.push(`${response.status()} ${new URL(response.url()).pathname}`) })
+  transportPhase = 'navigation'
   const html = await page.goto(url.origin)
   assert.equal(html.status(), 200)
   if (expectedRevision) assert.equal(html.headers()['x-bookclub-revision'], expectedRevision, 'Browser must see the intended candidate revision')
@@ -63,6 +74,7 @@ try {
   await page.getByRole('heading', { name: 'Versión de demostración', exact: true }).waitFor()
   // Observe every concurrent operation immediately: a missing home request must
   // not become an unhandled rejection that hides a failed sign-in or click.
+  transportPhase = 'demo-sign-in'
   await Promise.all([
     page.waitForResponse(response => new URL(response.url()).pathname === '/api/home' && response.request().method() === 'GET')
       .then(response => assert.equal(response.status(), 200, 'Home API after demo sign-in')),
@@ -70,6 +82,7 @@ try {
       .then(response => assert.equal(response.status(), 204, 'Demo sign-in API')),
     page.getByRole('button', { name: 'Entrar con una cuenta de prueba', exact: true }).click(),
   ])
+  transportPhase = 'home'
   await page.getByRole('heading', { name: 'Inicio', exact: true }).waitFor()
   const session = await context.request.get(new URL('/api/session', url).href)
   const identity = await session.json()
@@ -77,6 +90,7 @@ try {
   assert.equal(identity.user.role, 'member')
   const cookie = (await context.cookies()).find(value => value.name === 'sessionid')
   assert.ok(cookie?.secure && cookie.httpOnly && cookie.sameSite === 'Lax', 'Production session must be Secure/HttpOnly/Lax')
+  transportPhase = 'library'
   const books = page.waitForResponse(response => new URL(response.url()).pathname === '/api/books' && response.request().method() === 'GET')
   await page.goto(new URL('/biblioteca', url).href)
   assert.equal((await books).status(), 200)
@@ -84,6 +98,7 @@ try {
   assert.equal((await context.request.get(new URL('/api/books', url).href)).status(), 200)
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
   if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: process.env.SMOKE_SCREENSHOT, fullPage: true })
+  transportPhase = 'sign-out'
   const logout = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/logout' && response.request().method() === 'POST')
   await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click()
   assert.equal((await logout).status(), 204)
@@ -104,5 +119,6 @@ try {
   // logs. Keep the failed exit status without propagating the original error.
   throw new Error('Fictional demo smoke failed; see the path/status diagnostics and optional screenshot')
 } finally {
+  transport?.flush()
   await browser.close()
 }
