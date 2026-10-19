@@ -1,5 +1,36 @@
 # Verification checkpoint - not accepted yet
 
+## Result of the new single-observation window
+
+The sole newly authorized unsuppressed CLI observation was actually invoked once
+on candidate `a64e9b6`, after source inspection and 14/14 offline tests passed.
+The closed result was:
+
+```json
+{"requestCount":1,"credentialHeaders":false,"declarations":{"fieldState":"omitted","count":0,"names":[],"embeddedState":"nonempty","embeddedCount":2,"unknownNames":2,"accepted":false},"startup":["under-development-feature-warning","unclassified-error"],"eventState":"known","completed":false,"phase":"capability-declarations","outcome":"fixture-rejected","cleanup":true}
+```
+
+The standard tools field was absent, but responses-lite input exposed two
+nonempty embedded declarations whose names were outside the safe diagnostic
+allowlist. The fixture rejected before returning fictional inference output.
+No credential-bearing header was received on the one loopback request. The known
+under-development warning was classified; a second error item remains
+unclassified after fixture rejection. No raw payload, name, message, stderr,
+identifier, header value or host path was retained. The child closed, listener
+closed and exact temporary directory was removed. The existing database/preview
+were not used or altered.
+
+This is a failed capability-boundary check, not an accepted no-tool run. The
+single new window is exhausted. No scoped warning suppression was added, no
+conditional real fictional invocation was made, and production error/unknown/tool
+event rejection remains unchanged. No diagnosis/provenance artifact exists.
+Required final stack/CI/security/QA remain pending.
+
+Concrete next decision: authorize a source-only redesign of the CLI capability
+boundary (including additional-tools registration/serialization), or select a
+transport with an independently provable zero-tool request. Any future CLI/model
+observation requires a newly explicit bounded checkpoint; no rerun is implied.
+
 ## New bounded checkpoint: primary protocol inspection
 
 The new PM checkpoint authorizes exactly one further unsuppressed observation
