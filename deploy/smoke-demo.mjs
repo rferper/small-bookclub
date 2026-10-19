@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { request } from 'node:https'
 import { createRequire } from 'node:module'
 import { networkFailureCode } from './smoke-diagnostics.mjs'
-import { startNetDiag } from './net-diag.mjs' // TEMPORARY #110 diagnostic
+import { netLogPath, startNetDiag, summarizeNetLog } from './net-diag.mjs' // TEMPORARY #110 diagnostic
 
 const url = new URL(process.env.DEMO_URL ?? '')
 assert.ok(url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash,
@@ -38,7 +38,7 @@ while (Date.now() < deadline) {
 assert.ok(ready, 'Django health must respond over verified TLS within 120 seconds')
 const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
 const netDiag = startNetDiag()
-const browser = await chromium.launch()
+const browser = await chromium.launch({ args: [`--log-net-log=${netLogPath}`, '--net-log-capture-mode=Default'] })
 let page
 const errors = [], failed = [], bad = []
 try {
@@ -108,4 +108,5 @@ try {
 } finally {
   console.error('NETDIAG', JSON.stringify(netDiag.stop()))
   await browser.close()
+  console.error('NETLOG', JSON.stringify(summarizeNetLog()))
 }

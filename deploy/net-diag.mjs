@@ -3,7 +3,9 @@
 // browser runs, using a closed vocabulary: event kind + interface class + ms offset.
 // No addresses, names, hostnames, headers, cookies or bodies are retained.
 import { spawn } from 'node:child_process'
-import { networkInterfaces } from 'node:os'
+import { readFileSync, rmSync } from 'node:fs'
+import { networkInterfaces, tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const KINDS = new Set(['LINK', 'ADDR', 'ROUTE', 'NEIGH'])
 export function interfaceClass(name) {
@@ -61,4 +63,24 @@ export function startNetDiag() {
       return { monitorAvailable: Boolean(monitor), totalMs: Math.round(performance.now() - t0), counts, events: events.slice(0, 60) }
     },
   }
+}
+
+// Summarize Chromium's own net log: only constant event/source type NAMES and ms offsets.
+export const netLogPath = join(tmpdir(), `bookclub-netlog-${process.pid}.json`)
+export function summarizeNetLog() {
+  try {
+    const log = JSON.parse(readFileSync(netLogPath, 'utf8'))
+    const types = Object.fromEntries(Object.entries(log.constants.logEventTypes).map(([k, v]) => [v, k]))
+    const sources = Object.fromEntries(Object.entries(log.constants.logSourceType).map(([k, v]) => [v, k]))
+    const origin = Number(log.constants.timeTickOffset ?? 0)
+    const ERR_NETWORK_CHANGED = -21
+    const first = Number(log.events[0]?.time ?? 0)
+    const rel = e => Number(e.time) - first
+    const interesting = /NETWORK_CHANGE|IP_ADDRESS|DNS_CONFIG|CONNECTION_TYPE|NETWORK_CONNECTIVITY|DNS_CHANGED|NETWORK_CHANGED|PROXY_CONFIG_CHANGED/u
+    const named = log.events.filter(e => interesting.test(types[e.type] ?? ''))
+      .slice(0, 40).map(e => ({ t: rel(e), type: types[e.type], source: sources[e.source?.type] }))
+    const failures = log.events.filter(e => e.params?.net_error === ERR_NETWORK_CHANGED)
+      .slice(0, 10).map(e => ({ t: rel(e), type: types[e.type], source: sources[e.source?.type] }))
+    return { origin: origin ? 'set' : 'unset', eventCount: log.events.length, named, failures }
+  } catch { return { unavailable: true } } finally { try { rmSync(netLogPath) } catch { /* best effort */ } }
 }
