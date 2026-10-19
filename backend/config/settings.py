@@ -27,6 +27,7 @@ INSTALLED_APPS = [
 ]
 AUTH_USER_MODEL = "users.User"
 MIDDLEWARE = [
+    "config.telemetry.TelemetryMiddleware",
     "config.security.PrivacyHeadersMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -53,17 +54,22 @@ LOGGING = {
     "formatters": {"safe": {"()": "config.security.SafeLogFormatter"}},
     "handlers": {
         "safe": {"class": "logging.StreamHandler", "formatter": "safe"},
+        "telemetry": {"class": "config.telemetry.SafeTelemetryHandler"},
     },
-    "root": {"handlers": ["safe"], "level": "WARNING"},
+    "root": {"handlers": ["safe", "telemetry"], "level": "WARNING"},
     "loggers": {
         "bookclub.release": {
-            "handlers": ["safe"],
+            "handlers": ["safe", "telemetry"],
             "level": "INFO",
             "propagate": False,
         },
-        "django": {"handlers": ["safe"], "level": "WARNING", "propagate": False},
+        "django": {
+            "handlers": ["safe", "telemetry"],
+            "level": "WARNING",
+            "propagate": False,
+        },
         "django.server": {
-            "handlers": ["safe"],
+            "handlers": ["safe", "telemetry"],
             "level": "WARNING",
             "propagate": False,
         },

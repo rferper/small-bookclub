@@ -122,10 +122,34 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  observability:
+    name: Verify private local observability
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: node ops/verify-observability.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: observability-dashboard
+          path: /tmp/bookclub-observability-check-*/dashboard.png
+          retention-days: 3
+
   required:
     name: All CI checks passed
     if: always()
-    needs: [backend, frontend, containers]
+    needs: [backend, frontend, containers, observability]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
@@ -134,10 +158,12 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           CONTAINERS_RESULT: ${{ needs.containers.result }}
+          OBSERVABILITY_RESULT: ${{ needs.observability.result }}
         run: |
           test "$BACKEND_RESULT" = success
           test "$FRONTEND_RESULT" = success
           test "$CONTAINERS_RESULT" = success
+          test "$OBSERVABILITY_RESULT" = success
 
   deploy:
     needs: required

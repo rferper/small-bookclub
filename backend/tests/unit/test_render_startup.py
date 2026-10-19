@@ -55,7 +55,12 @@ def test_render_refuses_real_club_or_invalid_configuration(changes):
 
 
 def test_render_pins_private_production_defaults_without_mutating_input():
-    original = environment(DEBUG="true", BOOKCLUB_ENV="development", ALLOWED_HOSTS="*")
+    original = environment(
+        DEBUG="true",
+        BOOKCLUB_ENV="development",
+        ALLOWED_HOSTS="*",
+        TELEMETRY_ENABLED="true",
+    )
     result = startup.configure(original)
     assert result["DEBUG"] == "false" and result["BOOKCLUB_ENV"] == "production"
     assert result["ALLOWED_HOSTS"] == "fictional-demo.onrender.com"
@@ -64,6 +69,7 @@ def test_render_pins_private_production_defaults_without_mutating_input():
     assert result["DISCORD_CLIENT_ID"] == result["DISCORD_CLIENT_SECRET"] == ""
     assert original["DEBUG"] == "true"
     assert result["BOOKCLUB_REVISION"] == "1" * 40
+    assert result["TELEMETRY_ENABLED"] == "false"
     assert result["DEPLOYMENT_ENVIRONMENT"] == "staging"
 
 

@@ -8,4 +8,7 @@ class CoreConfig(AppConfig):
     name = "core"
 
     def ready(self):
+        from config.telemetry import initialize
+
+        initialize()
         logging.getLogger("bookclub.release").info("startup")

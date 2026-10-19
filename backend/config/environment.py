@@ -14,6 +14,9 @@ def configure(environ, base_dir):
             "BOOKCLUB_ENV must be development, test, demo or production"
         )
     production = environment == "production"
+    telemetry = environ.get("TELEMETRY_ENABLED", "false").lower()
+    if telemetry not in {"true", "false"}:
+        raise ImproperlyConfigured("TELEMETRY_ENABLED must be true or false")
     demo_text = environ.get("DEMO_MODE", "false").lower()
     if demo_text not in {"true", "false"}:
         raise ImproperlyConfigured("DEMO_MODE must be true or false")
@@ -64,6 +67,7 @@ def configure(environ, base_dir):
         media_root = str(base_dir / media_root)
     return {
         "ENVIRONMENT": environment,
+        "TELEMETRY_ENABLED": telemetry == "true",
         "DEPLOYMENT_ENVIRONMENT": deployment,
         "RELEASE_VERSION": version,
         "DEMO_MODE": demo_text == "true",
