@@ -28,6 +28,17 @@ The custom-provider observation can attest only its tested provider/model metada
 path. It is not a global CLI attestation or proof that different metadata cannot
 add utilities; trusted CLI/host and preserved configuration remain assumptions.
 
+Further source tracing before spending the observation established that
+[resolve_update_plan_enabled](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/core/src/config/mod.rs#L2766)
+defaults false (`is_some_and`), while experimental request-user-input defaults
+true (`is_none_or`). The pinned
+[ToolsToml schema](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/config/src/config_toml.rs#L700)
+supports `tools.update_plan.enabled` and
+`tools.experimental_request_user_input.enabled`; both are now explicitly false
+with argument regressions. This is source-backed capability hardening, not an
+inferred repair of the production startup error. The warning remains unsuppressed
+and the production error/unknown/tool event audit is unchanged.
+
 Candidate lineage: `22f1e2e`, `9a56b9f`, then closed startup-phase diagnostics.
 Offline on-call tests: 9 passed. Combined operator tests before the latest added
 auth-mode case: 100 passed. No model inference occurs in those injected tests.

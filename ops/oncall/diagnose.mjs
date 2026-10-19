@@ -33,6 +33,7 @@ export function agentArguments(workspace) {
     '--sandbox', 'read-only', '--json', '--color', 'never', '--output-schema', join(workspace, 'schema.json'),
     '--output-last-message', join(workspace, 'diagnosis.json')]
   for (const setting of ['approval_policy="never"', 'web_search="disabled"', 'project_doc_max_bytes=0', 'analytics.enabled=false',
+    'tools.update_plan.enabled=false', 'tools.experimental_request_user_input.enabled=false',
     'features.shell_tool=false', 'features.apps=false', 'features.plugins=false',
     'features.multi_agent=false', 'features.skill_search=false', 'features.skill_mcp_dependency_install=false',
     'features.skip_host_skill_discovery=true', 'features.in_app_browser=false', 'features.hooks=false',

@@ -216,6 +216,8 @@ test('agent environment excludes API/deploy/Docker/GitHub secrets and tool setti
     CODEX_API_KEY: marker, GITHUB_TOKEN: marker, SECRET_KEY: marker, DOCKER_HOST: marker, RENDER_DEPLOY_HOOK: marker }),
   { PATH: 'bin', USERPROFILE: 'fictional-home' })
   const args = agentArguments('fictional-temp')
+  assert.ok(args.includes('tools.update_plan.enabled=false'))
+  assert.ok(args.includes('tools.experimental_request_user_input.enabled=false'))
   for (const flag of ['--ignore-user-config', '--ignore-rules', '--ephemeral', '--output-schema', '--json']) assert.ok(args.includes(flag))
   assert.equal(args[args.indexOf('--sandbox') + 1], 'read-only')
   for (const setting of ['features.shell_tool=false', 'features.plugins=false', 'features.apps=false', 'features.multi_agent=false', 'web_search="disabled"', 'project_doc_max_bytes=0', 'features.hooks=false', 'features.browser_use=false', 'features.computer_use=false', 'features.view_image=false', 'features.image_generation=false', 'features.code_mode_host=false', 'features.daemon_auto_start=false']) assert.ok(args.includes(setting))
