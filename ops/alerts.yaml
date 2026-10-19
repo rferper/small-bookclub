@@ -1,0 +1,27 @@
+groups:
+  - name: bookclub-user-impact
+    interval: 5s
+    rules:
+      - alert: BookclubApiErrors
+        expr: |
+          (
+            sum by (deployment_environment_name, service_version) (
+              increase(bookclub_http_requests_total{http_route=~"/api/.+",http_route!="/api/health",http_response_status_code=~"5.."}[2m])
+            )
+            /
+            sum by (deployment_environment_name, service_version) (
+              increase(bookclub_http_requests_total{http_route=~"/api/.+",http_route!="/api/health",http_response_status_code=~"[1-5].."}[2m])
+            )
+          ) >= 0.2
+          and
+          sum by (deployment_environment_name, service_version) (
+            increase(bookclub_http_requests_total{http_route=~"/api/.+",http_route!="/api/health",http_response_status_code=~"5.."}[2m])
+          ) >= 3
+        for: 1m
+        labels:
+          severity: critical
+          service: small-bookclub-backend
+        annotations:
+          summary: 'Errores del servidor afectan a la API del club'
+          error_ratio: '{{ $value }}'
+          runbook: ops/alerts/README.md

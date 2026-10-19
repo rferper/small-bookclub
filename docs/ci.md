@@ -28,8 +28,9 @@ no repository protection settings are changed.
 The observability job also waits for backend/frontend, then runs the existing
 base Compose file with its explicit local monitoring overlay in an exact random
 disposable project. Real fictional requests must reach Prometheus, Loki and Tempo
-through Grafana. Topology, loopback publication, privacy markers, read-only access
-and exact-project cleanup are assertions. Only the fictional dashboard PNG is
+through Grafana. Topology, loopback publication, privacy markers, read-only access, production
+alert rule tests, real private firing/resolved delivery and exact-project cleanup
+are assertions. Only the fictional dashboard PNG is
 retained for three days; a failed observability job blocks the required aggregate
 and delivery. See [local observability](../ops/observability/README.md).
 

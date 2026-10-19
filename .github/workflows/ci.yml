@@ -45,7 +45,7 @@ jobs:
       - run: uv python install 3.13
       - run: uv sync --locked
       - run: uv run python manage.py check
-      - run: node --test ../deploy/render/release.test.mjs ../deploy/render/record-release.test.mjs ../deploy/render/verify-diagnostics.test.mjs
+      - run: node --test ../deploy/render/release.test.mjs ../deploy/render/record-release.test.mjs ../deploy/render/verify-diagnostics.test.mjs ../ops/alerts/receiver.test.mjs
       - run: uv run ruff check . ../deploy/render/entrypoint.py
       - run: uv run ruff format --check . ../deploy/render/entrypoint.py
       - run: uv run pytest -m "not integration"

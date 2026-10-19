@@ -57,7 +57,7 @@ try {
   console.log(`Disposable observability project: ${project}`)
   console.log(`Observability screenshots: ${evidence}`)
   const config = JSON.parse(command(['config', '--format', 'json'], true))
-  for (const name of ['otel-collector', 'prometheus', 'loki', 'tempo']) {
+  for (const name of ['otel-collector', 'prometheus', 'loki', 'tempo', 'alertmanager', 'alert-receiver']) {
     assert.equal(config.services[name].ports, undefined)
     assert.deepEqual(config.services[name].networks, { observability: null })
   }
@@ -80,6 +80,10 @@ try {
   }
   start('collector-configuration')
   command(['run', '--rm', '--no-deps', 'otel-collector', 'validate', '--config=/etc/otelcol/config.yaml'])
+  start('alert-configuration')
+  command(['run', '--rm', '--no-deps', '--entrypoint', '/bin/promtool', 'prometheus', 'check', 'config', '/etc/prometheus/prometheus.yml'])
+  command(['run', '--rm', '--no-deps', '--entrypoint', '/bin/promtool', 'prometheus', 'test', 'rules', '/etc/prometheus/alerts/tests.yaml'])
+  command(['run', '--rm', '--no-deps', '--entrypoint', '/bin/amtool', 'alertmanager', 'check-config', '/etc/alertmanager/bookclub.yaml'])
   start('startup')
   command(['up', '--build', '-d', '--wait', '--wait-timeout', '180'])
   const published = JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Ports}}',
@@ -121,6 +125,38 @@ try {
   assert.ok(JSON.stringify(trace).includes(`release-${revision}`))
   assert.ok(!JSON.stringify(trace).includes(marker))
   assert.ok(!JSON.stringify(metrics).includes(marker))
+  start('alert-rule-loaded')
+  const rules = await json(proxy('prometheus', '/api/v1/rules'))
+  const rule = rules.data.groups.flatMap(group => group.rules).find(rule => rule.name === 'BookclubApiErrors')
+  assert.equal(rule?.health, 'ok')
+  assert.equal(rule.duration, 60)
+  assert.equal(rule.state, 'inactive')
+  const notifications = () => JSON.parse(command(['exec', '-T', 'alert-receiver', 'node', '--input-type=module', '-e',
+    "const response = await fetch('http://127.0.0.1:9099/events'); if (!response.ok) process.exit(1); console.log(JSON.stringify(await response.json()))"], true))
+  assert.deepEqual(notifications(), [], 'Healthy and denied API requests must not notify')
+  start('alert-fictional-trigger-and-recovery')
+  command(['run', '--rm', '--no-deps', '-e', `ALERT_FIXTURE_PROJECT=${project}`, 'alert-fixture'])
+  const events = await ready(async () => {
+    const result = notifications()
+    return result.some(event => event.status === 'resolved') && result
+  })
+  const firing = events.findIndex(event => event.status === 'firing')
+  const resolved = events.findIndex(event => event.status === 'resolved')
+  assert.ok(firing >= 0 && resolved > firing, 'Real rule must deliver firing then resolved')
+  for (const event of events) {
+    assert.equal(event.alertname, 'BookclubApiErrors')
+    assert.equal(event.environment, 'test')
+    assert.equal(event.version, `release-${'4'.repeat(40)}`)
+    assert.equal(event.runbook, 'ops/alerts/README.md')
+    assert.ok(event.errorRatio >= 0 && event.errorRatio <= 1)
+    assert.equal(event.sustainedSeconds, 60)
+    assert.ok(!JSON.stringify(event).includes(marker))
+  }
+  await ready(async () => {
+    const result = await json(proxy('prometheus', '/api/v1/rules'))
+    return result.data.groups.flatMap(group => group.rules).find(rule => rule.name === 'BookclubApiErrors')?.state === 'inactive'
+  })
+  console.log('PASS: unchanged API-error rule delivered private firing and resolved notifications.')
   start('collector-outage')
   command(['stop', 'otel-collector'])
   assert.deepEqual(await json(`${app}/api/health`),
@@ -169,7 +205,7 @@ try {
   await page.getByText(/GET \/api\/health/u).first().waitFor({ timeout: 30000 })
   await expect(page.getByText(/^(No data|No data found in response)$/u)).toHaveCount(0, { timeout: 30000 })
   await page.screenshot({ path: join(evidence, 'dashboard.png'), fullPage: true, timeout: 10000 })
-  console.log('PASS: real local metrics, logs, traces, version identity, privacy and Viewer dashboard.')
+  console.log('PASS: real local metrics, logs, traces, alert delivery/recovery, version identity, privacy and Viewer dashboard.')
 } catch {
   failed = true
   const status = Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : 'none'

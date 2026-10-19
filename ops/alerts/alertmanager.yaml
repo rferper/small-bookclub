@@ -1,0 +1,18 @@
+global:
+  resolve_timeout: 1m
+route:
+  receiver: local-terminal
+  group_by: [alertname, deployment_environment_name, service_version]
+  group_wait: 5s
+  group_interval: 5s
+  repeat_interval: 1h
+receivers:
+  - name: local-terminal
+    webhook_configs:
+      - url: http://alert-receiver:9099/alerts
+        send_resolved: true
+        max_alerts: 8
+        timeout: 5s
+        http_config:
+          follow_redirects: false
+          enable_http2: false
