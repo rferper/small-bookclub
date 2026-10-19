@@ -1218,3 +1218,7 @@ existing routine-work/terminal-verification/CI-CD authorization, prohibit real
 club records and secrets in model context, and require accepted responder gates
 before live operational uploads. This documents current scope rather than
 installing enforcement or claiming provider privacy guarantees.
+
+## 2026-10-19: Settle Chromium startup before smoke requests (#110)
+
+The intermittent `ERR_NETWORK_CHANGED` in disposable browser smokes was reproduced with temporary instrumentation on a throwaway branch. The runner's interfaces, addresses and routes did not change (kernel monitor plus 20 ms polling, zero events). Chromium's own net log showed its network-change notifier emitting `NETWORK_IP_ADDRESSES_CHANGED` 109-1019 ms after startup in every sampled run; requests in flight at that moment (CSS/JS or `/api/home`) failed. Wait 2 s after launching Chromium before the first request. No retry, tolerance or weakened assertion. Evidence: 2 of 9 instrumented smokes failed before the wait; 0 of 12 failed with it, the event firing before the wait ended in all 12. Later `NETWORK_CHANGED` events (about 2.3-2.5 s) occurred in 4 of 12 without failure, so the fix is evidence-based but not proven exhaustive. Cause attribution to Chromium itself, not to the application, Docker or Render.
