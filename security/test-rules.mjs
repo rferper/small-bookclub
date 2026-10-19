@@ -2,13 +2,14 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
+import { scannerEnvironment } from './scan.mjs'
 
 const temporary = mkdtempSync(join(tmpdir(), 'bookclub-rule-tests-'))
 try {
   const result = spawnSync('uv', ['tool', 'run', '--from', 'semgrep==1.181.0', 'semgrep', '--test', '--json',
     'security/rules', '--metrics=off', '--disable-version-check'], {
     encoding: 'utf8', shell: false, windowsHide: true, timeout: 120000, maxBuffer: 131072,
-    env: { ...process.env, SEMGREP_SETTINGS_FILE: join(temporary, 'settings.yml'), SEMGREP_SEND_METRICS: 'off', SEMGREP_ENABLE_VERSION_CHECK: '0' },
+    env: scannerEnvironment(temporary),
   })
   const report = JSON.parse(result.stdout)
   const checks = Object.values(report.results ?? {}).flatMap(config => Object.values(config.checks ?? {}))

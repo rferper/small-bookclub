@@ -7,6 +7,7 @@ free pinned Gitleaks CLI into a temporary operator-tools directory:
 uv run --no-project --python 3.13 python security/install_gitleaks.py --destination "$env:TEMP/bookclub-security-tools"
 $env:GITLEAKS_BIN = "$env:TEMP/bookclub-security-tools/gitleaks.exe"
 node --test security/scan.test.mjs
+node --test security/workflow.test.mjs
 node security/test-rules.mjs
 node security/scan.mjs "$env:TEMP/bookclub-security-report"
 ```
@@ -65,5 +66,7 @@ exact identity and invalidation after source changes. No real secret is a fixtur
 
 See the [PR audit](pr-audit-112.md). Its AI observations and owner's human
 validation are distinct; pending validation must not be reported as complete.
+The [verification note](verification.md) links the actual projected CI snapshot
+and distinguishes security-job success from final full-pipeline acceptance.
 Agent policy and the final operations report remain #83/#84; #81 is separately
 parked and these scanners never invoke its model or startup experiments.

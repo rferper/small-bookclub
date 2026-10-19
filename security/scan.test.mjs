@@ -5,9 +5,17 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import test from 'node:test'
-import { applyTriage, bindSourceFindings, classifyScan, projectFindings } from './scan.mjs'
+import { applyTriage, bindSourceFindings, classifyScan, projectFindings, scannerEnvironment } from './scan.mjs'
 
 const marker = 'fictional-private-match-never-retain'
+test('all scanner commands exclude service credentials and isolate Semgrep settings', () => {
+  const environment = scannerEnvironment('fictional-temp', { PATH: 'fictional-bin', SEMGREP_APP_TOKEN: marker,
+    GITHUB_TOKEN: marker, OPENAI_API_KEY: marker, SECRET_KEY: marker, RENDER_API_KEY: marker })
+  assert.equal(environment.PATH, 'fictional-bin')
+  assert.equal(environment.SEMGREP_SETTINGS_FILE, join('fictional-temp', 'semgrep-settings.yml'))
+  assert.equal(environment.SEMGREP_SEND_METRICS, 'off')
+  assert.ok(!JSON.stringify(environment).includes(marker))
+})
 test('secret projection removes matches, snippets, author and exception details', () => {
   const value = { RuleID: 'github-pat', File: 'fictional/token.txt', StartLine: 1, Commit: 'a'.repeat(40),
     Secret: marker, Match: marker, Line: marker, Author: marker, Email: marker, Message: marker, Fingerprint: marker }

@@ -6,6 +6,11 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 export const versions = { semgrep: '1.181.0', pipAudit: '2.10.1', gitleaks: '8.30.1' }
+export function scannerEnvironment(temporary, input = process.env) {
+  return { ...Object.fromEntries(Object.entries(input).filter(([key]) => /^(path|systemroot|windir|comspec|pathext|userprofile|home|temp|tmp|localappdata|appdata|uv_cache_dir)$/iu.test(key))),
+    SEMGREP_SEND_METRICS: 'off', SEMGREP_ENABLE_VERSION_CHECK: '0',
+    SEMGREP_SETTINGS_FILE: join(temporary, 'semgrep-settings.yml'), PIP_DISABLE_PIP_VERSION_CHECK: '1' }
+}
 const identifier = value => typeof value === 'string' && /^[a-zA-Z0-9_@./:+<>=*~^| -]{1,200}$/u.test(value) ? value : (() => { throw new Error('Invalid identifier') })()
 const path = value => typeof value === 'string' && /^[a-zA-Z0-9_@./+-]{1,250}$/u.test(value) && !value.startsWith('/') && !value.split('/').includes('..') ? value : (() => { throw new Error('Invalid path') })()
 const line = value => Number.isInteger(value) && value > 0 && value < 10000000 ? value : (() => { throw new Error('Invalid line') })()
@@ -75,9 +80,7 @@ export function bindSourceFindings(scans, readSource) {
 export function runScans(outputDirectory, { run = spawnSync } = {}) {
   const root = fileURLToPath(new URL('../', import.meta.url))
   const temporary = mkdtempSync(join(tmpdir(), 'bookclub-security-'))
-  const environment = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(path|systemroot|windir|comspec|pathext|userprofile|home|temp|tmp|localappdata|appdata|uv_cache_dir)$/iu.test(key)))
-  Object.assign(environment, { SEMGREP_SEND_METRICS: 'off', SEMGREP_ENABLE_VERSION_CHECK: '0',
-    SEMGREP_SETTINGS_FILE: join(temporary, 'semgrep-settings.yml'), PIP_DISABLE_PIP_VERSION_CHECK: '1' })
+  const environment = scannerEnvironment(temporary)
   const command = (program, args, cwd = root) => run(program, args, { cwd, env: environment, encoding: 'utf8', shell: false, windowsHide: true, timeout: 240000, maxBuffer: 8 * 1024 * 1024 })
   const read = file => JSON.parse(readFileSync(file, 'utf8'))
   try {
