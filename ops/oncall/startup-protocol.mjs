@@ -2,17 +2,36 @@ import { zstdDecompressSync } from 'node:zlib'
 
 export const observationLimit = 131072
 const names = new Set(['update_plan', 'plan', 'function', 'custom', 'web_search', 'web_search_preview', 'image_generation', 'local_shell', 'shell', 'code_interpreter', 'mcp'])
+const namespaces = new Set(['functions', 'clock', 'web', 'image_gen', 'skills'])
 export function inspectDeclarations(packet) {
-  const result = { fieldState: 'malformed', count: 0, names: [], embeddedState: 'malformed', embeddedCount: 0, unknownNames: 0, accepted: false }
+  const result = { fieldState: 'malformed', count: 0, names: [], embeddedState: 'malformed', embeddedCount: 0, wrappers: 0, leaves: 0, unknownNames: 0, nestedState: 'known', accepted: false }
   if (!packet || typeof packet !== 'object' || Array.isArray(packet)) return result
   function scan(tools, present) {
     if (!present) return { state: 'omitted', count: 0 }
     if (!Array.isArray(tools) || tools.length > 32) return { state: 'malformed', count: 0 }
     for (const tool of tools) {
       if (!tool || typeof tool !== 'object' || Array.isArray(tool)) return { state: 'malformed', count: tools.length }
-      const name = tool.name ?? tool.function?.name ?? tool.type
-      if (names.has(name)) result.names.push(name)
-      else result.unknownNames++
+      if (tool.type === 'namespace') {
+        result.wrappers++
+        if (namespaces.has(tool.name)) result.names.push(tool.name)
+        else result.unknownNames++
+        if (!Array.isArray(tool.tools) || tool.tools.length > 32) result.nestedState = 'malformed'
+        else for (const leaf of tool.tools) {
+          if (!leaf || typeof leaf !== 'object' || Array.isArray(leaf) || !['function', 'custom'].includes(leaf.type)
+            || typeof leaf.name !== 'string' || leaf.tools !== undefined) { result.nestedState = 'malformed'; continue }
+          result.leaves++
+          if (result.wrappers + result.leaves > 64) { result.nestedState = 'malformed'; break }
+          if (names.has(leaf.name)) result.names.push(leaf.name)
+          else result.unknownNames++
+        }
+      } else {
+        result.leaves++
+        const name = tool.name ?? tool.function?.name ?? tool.type
+        if (!['function', 'custom', 'web_search', 'web_search_preview'].includes(tool.type) || tool.tools !== undefined) result.nestedState = 'malformed'
+        if (names.has(name)) result.names.push(name)
+        else result.unknownNames++
+      }
+      if (result.wrappers + result.leaves > 64) return { state: 'malformed', count: tools.length }
     }
     return { state: tools.length ? 'nonempty' : 'empty', count: tools.length }
   }
@@ -32,7 +51,7 @@ export function inspectDeclarations(packet) {
   }
   result.embeddedState = embedded.state; result.embeddedCount = embedded.count
   result.names.sort()
-  result.accepted = ['omitted', 'empty'].includes(result.fieldState) && ['omitted', 'empty'].includes(result.embeddedState)
+  result.accepted = result.nestedState === 'known' && ['omitted', 'empty'].includes(result.fieldState) && ['omitted', 'empty'].includes(result.embeddedState)
   return result
 }
 

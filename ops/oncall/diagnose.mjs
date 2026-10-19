@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { projectEvidence } from './collect.mjs'
+import { loadCatalog, prepareCatalog, reviewedModel } from './model-catalog.mjs'
 
 const { default: Ajv } = createRequire(new URL('../../frontend/package.json', import.meta.url))('ajv')
 const schema = JSON.parse(readFileSync(new URL('./diagnosis.schema.json', import.meta.url), 'utf8'))
@@ -29,11 +30,19 @@ export function agentEnvironment(input) {
     /^(path|systemroot|windir|comspec|pathext|userprofile|home|temp|tmp|localappdata|appdata|codex_home)$/iu.test(key)))
 }
 export function agentArguments(workspace) {
-  const args = ['exec', '--strict-config', '--ignore-user-config', '--ignore-rules', '--ephemeral', '--skip-git-repo-check',
+  const args = ['exec', '--model', reviewedModel, '--strict-config', '--ignore-user-config', '--ignore-rules', '--ephemeral', '--skip-git-repo-check',
     '--sandbox', 'read-only', '--json', '--color', 'never', '--output-schema', join(workspace, 'schema.json'),
     '--output-last-message', join(workspace, 'diagnosis.json')]
   for (const setting of ['approval_policy="never"', 'web_search="disabled"', 'project_doc_max_bytes=0', 'analytics.enabled=false',
     'tools.update_plan.enabled=false', 'tools.experimental_request_user_input.enabled=false',
+    `model_catalog_json=${JSON.stringify(join(workspace, 'model-catalog.json'))}`,
+    'cloud.skills.enabled=false', 'orchestrator.mcp.enabled=false',
+    'features.memories=false', 'features.agent_message_board=false', 'features.multi_agent_v2=false',
+    'features.deferred_executor=false', 'features.request_permissions_tool=false',
+    'features.token_budget={enabled=false,use_history_notes_extension=false}',
+    'features.current_time_reminder=false', 'features.send_message_to_user_async=false',
+    'features.code_mode=false', 'features.code_mode_only=false', 'features.code_mode_tool_search=false',
+    'features.guardian_conversation_history_tools=false',
     'features.shell_tool=false', 'features.apps=false', 'features.plugins=false',
     'features.multi_agent=false', 'features.skill_search=false', 'features.skill_mcp_dependency_install=false',
     'features.skip_host_skill_discovery=true', 'features.in_app_browser=false', 'features.hooks=false',
@@ -60,7 +69,9 @@ export function auditEvents(text) {
   return [...types].sort()
 }
 
-export function runDiagnosis(input, { run = spawnSync, allowLocal = false } = {}) {
+export function runDiagnosis(input, { run = spawnSync, allowLocal = false, readCatalog = readFileSync } = {}) {
+  // Before even version/auth subprocesses: malformed/missing metadata never falls back.
+  loadCatalog(readCatalog)
   if (Buffer.byteLength(JSON.stringify(input)) > 65536) throw new Error('Evidence limit')
   const packet = projectEvidence(input)
   if (packet.source !== 'fictional-fixture' && !allowLocal) throw new Error('Local evidence needs explicit opt-in')
@@ -75,6 +86,7 @@ export function runDiagnosis(input, { run = spawnSync, allowLocal = false } = {}
   let phase = 'agent-startup'
   try {
     writeFileSync(join(workspace, 'schema.json'), JSON.stringify(schema))
+    prepareCatalog(workspace)
     const task = readFileSync(new URL('./task.md', import.meta.url), 'utf8')
     const result = run('codex', agentArguments(workspace), { cwd: workspace, env: environment, encoding: 'utf8',
       input: `${task}\n<operational-evidence>\n${JSON.stringify(packet)}\n</operational-evidence>`,

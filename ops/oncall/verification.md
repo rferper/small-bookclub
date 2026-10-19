@@ -1,5 +1,24 @@
 # Verification checkpoint - not accepted yet
 
+## Static-catalogue redesign awaiting independent pre-observation confirmation
+
+The new candidate pins literal gpt-6.1-sol (bundled source priority 1), validates a
+complete closed single-entry catalogue before any subprocess, copies/revalidates
+it in the temporary workspace and uses the same selection in the observer. It
+includes the required fixed canonical instruction template and independently
+checks pinned Rust wire fields and the canonical-or-legacy instruction guard.
+All independent registry/extension controls and immutable source construction/
+refresh/serialization mapping are recorded in [source-boundary.md](source-boundary.md).
+Namespace wrappers and leaves are now projected separately and every nonempty
+declaration still rejects. Source version alignment is not binary attestation.
+
+Offline tests pass 17/17, including catalogue parse/missing/extra/mismatch/unsafe
+metadata failures before child launch, protocol fields/instruction guard, literal
+arguments/gates, namespace/adversarial cases and earlier credential/bounds/EOF/
+cleanup checks. Production error/unknown/tool event audit is unchanged. No new
+CLI observation, warning suppression or real model invocation has occurred.
+The new single-observation window is held for independent security confirmation.
+
 ## Result of the new single-observation window
 
 The sole newly authorized unsuppressed CLI observation was actually invoked once

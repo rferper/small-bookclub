@@ -64,7 +64,10 @@ Review data/account policy before this opt-in. Never substitute private business
 records or raw logs. The runner strips unknown input fields again, rejects large
 input, and rejects local evidence without the explicit flag. It does not accept
 a model name, provider, command, endpoint or executable supplied by evidence.
-It inherits the tested CLI's default model and saved authentication; API-key,
+It selects literal `gpt-6.1-sol` with a validated single-entry static catalogue
+and reuses saved ChatGPT authentication; this is not an entitlement claim. The
+[source boundary](source-boundary.md) records the independent registry/contributor
+gates and remaining host assumptions. API-key,
 GitHub, Render, Docker and application variables are excluded from the child
 environment. No credential content is read or copied by these scripts.
 

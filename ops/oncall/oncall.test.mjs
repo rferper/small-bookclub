@@ -9,6 +9,7 @@ import test from 'node:test'
 import { collectEvidence, projectEvidence, services, readSignals } from './collect.mjs'
 import { agentArguments, agentEnvironment, auditEvents, runDiagnosis, validateDiagnosis } from './diagnose.mjs'
 import { sendStartupFixture, startupFixturePrompt } from './startup-input.mjs'
+import { loadCatalog, validateCatalog, validatePinnedCatalogProtocol, reviewedModel } from './model-catalog.mjs'
 import { observeStartup } from './observe-startup.mjs'
 import { classifyStartup, credentialHeadersPresent, decodeObservationRequest, fictionalResponseEvents, inspectDeclarations, observationLimit } from './startup-protocol.mjs'
 
@@ -22,6 +23,75 @@ const events = () => [
   { type: 'item.completed', item: { type: 'agent_message', text: JSON.stringify(diagnosis()) } },
   { type: 'turn.completed' },
 ].map(value => JSON.stringify(value)).join('\n')
+
+test('closed single-model catalog rejects parse/missing/mismatch/extra/safety changes before any child launch', () => {
+  const catalog = loadCatalog()
+  assert.equal(catalog.models.length, 1)
+  assert.equal(catalog.models[0].slug, reviewedModel)
+  for (const bad of [{}, { models: [] }, { models: [catalog.models[0], catalog.models[0]] },
+    { ...catalog, fallback: marker }, { models: [{ ...catalog.models[0], slug: marker }] },
+    ...[{ shell_type: 'shell_command' }, { apply_patch_tool_type: 'freeform' }, { experimental_supported_tools: ['clock'] },
+      { tool_mode: 'code_mode_only' }, { multi_agent_version: 'v2' }, { supports_search_tool: true },
+      { extra: marker }].map(change => ({ models: [{ ...catalog.models[0], ...change }] }))]) {
+    assert.throws(() => validateCatalog(bad), /Reviewed model catalog required/u)
+    let calls = 0
+    assert.throws(() => runDiagnosis(packet(), { readCatalog: () => JSON.stringify(bad), run: () => { calls++ } }), /Reviewed model catalog required/u)
+    assert.equal(calls, 0)
+  }
+  for (const readCatalog of [() => { throw new Error(marker) }, () => marker, () => 'x'.repeat(8193)]) {
+    let calls = 0
+    assert.throws(() => runDiagnosis(packet(), { readCatalog, run: () => { calls++ } }), { message: 'Reviewed model catalog required' })
+    assert.equal(calls, 0)
+  }
+  const args = agentArguments('fictional-temp')
+  assert.equal(args[args.indexOf('--model') + 1], 'gpt-6.1-sol')
+  assert.ok(args.includes(`model_catalog_json=${JSON.stringify(join('fictional-temp', 'model-catalog.json'))}`))
+  for (const setting of ['cloud.skills.enabled=false', 'orchestrator.mcp.enabled=false', 'features.memories=false',
+    'features.agent_message_board=false', 'features.multi_agent_v2=false', 'features.deferred_executor=false',
+    'features.request_permissions_tool=false', 'features.token_budget={enabled=false,use_history_notes_extension=false}', 'features.current_time_reminder=false',
+    'features.send_message_to_user_async=false', 'features.code_mode=false', 'features.code_mode_only=false',
+    'features.code_mode_tool_search=false', 'features.guardian_conversation_history_tools=false']) assert.ok(args.includes(setting))
+})
+
+test('pinned Rust catalogue required fields and canonical-or-legacy instructions validate independently', () => {
+  const catalog = loadCatalog()
+  assert.deepEqual(validatePinnedCatalogProtocol(catalog), catalog)
+  for (const key of ['slug', 'display_name', 'supported_reasoning_levels', 'shell_type', 'visibility',
+    'supported_in_api', 'priority', 'support_verbosity', 'truncation_policy', 'experimental_supported_tools']) {
+    const bad = structuredClone(catalog); delete bad.models[0][key]
+    assert.throws(() => validatePinnedCatalogProtocol(bad), /Pinned model catalog protocol required/u)
+  }
+  const legacy = structuredClone(catalog)
+  delete legacy.models[0].model_messages
+  assert.throws(() => validatePinnedCatalogProtocol(legacy), /Pinned model catalog protocol required/u)
+  legacy.models[0].base_instructions = 'Fixed fictional read-only instructions'
+  assert.equal(validatePinnedCatalogProtocol(legacy), legacy)
+  assert.throws(() => validateCatalog(legacy), /Reviewed model catalog required/u)
+  for (const change of [{ shell_type: marker }, { visibility: marker }, { priority: '1' },
+    { supported_reasoning_levels: [{ effort: marker, description: 'fictional' }] },
+    { truncation_policy: { mode: marker, limit: 100 } }, { model_messages: { instructions_template: null } }]) {
+    assert.throws(() => validatePinnedCatalogProtocol({ models: [{ ...catalog.models[0], ...change }] }), /Pinned model catalog protocol required/u)
+  }
+})
+
+test('both wire channels reject namespace wrappers and inspect bounded leaves without trusting names', () => {
+  for (const definition of [
+    { type: 'namespace', name: 'functions', tools: [{ type: 'function', name: 'update_plan' }] },
+    { type: 'namespace', name: marker, tools: [{ type: 'custom', name: marker }] },
+    { type: 'namespace', name: 'functions', tools: [] },
+    { type: 'namespace', name: 'functions', tools: [{ type: 'namespace', name: 'functions', tools: [] }] },
+    { type: 'namespace', name: 'functions', tools: null },
+    { type: 'namespace', name: 'functions', tools: Array(33).fill({ type: 'function', name: 'update_plan' }) },
+    { type: 'function', name: 'update_plan', tools: [] },
+  ]) for (const value of [{ input: [], tools: [definition] }, { input: [{ type: 'additional_tools', tools: [definition] }] }]) {
+    const result = inspectDeclarations(value)
+    assert.equal(result.accepted, false)
+    assert.ok(!JSON.stringify(result).includes(marker))
+  }
+  const projected = inspectDeclarations({ input: [{ type: 'additional_tools', tools: [{ type: 'namespace', name: 'functions', tools: [{ type: 'function', name: 'update_plan' }] }] }] })
+  assert.equal(projected.wrappers, 1); assert.equal(projected.leaves, 1)
+  assert.deepEqual(projected.names, ['functions', 'update_plan'])
+})
 
 test('outbound declarations inspect both standard and responses-lite channels and deny every exposure', () => {
   for (const tools of [undefined, []]) {
@@ -213,7 +283,8 @@ test('diagnosis schema and evidence gates reject actions, text and invented obse
 })
 test('agent environment excludes API/deploy/Docker/GitHub secrets and tool settings are explicit', () => {
   assert.deepEqual(agentEnvironment({ PATH: 'bin', USERPROFILE: 'fictional-home', OPENAI_API_KEY: marker,
-    CODEX_API_KEY: marker, GITHUB_TOKEN: marker, SECRET_KEY: marker, DOCKER_HOST: marker, RENDER_DEPLOY_HOOK: marker }),
+    CODEX_API_KEY: marker, GITHUB_TOKEN: marker, SECRET_KEY: marker, DOCKER_HOST: marker, RENDER_DEPLOY_HOOK: marker,
+    CODEX_EXEC_SERVER_URL: marker, CODEX_ENVIRONMENT_ID: marker }),
   { PATH: 'bin', USERPROFILE: 'fictional-home' })
   const args = agentArguments('fictional-temp')
   assert.ok(args.includes('tools.update_plan.enabled=false'))
@@ -233,6 +304,7 @@ test('headless runner audits completion, validates output and cleans exact isola
     assert.equal(options.shell, false); assert.equal(options.timeout, 120000)
     assert.ok(!options.input.includes(marker)); assert.equal(options.env.OPENAI_API_KEY, undefined)
     assert.equal(dirname(args[args.indexOf('--output-schema') + 1]), directory)
+    assert.deepEqual(JSON.parse(readFileSync(join(directory, 'model-catalog.json'), 'utf8')), loadCatalog())
     writeFileSync(join(directory, 'diagnosis.json'), JSON.stringify(diagnosis()))
     return { status: 0, stdout: events(), stderr: marker }
   } })

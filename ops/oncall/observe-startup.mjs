@@ -7,10 +7,12 @@ import { join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { agentArguments, agentEnvironment } from './diagnose.mjs'
 import { sendStartupFixture } from './startup-input.mjs'
+import { loadCatalog, prepareCatalog } from './model-catalog.mjs'
 import { classifyStartup, credentialHeadersPresent, decodeObservationRequest, fictionalResponseEvents, inspectDeclarations, observationLimit } from './startup-protocol.mjs'
 
 export async function observeStartup({ launch = spawn, timeout = 30000 } = {}) {
   if (timeout <= 0 || timeout > 30000) throw new Error('Invalid observation bound')
+  loadCatalog()
   const directory = mkdtempSync(join(tmpdir(), 'bookclub-startup-'))
   const home = join(directory, 'home')
   const result = { requestCount: 0, credentialHeaders: false, declarations: null, startup: [], eventState: 'unobserved', completed: false, phase: 'setup', outcome: 'unknown', cleanup: false }
@@ -59,6 +61,7 @@ export async function observeStartup({ launch = spawn, timeout = 30000 } = {}) {
     timer = setTimeout(() => fail('deadline', 'timeout'), timeout)
     mkdirSync(home)
     writeFileSync(join(directory, 'schema.json'), readFileSync(new URL('./diagnosis.schema.json', import.meta.url)))
+    prepareCatalog(directory)
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
     const environment = agentEnvironment(process.env)
     for (const key of Object.keys(environment)) if (/^(codex_home|userprofile|home|appdata|localappdata)$/iu.test(key)) delete environment[key]
