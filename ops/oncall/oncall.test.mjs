@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { collectEvidence, projectEvidence, services, readSignals } from './collect.mjs'
 import { agentArguments, agentEnvironment, auditEvents, runDiagnosis, validateDiagnosis } from './diagnose.mjs'
 import { sendStartupFixture, startupFixturePrompt } from './startup-input.mjs'
+import { observeStartup } from './observe-startup.mjs'
+import { classifyStartup, credentialHeadersPresent, decodeObservationRequest, fictionalResponseEvents, inspectDeclarations, observationLimit } from './startup-protocol.mjs'
 
 const marker = 'fictional-private-token'
 const packet = () => JSON.parse(readFileSync(new URL('./fictional-evidence.json', import.meta.url), 'utf8'))
@@ -18,6 +22,104 @@ const events = () => [
   { type: 'item.completed', item: { type: 'agent_message', text: JSON.stringify(diagnosis()) } },
   { type: 'turn.completed' },
 ].map(value => JSON.stringify(value)).join('\n')
+
+test('outbound declarations inspect both standard and responses-lite channels and deny every exposure', () => {
+  for (const tools of [undefined, []]) {
+    const result = inspectDeclarations({ input: [{ type: 'message' }], ...(tools ? { tools } : {}) })
+    assert.equal(result.accepted, true)
+    assert.equal(result.fieldState, tools ? 'empty' : 'omitted')
+    assert.equal(result.embeddedState, 'omitted')
+  }
+  for (const tools of [null, {}, 'bad', Array(33).fill({}), [null]]) {
+    assert.equal(inspectDeclarations({ input: [], tools }).accepted, false)
+  }
+  for (const tool of [{ type: 'function', name: 'update_plan' }, { type: marker }]) {
+    for (const packet of [{ input: [], tools: [tool] }, { input: [{ type: 'additional_tools', tools: [tool] }] }]) {
+      const result = inspectDeclarations(packet)
+      assert.equal(result.accepted, false)
+      assert.equal(result.count + result.embeddedCount, 1)
+      assert.ok(!JSON.stringify(result).includes(marker))
+    }
+  }
+  for (const input of [undefined, {}, [null], [{ type: marker }], [{ type: 'additional_tools' }], [{ type: 'additional_tools', tools: null }]]) {
+    assert.equal(inspectDeclarations({ input }).accepted, false)
+  }
+  assert.equal(inspectDeclarations({ input: [{ type: 'additional_tools', tools: [] }] }).accepted, true)
+})
+
+test('startup projection keeps only the confirmed notice; errors, unknown events and malformed streams stay rejected', () => {
+  const warning = JSON.stringify({ type: 'item.completed', item: { type: 'error', message: 'Under-development features enabled: skip_host_skill_discovery. Warning details omitted.' } })
+  assert.deepEqual(classifyStartup(warning).startup, ['under-development-feature-warning'])
+  assert.throws(() => auditEvents(`${warning}\n${events()}`), /denied/u)
+  assert.deepEqual(classifyStartup(JSON.stringify({ type: 'item.completed', item: { type: 'error', message: marker } })).startup, ['unclassified-error'])
+  for (const text of [JSON.stringify({ type: marker }), JSON.stringify({ type: 'item.completed', item: { type: 'command_execution' } })]) {
+    assert.equal(classifyStartup(text).eventState, 'unknown')
+  }
+  for (const text of ['', marker, Array(129).fill('{}').join('\n')]) assert.equal(classifyStartup(text).eventState, 'malformed')
+  assert.equal(classifyStartup(events()).completed, true)
+})
+
+test('request decoding, credential checks and pinned fictional SSE preserve closed bounds/protocol', () => {
+  assert.deepEqual(decodeObservationRequest(Buffer.from('{"input":[]}')), { input: [] })
+  for (const [body, encoding] of [[Buffer.alloc(observationLimit + 1), undefined], [Buffer.from('{}'), marker], [Buffer.from(marker), undefined]]) {
+    assert.throws(() => decodeObservationRequest(body, encoding))
+  }
+  for (const key of ['Authorization', 'cookie', 'x-api-key', 'chatgpt-account-id']) assert.equal(credentialHeadersPresent({ [key]: marker }), true)
+  assert.equal(credentialHeadersPresent({ 'content-type': 'application/json' }), false)
+  const sse = fictionalResponseEvents()
+  assert.deepEqual(sse.map(event => event.type), ['response.created', 'response.output_item.added', 'response.output_text.delta', 'response.output_item.done', 'response.completed'])
+  assert.equal(sse.at(-1).response.end_turn, true)
+  assert.deepEqual(sse[1].item.content, [])
+  assert.equal(sse[3].item.phase, 'final_answer')
+  assert.equal(sse[2].delta, sse[3].item.content[0].text)
+})
+
+test('offline injected child proves lifecycle, all closed rejection phases, startup-on-rejection and cleanup', async () => {
+  for (const fault of ['none', 'credentials', 'declarations', 'decode', 'bytes', 'boundary', 'timeout', 'output']) {
+    let directory, stdinReceived = false, url
+    const result = await observeStartup({ timeout: fault === 'timeout' ? 100 : 5000, launch: (_program, args, options) => {
+      directory = options.cwd
+      assert.equal(options.env.OPENAI_API_KEY, undefined)
+      assert.equal(options.env.CODEX_HOME, join(directory, 'home'))
+      assert.ok(!args.includes('suppress_unstable_features_warning=true'))
+      assert.ok(args.includes('model_providers.fictional_loopback.requires_openai_auth=false'))
+      url = JSON.parse(args.find(arg => arg.startsWith('model_providers.fictional_loopback.base_url=')).split('=').slice(1).join('='))
+      assert.equal(new URL(url).hostname, '127.0.0.1')
+      const child = new EventEmitter()
+      child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough()
+      let closed = false
+      child.kill = () => { if (!closed) { closed = true; setImmediate(() => child.emit('close', 0)) } }
+      const parts = []
+      child.stdin.on('data', part => parts.push(part))
+      child.stdin.on('end', async () => {
+        stdinReceived = true
+        assert.deepEqual(Buffer.concat(parts), startupFixturePrompt())
+        child.stdout.write(`${JSON.stringify({ type: 'item.completed', item: { type: 'error', message: 'Under-development features enabled: skip_host_skill_discovery. Details.' } })}\n`)
+        if (fault === 'timeout') return
+        if (fault === 'output') { child.stderr.write(marker.repeat(20000)); return }
+        try {
+          const response = await fetch(`${url}${fault === 'boundary' ? '/unknown' : '/responses'}`, { method: 'POST',
+            headers: fault === 'credentials' ? { authorization: marker } : {},
+            body: fault === 'bytes' ? 'x'.repeat(observationLimit + 1) : fault === 'decode' ? marker
+              : JSON.stringify({ input: [], ...(fault === 'declarations' ? { tools: [{ type: 'function', name: 'update_plan' }] } : {}) }) })
+          await response.text()
+          if (fault === 'none') child.stdout.write(`${events()}\n`)
+        } catch { /* The closed fixture failure is the only retained diagnostic. */ }
+        child.kill()
+      })
+      return child
+    } })
+    assert.equal(stdinReceived, true)
+    assert.equal(result.cleanup, true)
+    assert.equal(existsSync(directory), false)
+    if (!['output'].includes(fault)) assert.deepEqual(result.startup, ['under-development-feature-warning'])
+    assert.ok(!JSON.stringify(result).includes(marker))
+    const phases = { credentials: 'credential-boundary', declarations: 'capability-declarations', decode: 'request-decode', bytes: 'request-bytes', boundary: 'request-boundary', timeout: 'deadline', output: 'output-bytes' }
+    if (fault === 'none') { assert.equal(result.outcome, 'completed'); assert.equal(result.declarations.accepted, true) }
+    else assert.equal(result.phase, phases[fault])
+    await assert.rejects(fetch(`${url}/responses`))
+  }
+})
 
 test('startup observation sends the fixed projected fictional prompt and EOF to a real subprocess', async () => {
   const prompt = startupFixturePrompt()

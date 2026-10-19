@@ -1,5 +1,33 @@
 # Verification checkpoint - not accepted yet
 
+## New bounded checkpoint: primary protocol inspection
+
+The new PM checkpoint authorizes exactly one further unsuppressed observation
+after offline regressions; prior attempts remain exhausted and unaccepted.
+No runtime observation has occurred for this checkpoint at this commit.
+
+Primary source is Codex `rust-v0.163.0`: annotated tag
+`129b8ec7ee6f4511557a4856279f529025c25af4` resolves to commit
+`83086188ae0614bd882818ff1aa23f3194962012`.
+
+- [Serializer, common.rs](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/codex-api/src/common.rs#L287): optional top-level tools omit `None`.
+- [Request construction, client.rs](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/core/src/client.rs#L980): responses-lite omits top-level tools, embedding nonempty tools in `input` as `additional_tools`; standard Responses serializes the tools vector. Omission alone cannot establish zero capabilities. Fresh input must contain only messages and absent/empty declarations in both channels.
+- [Protocol models](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/protocol/src/models.rs#L1025): `AdditionalTools` serializes as `additional_tools` with a tools vector.
+- [SSE parser/tests](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/codex-api/src/sse/responses.rs#L354): message item added/done, text delta and completed response are supported. Completion requires a response ID; `end_turn` is optional. The fixture explicitly sets `end_turn=true`, uses `phase=final_answer`, and omits optional usage rather than constructing partial usage metadata.
+- [Tool registration](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/core/src/tools/spec_plan.rs#L1245): disabled ShellTool returns before command-tool registration regardless of model shell metadata. Utility tools separately register PlanHandler when `update_plan_enabled`; current production arguments do not override that setting. Runtime declarations must still be inspected; known plan metadata is not authorized exposure.
+
+The fixture now distinguishes closed HTTP rejection stages and omitted/empty/
+nonempty/malformed top-level and embedded tool fields. Every nonempty declaration
+rejects, including a safely named plan tool; unknown names are counted without
+printing them. Startup error classification runs even after HTTP rejection.
+Offline injected child tests exercise credential refusal, decode/request/output
+bounds, HTTP boundary, deadline, prompt/EOF and exact directory/listener cleanup.
+All 14 on-call tests pass. No production event-audit or configuration change.
+
+The custom-provider observation can attest only its tested provider/model metadata
+path. It is not a global CLI attestation or proof that different metadata cannot
+add utilities; trusted CLI/host and preserved configuration remain assumptions.
+
 Candidate lineage: `22f1e2e`, `9a56b9f`, then closed startup-phase diagnostics.
 Offline on-call tests: 9 passed. Combined operator tests before the latest added
 auth-mode case: 100 passed. No model inference occurs in those injected tests.
