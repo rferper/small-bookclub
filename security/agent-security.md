@@ -13,40 +13,36 @@ every installed host extension. This is a scoped inventory, not an attestation.
 |---|---|---|
 | Coding assistant | Terminal, repository edits, Git, network-capable provider CLIs and disposable test automation under the owner's task | Existing local provider logins are used by their tools. Terminal authority can exceed the task; instructions are not OS confinement. Never print/read credential contents into model context. |
 | Delegated PM/engineer/QA/security roles | Same shared host/workspace, narrowed by role/task instructions | Subagents, roles and worktrees do not isolate credentials. Delegate only as explicitly authorized by owner/workflow; share minimum necessary context and retain review evidence. |
-| Proposed on-call collector | Fixed Compose service lookups, validated container-ID state fields, two fixed private GETs | Operator Docker authority remains privileged. Command restrictions are program controls, not Docker RBAC. Internal telemetry can be forged; missing data stays unknown. |
-| Proposed on-call AI | Intended projected-packet input and closed advisory JSON, with tools disabled and strict event/schema/fact rejection | Existing ChatGPT login authenticates CLI transport; API-key mode is refused. Actual zero-tool declarations remain unestablished. Sandbox read-only and zero observed calls are insufficient proof. |
+| On-call collector (merged, #81) | Fixed Compose service lookups, validated container-ID state fields, two fixed private GETs | Operator Docker authority remains privileged. Command restrictions are program controls, not Docker RBAC. Internal telemetry can be forged; missing data stays unknown. |
+| On-call AI (merged, fictional input only) | Intended projected-packet input and closed advisory JSON, with tools disabled and strict event/schema/fact rejection | Existing ChatGPT login authenticates CLI transport; API-key mode is refused. Zero declarations observed once with fictional input; sandbox read-only and zero calls alone are insufficient proof. |
 | Issue82 deterministic scanners | Source/history scanning and public package/version advisory requests | No scanning-service account/key or source upload. Findings are projected and raw temporary data is removed. These tools are not AI agents or complete security proofs. |
 
-## Responder status: not accepted
+## Responder status: accepted for fictional input only
 
-Issue [#81](https://github.com/rferper/small-bookclub/issues/81#issuecomment-6266359008)
-is parked at local candidate `1bfc525`. The complete runner has accepted no saved
-fictional diagnosis. Its first bounded observation timed out because stdin was
-not closed; the corrected final observation reached its loopback fixture but was
-rejected before capability/startup classification. Neither result proves zero
-exposed tools, absent warnings or a root cause. Two observations are used; the
-conditional real run was not justified or attempted. No further experiment is
-implied by that original checkpoint. A subsequently re-groomed single observation
-inspected both top-level and Responses Lite embedded declarations: top-level tools
-were omitted, but two embedded declarations were nonempty/unclassified. It was
-rejected at the capability gate, with no credential-bearing headers and successful
-cleanup. Exact names and executable authority were not retained or established;
-do not guess them. The unused conditional real model check remains locked, and
-production warning suppression/event acceptance were not relaxed. Preserve this
-new checkpoint and strict gates; source-only redesign is the next step.
+Issue [#81](https://github.com/rferper/small-bookclub/issues/81) merged as PR #113
+(`a0cdba4`) with independent security and QA PASS. After earlier bounded observations
+were rejected (a missing-stdin timeout, a fixture rejection, and two unclassified
+embedded capability declarations), the catalogue redesign passed one observation:
+top-level and embedded declarations omitted, zero tool events, known startup warning
+classified, exact cleanup. One real CLI run used only fictional evidence and passed
+the event, schema and fact gates; the saved result is `ops/oncall/fictional-diagnosis.json`.
+Production error/unknown/tool-event rejection was never relaxed.
 
-Intended controls are visible in that candidate: fixed 64KiB projected input,
+This is not a real-incident run and not an attestation of the CLI. The output is
+advisory, the model has no remediation authority, and read-only sandboxing alone
+does not establish provider data handling. Do not feed it real club data without a
+new owner decision.
+
+Controls in the merged runner: fixed 64KiB projected input,
 empty ephemeral working directory, ignored user configuration/rules, no approvals,
 read-only sandbox, explicit capability disables, two-minute/128KiB event limit,
 16KiB schema/fact-checked result and exact temporary cleanup. These are reviewed
-design/source claims, not proof that the deployed/default CLI surface meets them.
-Do not activate operational model uploads or remediation while acceptance is
-unresolved. Source/helper paths in the inventory refer to the stated Git objects;
-the #81 candidate is intentionally local and absent from main.
+source claims plus one fictional observation, not proof for other CLI versions.
+Do not activate operational model uploads or remediation without a new decision.
 
 Merged #79/#80 already supply private opt-in telemetry and a deterministic local
-alert; they do not activate the AI. Issue82's remote candidate `0322da1` has actual
-sanitized scanner evidence and a pending human PR-audit validation; it also is not
+alert; they do not activate the AI. Issue82's scanners (PR #114) have actual
+sanitized evidence and a pending human PR-audit validation; they are not
 merged/closed in this snapshot. Later acceptance must be recorded with its actual
 revision/evidence, not inferred from the passage of time or this document.
 

@@ -89,9 +89,7 @@ Not exercised: a real incident, or a hosted rollback during this review.
   trusted-local-network limitation). Issue #82 stays open until it is recorded.
 - **#110 unresolved:** the intermittent Render verifier failure blocks the latest
   delivery and has no established cause.
-- **Stale text:** `security/agent-security.md` ("Responder status: not accepted") and
-  `ops/oncall/verification.md` predate the merge of #81 and contradict section 4.
-  They should be reconciled in a follow-up.
+- **Responder status docs:** reconciled with the #81 merge in issue #116.
 - Scanners are small, syntactic and incomplete, not a full audit. The tooling
   proves nothing about the real club instance, which has no deployment yet.
 - The monitoring stack is local; there is no hosted monitoring, paging or SLO.

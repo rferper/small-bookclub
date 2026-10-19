@@ -1,4 +1,7 @@
-# Verification checkpoint - not accepted yet
+# Verification log (accepted for fictional input; merged in #113)
+
+This log is chronological. Early sections record rejected observations that
+were later superseded by the final "Accepted fictional verification" section.
 
 ## Static-catalogue redesign awaiting independent pre-observation confirmation
 
