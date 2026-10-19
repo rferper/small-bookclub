@@ -283,6 +283,15 @@ test('diagnosis schema and evidence gates reject actions, text and invented obse
   const unknown = { ...diagnosis(), assessment: 'insufficient-evidence', evidenceRefs: ['service-health'] }
   assert.equal(validateDiagnosis(unknown, safe).assessment, 'insufficient-evidence')
 })
+test('saved fictional diagnosis passes schema, fact and provenance gates', () => {
+  const saved = JSON.parse(readFileSync(new URL('./fictional-diagnosis.json', import.meta.url), 'utf8'))
+  const projected = projectEvidence(packet())
+  assert.equal(saved.provenance.source, 'fictional-fixture')
+  assert.equal(saved.provenance.mode, 'read-only-no-tools')
+  assert.equal(saved.provenance.toolEvents, 0)
+  assert.equal(saved.provenance.inputSha256, createHash('sha256').update(JSON.stringify(projected)).digest('hex'))
+  assert.equal(validateDiagnosis(saved.diagnosis, projected), saved.diagnosis)
+})
 test('agent environment excludes API/deploy/Docker/GitHub secrets and tool settings are explicit', () => {
   assert.deepEqual(agentEnvironment({ PATH: 'bin', USERPROFILE: 'fictional-home', OPENAI_API_KEY: marker,
     CODEX_API_KEY: marker, GITHUB_TOKEN: marker, SECRET_KEY: marker, DOCKER_HOST: marker, RENDER_DEPLOY_HOOK: marker,

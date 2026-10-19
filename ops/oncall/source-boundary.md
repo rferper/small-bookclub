@@ -115,7 +115,9 @@ can wrap several function/custom leaves in a functions namespace. The observer
 projects wrapper and leaf counts separately, validates bounded one-level namespace
 structures, and rejects every nonempty/malformed/unknown declaration in either
 wire channel. Historical count two remains two serialized definitions, without
-proven identities/leaf counts. No observation has accepted this redesigned runner.
+proven identities/leaf counts. At the time of this source review, no observation
+had accepted the redesigned runner; the later bounded observation and fictional
+sample are recorded in [verification.md](verification.md).
 
 ## Limits
 
@@ -124,5 +126,6 @@ managed policy overriding/conflicting with the explicit gates, no injected MCP,
 dynamic tools, LocalBoardConnection, selected executor capability roots or custom
 extensions. Such injection is unsupported, not an absence proven by configuration.
 Source/binary version agreement is not attestation. Independent source-focused
-security confirmation must precede the new observation; final security/QA and all
-original acceptance checks remain required. The production event audit is unchanged.
+security confirmation preceded the bounded observation. Final security/QA and
+all original acceptance checks remain required before merge. The production event
+audit is unchanged.
