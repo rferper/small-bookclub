@@ -76,3 +76,29 @@ An offline real Node subprocess regression verifies the exact prompt bytes/hash
 arrive and EOF is received before its five-second timeout. On-call tests now pass
 10/10. This regression uses no CLI or model. No additional observation or real
 invocation has occurred; the remaining original observation awaits PM direction.
+
+### Second and final authorized observation
+
+PM clarified the missing-stdin correction and remaining original observation in
+[the issue checkpoint](https://github.com/rferper/small-bookclub/issues/81#issuecomment-6264905291).
+The engineer confirmed its announced second observation had not actually been
+invoked before its turn ended. The orchestrator then invoked the corrected,
+unsuppressed fixture exactly once, at candidate `2610599`.
+
+Closed result: `requestCount=1`, `credentialHeaders=false`, `tools=[]`,
+`startup=[]`, `outcome=fixture-rejected`, `cleanup=true`; process exit was 0
+because the observation reports its verdict as JSON, not as a production pass.
+The fixture reached its local request handler but rejected the request before
+completing classification. Empty tool/startup arrays therefore establish neither
+an empty capability surface nor absence of the original startup error. The
+specific rejected field was deliberately not retained; no cause is inferred.
+The temporary child/listener/directory were cleaned. No real model inference or
+credential forwarding occurred.
+
+Both authorized observations are now used. No production argument or event gate
+was relaxed; no conditional real invocation is justified or attempted. #81 is
+parked unmerged and incomplete. A concrete next investigation would add closed
+fixture rejection phases with offline adversarial coverage, then explicitly
+groom a new bounded observation allowance; it must not silently rerun this one.
+Full stack/CI, final security review and independent QA remain pending. Work on
+independent issues can continue without treating this checkpoint as acceptance.
