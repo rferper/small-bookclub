@@ -44,6 +44,12 @@
       "reviewBy": "2027-01-17"
     },
     {
+      "key": "semgrep:javascript-shell-execution:ops/oncall/startup-protocol.mjs:76:source-851106780f0e1926c24a55e41e6c2fade421df6e79bf9922de5f1b1940e260f2",
+      "disposition": "false-positive",
+      "rationale": "Inspected this exact source: RegExp.exec parses a fixed regular expression; it is not child_process execution or a shell command. Broad syntactic rule false positive.",
+      "reviewBy": "2027-01-17"
+    },
+    {
       "key": "gitleaks-history:discord-client-id:backend/tests/integration/test_backups.py:298:8eb9099ea804c87cbff68181ddad185a5d56b276",
       "disposition": "false-positive",
       "rationale": "Inspected test source and historical revision: fictional numeric Discord user ID used to test membership/backup form behavior, not an OAuth client secret, token or real club record.",

@@ -56,10 +56,12 @@ left partial findings) cannot be mistaken for a reviewed finding result.
 expiry. History keys include the immutable commit; current-file keys include the
 reviewed source hash, so changed source at the same line requires review again.
 Stale/duplicate/nonexistent exceptions fail. The initial 17 reviewed identities
-are seven RegExp.exec matches, eight fictional Discord user-ID matches across
-history/tree, and two callable unusable-password migration matches. None is a
-real credential or a shell command. The exact matches and rationales remain
-visible in triage; rules stay enabled. Review by 2027-01-17.
+were seven RegExp.exec matches, eight fictional Discord user-ID matches across
+history/tree, and two callable unusable-password migration matches. The current
+tree adds one exact source-bound RegExp.exec false positive in the startup
+protocol parser. None is a real credential or a shell command. The exact matches
+and rationales remain visible in triage; rules stay enabled. Review by
+2027-01-17.
 
 The actual secret-scanner regression generates a fictional token only in a
 temporary directory, proves a blocked result and complete redaction, and cleans
