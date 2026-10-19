@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { collectEvidence, projectEvidence, services, readSignals } from './collect.mjs'
 import { agentArguments, agentEnvironment, auditEvents, runDiagnosis, validateDiagnosis } from './diagnose.mjs'
+import { sendStartupFixture, startupFixturePrompt } from './startup-input.mjs'
 
 const marker = 'fictional-private-token'
 const packet = () => JSON.parse(readFileSync(new URL('./fictional-evidence.json', import.meta.url), 'utf8'))
@@ -16,6 +18,32 @@ const events = () => [
   { type: 'item.completed', item: { type: 'agent_message', text: JSON.stringify(diagnosis()) } },
   { type: 'turn.completed' },
 ].map(value => JSON.stringify(value)).join('\n')
+
+test('startup observation sends the fixed projected fictional prompt and EOF to a real subprocess', async () => {
+  const prompt = startupFixturePrompt()
+  assert.ok(prompt.length > 0 && prompt.length <= 65536)
+  const text = prompt.toString('utf8')
+  assert.ok(text.includes('<operational-evidence>'))
+  const evidence = JSON.parse(text.split('<operational-evidence>\n')[1].split('\n</operational-evidence>')[0])
+  assert.deepEqual(evidence, projectEvidence(packet()))
+  assert.equal(evidence.source, 'fictional-fixture')
+  const child = spawn(process.execPath, ['--input-type=module', '-e',
+    "import {createHash} from 'node:crypto';const parts=[];for await(const part of process.stdin)parts.push(part);const input=Buffer.concat(parts);console.log(JSON.stringify({bytes:input.length,sha256:createHash('sha256').update(input).digest('hex')}))"],
+  { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+  const output = []
+  child.stdout.on('data', part => output.push(part))
+  let failed = false
+  const closed = new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve) })
+  const timer = setTimeout(() => child.kill(), 5000)
+  try {
+    assert.equal(sendStartupFixture(child, () => { failed = true; child.kill() }), prompt.length)
+    assert.equal(await closed, 0, 'subprocess must receive EOF before its timeout')
+    assert.equal(failed, false)
+    assert.deepEqual(JSON.parse(Buffer.concat(output).toString('utf8')), {
+      bytes: prompt.length, sha256: createHash('sha256').update(prompt).digest('hex'),
+    })
+  } finally { clearTimeout(timer); child.kill() }
+})
 
 test('projection discards untrusted prose, labels, config and raw logs', () => {
   const input = packet()

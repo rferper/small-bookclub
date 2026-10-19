@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { zstdDecompressSync } from 'node:zlib'
 import { agentArguments, agentEnvironment } from './diagnose.mjs'
+import { sendStartupFixture } from './startup-input.mjs'
 
 const suppress = process.argv.slice(2)
 if (suppress.length > 1 || suppress.length && suppress[0] !== '--suppress-warning') throw new Error('Invalid observation mode')
@@ -75,6 +76,11 @@ try {
     ...(suppress.length ? ['suppress_unstable_features_warning=true'] : [])]) args.push('-c', setting)
   args.push('-')
   child = spawn('codex', args, { cwd: directory, env: environment, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'] })
+  bytes += sendStartupFixture(child, () => {
+    rejected = true
+    result.outcome = 'input-failed'
+    child.kill()
+  })
   const output = []
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => {
     bytes += chunk.length

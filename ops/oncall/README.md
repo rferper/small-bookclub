@@ -89,12 +89,12 @@ causes remain hypotheses, human approval is always required, and actionsTaken
 must be empty. Failures suppress raw agent/stderr/credential details. Only this
 exact generated temporary directory is removed; user configuration is unchanged.
 
-The saved [fictional diagnosis](fictional-diagnosis.json) records one actual
-headless run, projected-input SHA-256, tested CLI and a zero-tool-event audit.
-Zero observed calls do not prove that no tools were exposed: the primary boundary
-is the explicit configuration on this trusted, pinned CLI without managed tool
-injection. The [verification note](verification.md) distinguishes live inference from offline
-subprocess tests. It is not evidence of a production incident or repair.
+No fictional diagnosis has passed the complete runner gates yet; no accepted
+diagnosis/provenance artifact exists. The [verification note](verification.md)
+records the bounded investigation checkpoint and distinguishes live attempts
+from offline subprocess tests. Zero observed calls do not prove that no tools
+were exposed; actual outbound capability declarations still need verification.
+No production incident or repair is established.
 
 ## Verify and use the result
 

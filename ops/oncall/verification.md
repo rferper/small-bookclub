@@ -61,3 +61,18 @@ No accepted diagnosis/provenance exists; complete stack/CI/full suites and final
 security/QA remain pending. Next decision: PM/owner must explicitly authorize a
 revised bounded startup investigation or choose another no-tool transport whose
 capability boundary can be independently established. No rerun is implied.
+
+### Static correction to the observation harness
+
+Review found a harness defect: the CLI arguments end in `-`, but the original
+fixture never wrote or closed child stdin. The CLI could therefore wait for
+prompt EOF before sending any request. This invalidates that timeout as evidence
+about the candidate's provider startup; it does not establish the cause of the
+production error item. The corrected harness sends the fixed task and projected
+fictional packet (at most 64 KiB), closes stdin and handles pipe errors with a
+closed `input-failed` classification. Combined input/output remains bounded.
+
+An offline real Node subprocess regression verifies the exact prompt bytes/hash
+arrive and EOF is received before its five-second timeout. On-call tests now pass
+10/10. This regression uses no CLI or model. No additional observation or real
+invocation has occurred; the remaining original observation awaits PM direction.
