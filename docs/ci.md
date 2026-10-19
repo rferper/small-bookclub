@@ -20,7 +20,7 @@ runner. Browser full-stack journeys remain #54.
 After both jobs succeed, the container job validates Compose and builds both
 multi-stage images with Buildx. It does not push images or start a deployment.
 The final **All CI checks passed** job runs even when prerequisites fail and
-requires backend, frontend, containers and observability results to be `success`;
+requires backend, frontend, containers, observability and security results to be `success`;
 failed, skipped or cancelled jobs
 cannot produce a green aggregate result. Delivery requires this successful result;
 no repository protection settings are changed.
@@ -33,6 +33,14 @@ alert rule tests, real private firing/resolved delivery and exact-project cleanu
 are assertions. Only the fictional dashboard PNG is
 retained for three days; a failed observability job blocks the required aggregate
 and delivery. See [local observability](../ops/observability/README.md).
+
+The independent security job installs checksum-verified Gitleaks and pinned
+Semgrep CE/pip-audit, verifies fictional detection/redaction and local rule
+fixtures, then scans the tracked tree/full git history and both dependency locks.
+Execution failures and untriaged findings block the aggregate. Only the projected
+JSON summary is retained for three days; raw scanner output and secret matches
+are never artifacts. See [security evidence](../security/README.md) for exact
+commands, source-bound expiring false-positive triage and coverage limits.
 
 All shell steps use Bash's fail-fast behavior. No test/check uses
 `continue-on-error` or masks its exit status. New branch/PR pushes cancel older runs. Main runs queue without cancellation so
