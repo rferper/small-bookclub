@@ -1,0 +1,102 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "assessment": {
+      "type": "string",
+      "enum": [
+        "api-errors-observed",
+        "service-unhealthy",
+        "no-active-alert",
+        "insufficient-evidence"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium"
+      ]
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "enum": [
+          "alert-rule",
+          "notifications",
+          "service-health"
+        ]
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "enum": [
+          "application-regression",
+          "dependency-failure",
+          "telemetry-gap",
+          "resource-pressure",
+          "unknown"
+        ]
+      }
+    },
+    "nextSteps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "enum": [
+          "inspect-release",
+          "inspect-service-state",
+          "check-telemetry",
+          "wait-and-recheck",
+          "ask-owner"
+        ]
+      }
+    },
+    "humanApprovalRequired": {
+      "type": "boolean",
+      "enum": [
+        true
+      ]
+    },
+    "actionsTaken": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {
+        "type": "string"
+      }
+    },
+    "runbook": {
+      "type": "string",
+      "enum": [
+        "ops/runbooks/api-errors.md",
+        "ops/runbooks/recovery.md"
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "assessment",
+    "confidence",
+    "evidenceRefs",
+    "hypotheses",
+    "nextSteps",
+    "humanApprovalRequired",
+    "actionsTaken",
+    "runbook"
+  ]
+}

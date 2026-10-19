@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "modelAllowed": [
+    "read-projected-packet",
+    "return-schema-diagnosis"
+  ],
+  "modelDenied": [
+    "shell",
+    "exec",
+    "web",
+    "mcp",
+    "apps",
+    "plugins",
+    "subagents",
+    "files",
+    "production",
+    "remediation",
+    "messaging"
+  ],
+  "collectorAllowed": [
+    "compose-ps-known-service",
+    "inspect-fixed-state-fields",
+    "get-prometheus-rules",
+    "get-receiver-events"
+  ],
+  "ownerOnly": [
+    "deploy",
+    "rollback",
+    "restart",
+    "database-restore",
+    "secret-management"
+  ],
+  "inputMaxBytes": 65536,
+  "timeoutMs": 120000,
+  "outputMaxBytes": 16384,
+  "liveEvidenceRequiresOptIn": true
+}
