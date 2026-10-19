@@ -24,9 +24,51 @@ services:
     command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=24h, --storage.tsdb.retention.size=128MB]
     volumes:
       - ./ops/observability/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/alerts.yaml:/etc/prometheus/alerts.yaml:ro
+      - ./ops/alerts/tests.yaml:/etc/prometheus/alerts/tests.yaml:ro
       - telemetry_metrics:/prometheus
     networks: [observability]
     mem_limit: 256m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  alertmanager:
+    image: prom/alertmanager:v0.32.0
+    user: '65534:65534'
+    command: [--config.file=/etc/alertmanager/bookclub.yaml, --storage.path=/alertmanager, --data.retention=24h, --cluster.listen-address=]
+    volumes:
+      - ./ops/alerts/alertmanager.yaml:/etc/alertmanager/bookclub.yaml:ro
+      - telemetry_alerts:/alertmanager
+    networks: [observability]
+    mem_limit: 128m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on: [alert-receiver]
+  alert-receiver:
+    image: node:24-alpine
+    user: '10001:10001'
+    command: [node, --max-old-space-size=32, /app/receiver.mjs]
+    volumes:
+      - ./ops/alerts/receiver.mjs:/app/receiver.mjs:ro
+    networks: [observability]
+    mem_limit: 96m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: '3'
+  alert-fixture:
+    image: node:24-alpine
+    user: '10001:10001'
+    profiles: [alert-test]
+    command: [node, --max-old-space-size=32, /app/fixture.mjs]
+    volumes:
+      - ./ops/alerts/fixture.mjs:/app/fixture.mjs:ro
+    networks: [observability]
+    mem_limit: 96m
+    read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
   loki:
@@ -97,3 +139,4 @@ volumes:
   telemetry_logs:
   telemetry_traces:
   telemetry_dashboard:
+  telemetry_alerts:

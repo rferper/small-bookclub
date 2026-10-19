@@ -105,7 +105,8 @@ not enforce that as a hard total deadline and may drain queued work longer.
 Container shutdown grace can interrupt export; losing monitoring records is
 acceptable. Export failure must not alter application responses. Collector queues
 and retries are bounded, and memory limits can restart a service. This fixture
-has no high availability, alert routing or production authentication design.
+has no high availability or production authentication design. The local-only
+API-error notification path and its limitations are in [the alert runbook](../alerts/README.md).
 
 ## Read the dashboard
 

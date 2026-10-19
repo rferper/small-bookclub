@@ -1,0 +1,153 @@
+rule_files:
+- ../alerts.yaml
+evaluation_interval: 5s
+tests:
+- name: sustained errors pending then firing
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x30
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x30
+  alert_rule_test:
+  - eval_time: 30s
+    alertname: BookclubApiErrors
+    exp_alerts: []
+  - eval_time: 2m
+    alertname: BookclubApiErrors
+    exp_alerts:
+    - exp_labels:
+        deployment_environment_name: test
+        service_version: release-4444444444444444444444444444444444444444
+        severity: critical
+        service: small-bookclub-backend
+      exp_annotations: &id001
+        summary: Errores del servidor afectan a la API del club
+        error_ratio: '0.5'
+        runbook: ops/alerts/README.md
+- name: healthy API
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+10x30
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: client denials are not server failures
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="401",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+10x30
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: low ratio
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+1x30
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+99x30
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: low traffic
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+0.1x30
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+0.1x30
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: brief error burst recovers before firing
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0 4 4+0x30
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0 4 4+100x30
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: recovery clears alert
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x8 40+0x24
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x33
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: BookclubApiErrors
+    exp_alerts:
+    - exp_labels:
+        deployment_environment_name: test
+        service_version: release-4444444444444444444444444444444444444444
+        severity: critical
+        service: small-bookclub-backend
+      exp_annotations: *id001
+  - eval_time: 6m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: reset counters still count failures
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x8 0+5x24
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x8 0+5x24
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: BookclubApiErrors
+    exp_alerts:
+    - exp_labels:
+        deployment_environment_name: test
+        service_version: release-4444444444444444444444444444444444444444
+        severity: critical
+        service: small-bookclub-backend
+      exp_annotations: *id001
+- name: health and unmatched excluded
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/health",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+10x30
+  - series: bookclub_http_requests_total{http_route="unmatched",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+10x30
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: missing data is not healthy nor a user impact alert
+  interval: 15s
+  input_series: []
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: BookclubApiErrors
+    exp_alerts: []
+- name: stale metrics stop firing
+  interval: 15s
+  input_series:
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="500",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x8 stale _x24
+  - series: bookclub_http_requests_total{http_route="/api/books",http_response_status_code="200",deployment_environment_name="test",service_version="release-4444444444444444444444444444444444444444"}
+    values: 0+5x8 stale _x24
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: BookclubApiErrors
+    exp_alerts:
+    - exp_labels:
+        deployment_environment_name: test
+        service_version: release-4444444444444444444444444444444444444444
+        severity: critical
+        service: small-bookclub-backend
+      exp_annotations: *id001
+  - eval_time: 6m
+    alertname: BookclubApiErrors
+    exp_alerts: []
