@@ -50,6 +50,8 @@ The revision identifies HEAD; the scanned tracked working tree may include stage
 changes. A committed snapshot describes the stated observation, not future code.
 
 Every scanner/network/parse failure and every untriaged finding blocks success.
+Gitleaks uses finding exit code 10 so an operational failure (including one that
+left partial findings) cannot be mistaken for a reviewed finding result.
 `triage.json` accepts only exact false-positive findings with rationale and an
 expiry. History keys include the immutable commit; current-file keys include the
 reviewed source hash, so changed source at the same line requires review again.

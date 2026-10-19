@@ -41,6 +41,10 @@ test('failed, incomplete, malformed or unknown scanner results fail closed', () 
   for (const filename of ['../../private', '/absolute', 'C:/private', marker + '\n']) {
     assert.throws(() => projectFindings('gitleaks-tree', [{ RuleID: 'fictional', File: filename, StartLine: 1 }]))
   }
+  const partial = [{ RuleID: 'fictional', File: 'fictional.txt', StartLine: 1 }]
+  assert.equal(classifyScan('gitleaks-tree', { status: 1 }, partial).status, 'scanner-failed')
+  assert.equal(classifyScan('gitleaks-tree', { status: 10 }, partial).status, 'findings')
+  assert.equal(classifyScan('gitleaks-tree', { status: 10 }, []).status, 'scanner-failed')
 })
 test('dependency summaries project public identities and reject skipped packages', () => {
   const pip = projectFindings('pip-audit', { dependencies: [{ name: 'fictional', version: '1.0', vulns: [{ id: 'PYSEC-0000-1', fix_versions: ['1.1'], description: marker }] }] })
@@ -79,7 +83,7 @@ test('actual Gitleaks blocks a fictional token, redacts it, and accepts an empty
   const directory = mkdtempSync(join(tmpdir(), 'bookclub-secret-probe-'))
   try {
     const file = join(directory, 'report.json')
-    const args = ['dir', directory, '--redact=100', '--no-banner', '--report-format', 'json', '--report-path', file]
+    const args = ['dir', directory, '--exit-code=10', '--redact=100', '--no-banner', '--report-format', 'json', '--report-path', file]
     const options = { encoding: 'utf8', shell: false, windowsHide: true, timeout: 30000, maxBuffer: 65536 }
     const clean = spawnSync(process.env.GITLEAKS_BIN, args, options)
     assert.equal(clean.status, 0)
@@ -87,7 +91,7 @@ test('actual Gitleaks blocks a fictional token, redacts it, and accepts an empty
     const fictional = 'ghp_' + randomBytes(27).toString('base64url').replaceAll('-', 'A').replaceAll('_', 'B')
     writeFileSync(join(directory, 'fictional.txt'), `fictional_token = "${fictional}"`)
     const blocked = spawnSync(process.env.GITLEAKS_BIN, args, options)
-    assert.equal(blocked.status, 1)
+    assert.equal(blocked.status, 10)
     const raw = readFileSync(file, 'utf8')
     assert.ok(!raw.includes(fictional))
     assert.ok(!`${blocked.stdout}${blocked.stderr}`.includes(fictional))

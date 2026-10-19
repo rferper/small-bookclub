@@ -47,10 +47,11 @@ export function projectFindings(tool, raw, { treeRoot } = {}) {
 }
 
 export function classifyScan(tool, result, raw, options) {
-  if (result.error || ![0, 1].includes(result.status)) return { tool, status: 'scanner-failed', findings: [] }
+  const findingExit = tool.startsWith('gitleaks-') ? 10 : 1
+  if (result.error || ![0, findingExit].includes(result.status)) return { tool, status: 'scanner-failed', findings: [] }
   try {
     const findings = projectFindings(tool, raw, options)
-    if (result.status === 1 && findings.length === 0) return { tool, status: 'scanner-failed', findings: [] }
+    if (result.status === findingExit && findings.length === 0) return { tool, status: 'scanner-failed', findings: [] }
     return { tool, status: findings.length ? 'findings' : 'passed', findings }
   } catch { return { tool, status: 'invalid-output', findings: [] } }
 }
@@ -119,7 +120,7 @@ export function runScans(outputDirectory, { run = spawnSync } = {}) {
     catch { scans.push({ tool: 'npm-audit', status: 'invalid-output', findings: [] }) }
     for (const [tool, mode, target] of [['gitleaks-history', 'git', root], ['gitleaks-tree', 'dir', tree]]) {
       const report = join(temporary, `${tool}.json`)
-      const result = command(gitleaks, [mode, target, '--redact=100', '--no-banner', '--report-format', 'json', '--report-path', report, ...(mode === 'git' ? ['--log-opts=--all'] : [])])
+      const result = command(gitleaks, [mode, target, '--exit-code=10', '--redact=100', '--no-banner', '--report-format', 'json', '--report-path', report, ...(mode === 'git' ? ['--log-opts=--all'] : [])])
       try { scans.push(classifyScan(tool, result, read(report), { treeRoot: tree })) }
       catch { scans.push({ tool, status: 'invalid-output', findings: [] }) }
     }
