@@ -66,3 +66,4 @@ Read a document when its topic applies; do not load all of them by default.
 - `docs/testing-guidelines.md`: read before writing or reviewing tests.
 - `docs/design-system.md`: read before any frontend UI or CSS work.
 - `docs/decisions.md`: technical decisions already made. Read before choosing a library or pattern.
+- `security/ai-tool-data-policy.md` and `security/agent-security.md`: permitted agent data, tool authority, approval reuse, provenance and known gaps. Read before new agent/tool/data-flow work.
