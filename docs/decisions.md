@@ -1184,3 +1184,15 @@ rate exists, preserving missing-data state when baseline metrics are unavailable
 ## 2026-10-19: Local user-impact alert (#80)
 
 Keep monitoring opt-in and local. One Prometheus API-error predicate requires an estimated three 5xx responses and 20% errors over two minutes, sustained for one minute, grouped by environment/release; exclude health, unmatched and status-less overflow. Add published `prom/alertmanager:v0.32.0` (Apache-2.0) for grouped firing/resolved delivery to a private standard-library Node 24 receiver. No npm/Python dependency, account or secret. The terminal is the supported watched notification channel; no hosted/phone/email notification promise. Receiver projects fixed operational fields into a 64-event memory buffer/rotated console logs with bounded HTTP input/connections/timeouts; no outward calls or actions. Internal network is trusted, not an authentication boundary. An explicit test profile emits synthetic OTLP counters with a separate test release to exercise the unchanged rule and real delivery/recovery; never alter app responses or owner data. Missing telemetry and complete outages remain outside this single error-rate alert. Record each issue independently before starting the next.
+
+## 2026-10-19: Agent authority and data inventory (#83)
+
+Use a dated JSON inventory plus readable source/CLI-metadata review, without a
+new host scanner, credential/configuration crawl or dependency. Distinguish AI
+roles from deterministic tools, actual authority from intended restrictions,
+merged controls from unaccepted candidates, and written policy from technical
+confinement. Record immutable source references and explicit unknowns. Preserve
+existing routine-work/terminal-verification/CI-CD authorization, prohibit real
+club records and secrets in model context, and require accepted responder gates
+before live operational uploads. This documents current scope rather than
+installing enforcement or claiming provider privacy guarantees.
