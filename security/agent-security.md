@@ -20,13 +20,20 @@ every installed host extension. This is a scoped inventory, not an attestation.
 ## Responder status: not accepted
 
 Issue [#81](https://github.com/rferper/small-bookclub/issues/81#issuecomment-6266359008)
-is parked at local candidate `96a7047`. The complete runner has accepted no saved
+is parked at local candidate `1bfc525`. The complete runner has accepted no saved
 fictional diagnosis. Its first bounded observation timed out because stdin was
 not closed; the corrected final observation reached its loopback fixture but was
 rejected before capability/startup classification. Neither result proves zero
 exposed tools, absent warnings or a root cause. Two observations are used; the
 conditional real run was not justified or attempted. No further experiment is
-implied by this inventory. Preserve the existing checkpoint and strict gates.
+implied by that original checkpoint. A subsequently re-groomed single observation
+inspected both top-level and Responses Lite embedded declarations: top-level tools
+were omitted, but two embedded declarations were nonempty/unclassified. It was
+rejected at the capability gate, with no credential-bearing headers and successful
+cleanup. Exact names and executable authority were not retained or established;
+do not guess them. The unused conditional real model check remains locked, and
+production warning suppression/event acceptance were not relaxed. Preserve this
+new checkpoint and strict gates; source-only redesign is the next step.
 
 Intended controls are visible in that candidate: fixed 64KiB projected input,
 empty ephemeral working directory, ignored user configuration/rules, no approvals,
