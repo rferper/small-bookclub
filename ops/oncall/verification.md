@@ -191,3 +191,26 @@ fixture rejection phases with offline adversarial coverage, then explicitly
 groom a new bounded observation allowance; it must not silently rerun this one.
 Full stack/CI, final security review and independent QA remain pending. Work on
 independent issues can continue without treating this checkpoint as acceptance.
+
+### Accepted fictional verification after catalogue redesign
+
+At candidate `0f702c0` plus the narrowly reviewed warning setting, the independent
+source review confirmed the prerequisite for one already-authorized observation.
+The unsuppressed loopback observer made exactly one no-auth request: top-level
+and embedded declarations were omitted, wrapper/leaf counts were zero, the
+declaration gate accepted, the known under-development warning was classified,
+the event stream completed, and exact temporary cleanup passed. No payload or
+credential headers were retained.
+
+The fixed `suppress_unstable_features_warning=true` setting addresses only that
+classified startup notice. Offline regressions still reject error events and
+unknown startup errors; the production event audit is unchanged. The single
+conditional real CLI invocation used only fictional evidence and passed the
+event, schema and fact gates with zero tool events. Its bounded diagnosis and
+input hash are in `fictional-diagnosis.json`.
+
+`node ops/verify-observability.mjs` then passed the real disposable stack,
+including alert firing/recovery, private read-only evidence collection,
+collector outage handling, dashboard permissions and exact cleanup. Final
+independent security confirmation, full CI and independent QA remain required
+before merge.

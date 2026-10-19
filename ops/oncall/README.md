@@ -92,12 +92,11 @@ causes remain hypotheses, human approval is always required, and actionsTaken
 must be empty. Failures suppress raw agent/stderr/credential details. Only this
 exact generated temporary directory is removed; user configuration is unchanged.
 
-No fictional diagnosis has passed the complete runner gates yet; no accepted
-diagnosis/provenance artifact exists. The [verification note](verification.md)
-records the bounded investigation checkpoint and distinguishes live attempts
-from offline subprocess tests. Zero observed calls do not prove that no tools
-were exposed; actual outbound capability declarations still need verification.
-No production incident or repair is established.
+The accepted fictional diagnosis and its provenance are recorded in
+`fictional-diagnosis.json`; the [verification note](verification.md) records the
+bounded no-auth capability observation, runner gates and full-stack verification.
+This verifies the fixed fictional sample only. No production incident or repair
+is established.
 
 ## Verify and use the result
 

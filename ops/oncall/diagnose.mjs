@@ -34,6 +34,7 @@ export function agentArguments(workspace) {
     '--sandbox', 'read-only', '--json', '--color', 'never', '--output-schema', join(workspace, 'schema.json'),
     '--output-last-message', join(workspace, 'diagnosis.json')]
   for (const setting of ['approval_policy="never"', 'web_search="disabled"', 'project_doc_max_bytes=0', 'analytics.enabled=false',
+    'suppress_unstable_features_warning=true',
     'tools.update_plan.enabled=false', 'tools.experimental_request_user_input.enabled=false',
     `model_catalog_json=${JSON.stringify(join(workspace, 'model-catalog.json'))}`,
     'cloud.skills.enabled=false', 'orchestrator.mcp.enabled=false',

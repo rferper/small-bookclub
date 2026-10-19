@@ -45,6 +45,7 @@ test('closed single-model catalog rejects parse/missing/mismatch/extra/safety ch
   }
   const args = agentArguments('fictional-temp')
   assert.equal(args[args.indexOf('--model') + 1], 'gpt-6.1-sol')
+  assert.ok(args.includes('suppress_unstable_features_warning=true'))
   assert.ok(args.includes(`model_catalog_json=${JSON.stringify(join('fictional-temp', 'model-catalog.json'))}`))
   for (const setting of ['cloud.skills.enabled=false', 'orchestrator.mcp.enabled=false', 'features.memories=false',
     'features.agent_message_board=false', 'features.multi_agent_v2=false', 'features.deferred_executor=false',
@@ -151,7 +152,7 @@ test('offline injected child proves lifecycle, all closed rejection phases, star
       directory = options.cwd
       assert.equal(options.env.OPENAI_API_KEY, undefined)
       assert.equal(options.env.CODEX_HOME, join(directory, 'home'))
-      assert.ok(!args.includes('suppress_unstable_features_warning=true'))
+      assert.ok(args.includes('suppress_unstable_features_warning=true'))
       assert.ok(args.includes('model_providers.fictional_loopback.requires_openai_auth=false'))
       url = JSON.parse(args.find(arg => arg.startsWith('model_providers.fictional_loopback.base_url=')).split('=').slice(1).join('='))
       assert.equal(new URL(url).hostname, '127.0.0.1')
