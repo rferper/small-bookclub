@@ -35,8 +35,14 @@ while (Date.now() < deadline) {
   await new Promise(resolve => setTimeout(resolve, 2000))
 }
 assert.ok(ready, 'Django health must respond over verified TLS within 120 seconds')
+const STARTUP_SETTLE_MS = 2000
 const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
 const browser = await chromium.launch()
+// #110: Chromium's network-change notifier reports a spurious IP-address change
+// within ~1 s of startup (observed 109-1019 ms; the host's interfaces did not
+// change). Requests in flight at that moment fail with ERR_NETWORK_CHANGED, so
+// start none until the startup window has passed. All assertions stay strict.
+await new Promise(resolve => setTimeout(resolve, STARTUP_SETTLE_MS))
 let page
 const errors = [], failed = [], bad = []
 try {
