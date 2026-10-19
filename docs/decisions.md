@@ -1202,3 +1202,36 @@ exact finding identity, rationale and expiring review, never category suppressio
 References: [Semgrep CE](https://semgrep.dev/products/community-edition/),
 [pip-audit](https://github.com/pypa/pip-audit),
 [Gitleaks](https://github.com/gitleaks/gitleaks).
+
+## 2026-10-19: Packet-only read-only AI first response (#81)
+
+Separate a deterministic fixed-query local Docker collector from a headless model. Re-project bounded state/health/rule/notification fields; no logs/config/SQL/business data. Run installed Codex CLI 0.163.0 with its existing ChatGPT authentication, default model and no API-key fallback, in an empty ephemeral read-only working directory with execution/web/apps/plugins/subagents/skills disabled and user configuration ignored. Local evidence transmission requires explicit operator opt-in; the manual verified sample is fictional. Validate a closed advisory enum schema and supported observations, reject tool/unknown events and suppress raw diagnostics; always require a human and take zero actions. Trusted CLI/host policy remains an assumption, not a claim that a read-only sandbox itself redacts secrets or restricts a Docker account. Reuse existing AJV 8.20.0 for output validation; no new dependency/account/key. Offline subprocess tests and real-stack safe collection run in CI, model inference does not. Owner-only runbooks link existing tested recovery paths; no automatic remediation. Keep the POSIX wrapper LF across checkouts.
+
+## 2026-10-19: Pin reviewed responder model metadata (#81)
+
+Supersede implicit CLI-default selection with literal `gpt-6.1-sol`, the listed
+priority-1 model in pinned Codex 0.163.0 bundled source. Use a complete closed
+single-entry local model catalogue with disabled shell/apply-patch/experimental/
+collaboration/search metadata and direct tool mode, retaining responses-lite
+transport. Validate exact structure/values before any child; no caller/evidence,
+remote/cache, missing-model or default-model fallback. Catalogue availability is
+not account entitlement; existing ChatGPT login/provider/sandbox remain and an
+unavailable model fails closed. Explicit independent registry/extension gates are
+also necessary, including cloud skills, orchestrator MCP and history notes.
+See [source boundary](../ops/oncall/source-boundary.md) for immutable source
+construction/registration/refresh provenance, annotated tag resolution and limits.
+Version agreement is not binary attestation; trusted fresh host without managed
+tool/capability injection remains an assumption. No dependency/account/key added;
+the bounded fictional verification and required reviews passed before merge `a0cdba4`.
+
+## 2026-10-19: Agent authority and data inventory (#83)
+
+Use a dated JSON inventory plus readable source/CLI-metadata review, without a
+new host scanner, credential/configuration crawl or dependency. Distinguish AI
+roles from deterministic tools, actual authority from intended restrictions,
+merged controls from unaccepted candidates, and written policy from technical
+confinement. Record immutable source references and explicit unknowns. Preserve
+existing routine-work/terminal-verification/CI-CD authorization, prohibit real
+club records and secrets in model context, and require accepted responder gates
+before live operational uploads. This documents current scope rather than
+installing enforcement or claiming provider privacy guarantees.

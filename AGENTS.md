@@ -48,6 +48,7 @@ The frontend exists; backend commands work once `backend/` is created.
 - A change is done only when its tests pass. Never claim something works without running it.
 - Stay inside the issue you were given. If you find other needed work, say so in an issue comment instead of doing it.
 - Default issue workflow: one implementer reads and grooms the issue as needed, implements and tests it, and posts a GitHub handoff. Use a brief independent security review when authentication, permissions or spoilers warrant one. The full PM → engineer → QA loop is a fallback, not mandatory; see `docs/process.md`.
+- Optimize for low token usage: keep handoffs short, share only relevant context, avoid repeated role/checkpoint conversations, and stabilize a candidate before full CI. Preserve required tests and security gates; reserve additional agents and expensive reasoning for work that needs them.
 - Record reversible technical decisions in `docs/decisions.md`.
 - When the user corrects how an agent works, update this file or the relevant linked doc.
 - Before asking the owner to choose or connect a hosting account, explain the realistic options in plain language, their free-tier conditions, data persistence, maintenance and payment-card requirements, and a recommendation. Discuss those tradeoffs before treating hosting selection as an account-connection step.
@@ -66,3 +67,4 @@ Read a document when its topic applies; do not load all of them by default.
 - `docs/testing-guidelines.md`: read before writing or reviewing tests.
 - `docs/design-system.md`: read before any frontend UI or CSS work.
 - `docs/decisions.md`: technical decisions already made. Read before choosing a library or pattern.
+- `security/ai-tool-data-policy.md` and `security/agent-security.md`: permitted agent data, tool authority, approval reuse, provenance and known gaps. Read before new agent/tool/data-flow work.

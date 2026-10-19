@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-19",
+  "method": "repository-source-and-existing-CLI-metadata-review",
+  "hostVulnerabilityScanPerformed": false,
+  "sources": [
+    { "revision": "4a0565a803d2c077247c931ef9faa47dd8ceaddf", "availability": "merged", "paths": ["AGENTS.md", "docs/process.md", ".github/workflows/ci.yml", ".github/workflows/deploy.yml", "ops/compose.observability.yml"] },
+    { "revision": "1bfc525ca373850ff0054961dccd58bded8b212f", "availability": "local-unmerged-candidate", "paths": ["ops/oncall/diagnose.mjs", "ops/oncall/collect.mjs", "ops/oncall/verification.md", "ops/oncall/autonomy-policy.json"] },
+    { "revision": "0322da1152d08ed5ac5bc359b02416a2400ee9bc", "availability": "remote-unmerged-candidate", "paths": ["security/scan.mjs", "security/triage.json", "security/pr-audit-112.md"] }
+  ],
+  "components": [
+    {
+      "id": "coding-assistant",
+      "kind": "ai",
+      "status": "active-under-owner-task",
+      "provenance": "Existing assistant runtime; repository does not pin its model or establish host isolation.",
+      "authority": ["read-and-edit-authorized-source", "terminal-subprocesses", "network-capable-provider-CLIs", "git-commits-and-approved-issue-workflow", "disposable-fictional-verification"],
+      "credentials": ["existing-provider-local-authentication", "existing-step-scoped-CI-secrets-used-by-delivery-tools"],
+      "modelData": ["authorized-source", "fictional-fixtures", "public-technical-documentation", "reviewed-nonbusiness-operational-metadata"],
+      "knownGaps": ["Terminal authority can exceed the intended task scope.", "Written instructions and reviews do not create an OS sandbox.", "Host tools, extensions and account settings are not fully enumerated by this repository review."]
+    },
+    {
+      "id": "delegated-roles",
+      "kind": "ai",
+      "status": "only-when-workflow-or-owner-authorizes",
+      "provenance": "Role instructions in docs/team; PM/engineer/QA fallback and warranted risk-focused review.",
+      "authority": ["shared-workspace-and-host-tool-authority", "role-limited-task"],
+      "credentials": ["same-host-access-risk-as-coding-assistant"],
+      "modelData": ["minimum-necessary-authorized-source", "fictional-evidence"],
+      "knownGaps": ["Roles and separate branches are not credential or process isolation.", "Independent review is a second judgment, not proof of technical confinement."]
+    },
+    {
+      "id": "oncall-evidence-collector",
+      "kind": "deterministic-program",
+      "status": "unmerged-candidate",
+      "provenance": "Issue81 fixed Node collector and shell wrapper; separate from the AI process.",
+      "authority": ["fixed-known-service-compose-ps", "validated-container-ID-inspect-state", "fixed-internal-rule-and-receiver-GETs"],
+      "credentials": ["operator-Docker-authority"],
+      "modelData": ["projected-nine-service-state", "closed-rule-state", "up-to-eight-projected-notifications"],
+      "knownGaps": ["Docker identity itself is privileged; only this reviewed program restricts its commands.", "Trusted internal peers can forge telemetry.", "Unavailable observations are unknown and a sequential packet is not an atomic health proof."]
+    },
+    {
+      "id": "oncall-ai",
+      "kind": "ai",
+      "status": "unaccepted-parked",
+      "provenance": "Issue81 candidate targets installed codex-cli 0.163.0; existing ChatGPT authentication mode checked without reading credential contents.",
+      "authority": ["intended-read-projected-packet", "intended-return-closed-advisory-JSON"],
+      "intendedTools": [],
+      "outboundToolsEstablished": false,
+      "latestObservation": { "topLevelState": "omitted", "embeddedState": "nonempty", "embeddedDeclarations": 2, "declarationNamesEstablished": false, "accepted": false },
+      "credentials": ["existing-ChatGPT-login-used-by-trusted-CLI-transport-only"],
+      "modelData": ["fictional-projected-fixture-only-until-acceptance"],
+      "limits": { "inputBytes": 65536, "timeoutMs": 120000, "eventBytes": 131072, "outputBytes": 16384 },
+      "knownGaps": ["The complete runner has not accepted a real fictional diagnosis.", "The original two observations ended in a missing-stdin timeout and fixture rejection. A separately groomed third observation rejected two embedded declarations; exact names and executable authority were not established.", "Top-level tools can be omitted while Responses Lite embeds declarations in input; both channels must be inspected.", "Strict event/schema/fact gates remain unchanged; no remediation is permitted.", "Read-only sandbox alone does not prevent secret reads or establish provider data handling."]
+    },
+    {
+      "id": "security-scanners",
+      "kind": "deterministic-programs",
+      "status": "unmerged-candidate",
+      "provenance": "Issue82 pinned SemgrepCE1.181.0, pip-audit2.10.1, Gitleaks8.30.1 and recorded installed npm version.",
+      "authority": ["tracked-source-and-local-history-scan", "public-package-version-advisory-lookups", "projected-report-write"],
+      "credentials": ["no-scanning-account-or-key", "service-credential-environment-stripped"],
+      "modelData": [],
+      "knownGaps": ["These are not agents and do not perform an AI security judgment.", "Small local SAST rules and public advisory databases are incomplete.", "Human validation of the real PR audit remains pending separately."]
+    }
+  ],
+  "prohibitedModelData": ["real-club-records", "database-or-backup-content", "private-review-or-meeting-content", "member-identities-or-Discord-IDs", "private-media-or-personal-screenshots", "tokens-cookies-keys-and-credential-files", "raw-logs-headers-or-request-bodies"],
+  "newAccountsOrCredentialsRequireOwnerDecision": true,
+  "paidServicesAllowed": false,
+  "automaticOncallRemediationAllowed": false,
+  "policyIsTechnicalEnforcement": false
+}

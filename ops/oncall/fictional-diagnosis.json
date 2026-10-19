@@ -1,0 +1,22 @@
+{
+  "diagnosis": {
+    "schemaVersion": 1,
+    "assessment": "api-errors-observed",
+    "confidence": "medium",
+    "evidenceRefs": ["alert-rule", "notifications", "service-health"],
+    "hypotheses": ["unknown"],
+    "nextSteps": ["inspect-release", "check-telemetry"],
+    "humanApprovalRequired": true,
+    "actionsTaken": [],
+    "runbook": "ops/runbooks/api-errors.md"
+  },
+  "provenance": {
+    "runner": "codex-exec",
+    "cliVersion": "0.163.0",
+    "mode": "read-only-no-tools",
+    "source": "fictional-fixture",
+    "inputSha256": "a2c68b6fe3065d2387b182f41786834480f1e600c9c9cf5adcbc3b4b1412aa4e",
+    "toolEvents": 0,
+    "events": ["item.completed", "thread.started", "turn.completed", "turn.started"]
+  }
+}
