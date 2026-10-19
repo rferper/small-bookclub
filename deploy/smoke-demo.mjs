@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { request } from 'node:https'
 import { createRequire } from 'node:module'
 import { networkFailureCode } from './smoke-diagnostics.mjs'
+import { startNetDiag } from './net-diag.mjs' // TEMPORARY #110 diagnostic
 
 const url = new URL(process.env.DEMO_URL ?? '')
 assert.ok(url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash,
@@ -36,6 +37,7 @@ while (Date.now() < deadline) {
 }
 assert.ok(ready, 'Django health must respond over verified TLS within 120 seconds')
 const { chromium } = createRequire(new URL('../frontend/package.json', import.meta.url))('@playwright/test')
+const netDiag = startNetDiag()
 const browser = await chromium.launch()
 let page
 const errors = [], failed = [], bad = []
@@ -52,7 +54,7 @@ try {
   page = await context.newPage()
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
-  page.on('requestfailed', req => failed.push({ path: new URL(req.url()).pathname, code: networkFailureCode(req.failure()?.errorText) }))
+  page.on('requestfailed', req => failed.push({ path: new URL(req.url()).pathname, code: networkFailureCode(req.failure()?.errorText), atMs: netDiag.mark() }))
   page.on('response', response => { if (response.status() >= 400) bad.push(`${response.status()} ${new URL(response.url()).pathname}`) })
   const html = await page.goto(url.origin)
   assert.equal(html.status(), 200)
@@ -104,5 +106,6 @@ try {
   // logs. Keep the failed exit status without propagating the original error.
   throw new Error('Fictional demo smoke failed; see the path/status diagnostics and optional screenshot')
 } finally {
+  console.error('NETDIAG', JSON.stringify(netDiag.stop()))
   await browser.close()
 }
