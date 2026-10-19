@@ -42,7 +42,7 @@ the packet is evidence of observations, not a trusted cause assertion.
 ## Diagnose
 
 The installed, already authenticated Codex CLI **0.163.0** is the tested runner.
-It uses the operator's existing ChatGPT plan allowance. No new account, API key,
+It checks the existing authentication mode and uses the operator's ChatGPT plan allowance. API-key mode is refused. No new account, API key,
 paid API integration, plugin or persistent CLI configuration is installed.
 Offline CI never calls the model. Do not install/connect anything to run tests.
 
@@ -71,7 +71,9 @@ environment. No credential content is read or copied by these scripts.
 The one-shot invocation ignores user configuration and rules, disables project
 instructions and host skill discovery, uses an empty temporary working directory,
 an ephemeral session, read-only sandbox and no approvals. Shell/exec, web search,
-apps, plugins, subagents and skill search/install are explicitly disabled. The
+apps, plugins, subagents and skill search/install are explicitly disabled, along
+with browser/computer/image tools, code-mode host, hooks, auth elicitation,
+dependency installation, background daemon startup and unbounded retries. The
 read-only sandbox alone is not a secret-redaction boundary: projecting the input
 and removing tools/configuration are necessary too. This supported invocation
 assumes the installed CLI and host administrator are trusted and do not inject
@@ -89,7 +91,9 @@ exact generated temporary directory is removed; user configuration is unchanged.
 
 The saved [fictional diagnosis](fictional-diagnosis.json) records one actual
 headless run, projected-input SHA-256, tested CLI and a zero-tool-event audit.
-The [verification note](verification.md) distinguishes live inference from offline
+Zero observed calls do not prove that no tools were exposed: the primary boundary
+is the explicit configuration on this trusted, pinned CLI without managed tool
+injection. The [verification note](verification.md) distinguishes live inference from offline
 subprocess tests. It is not evidence of a production incident or repair.
 
 ## Verify and use the result

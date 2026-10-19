@@ -29,13 +29,20 @@ export function agentEnvironment(input) {
     /^(path|systemroot|windir|comspec|pathext|userprofile|home|temp|tmp|localappdata|appdata|codex_home)$/iu.test(key)))
 }
 export function agentArguments(workspace) {
-  const args = ['exec', '--ignore-user-config', '--ignore-rules', '--ephemeral', '--skip-git-repo-check',
+  const args = ['exec', '--strict-config', '--ignore-user-config', '--ignore-rules', '--ephemeral', '--skip-git-repo-check',
     '--sandbox', 'read-only', '--json', '--color', 'never', '--output-schema', join(workspace, 'schema.json'),
     '--output-last-message', join(workspace, 'diagnosis.json')]
   for (const setting of ['approval_policy="never"', 'web_search="disabled"', 'project_doc_max_bytes=0', 'analytics.enabled=false',
     'features.shell_tool=false', 'features.unified_exec=false', 'features.apps=false', 'features.plugins=false',
     'features.multi_agent=false', 'features.skill_search=false', 'features.skill_mcp_dependency_install=false',
-    'features.skip_host_skill_discovery=true', 'features.in_app_browser=false']) args.push('-c', setting)
+    'features.skip_host_skill_discovery=true', 'features.in_app_browser=false', 'features.hooks=false',
+    'features.browser_use=false', 'features.browser_use_external=false', 'features.browser_use_full_cdp_access=false',
+    'features.browser_annotation_api=false', 'features.computer_use=false', 'features.view_image=false',
+    'features.image_generation=false', 'features.code_mode_host=false', 'features.in_app_local_automation=false',
+    'features.remote_plugin=false', 'features.plugin_sharing=false', 'features.tool_suggest=false',
+    'features.auth_elicitation=false', 'features.tool_call_mcp_elicitation=false', 'features.workspace_dependencies=false',
+    'features.daemon_auto_start=false', 'features.goals=false', 'features.sleep_tool=false',
+    'features.shell_snapshot=false', 'features.unbounded_connection_retries=false']) args.push('-c', setting)
   return [...args, '-']
 }
 export function auditEvents(text) {
@@ -60,6 +67,9 @@ export function runDiagnosis(input, { run = spawnSync, allowLocal = false } = {}
   const version = run('codex', ['--version'], { encoding: 'utf8', env: environment, timeout: 5000,
     maxBuffer: 4096, windowsHide: true, shell: false })
   if (version.error || version.status !== 0 || version.stdout?.trim() !== 'codex-cli 0.163.0') throw new Error('Tested Codex CLI 0.163.0 required')
+  const auth = run('codex', ['login', 'status'], { encoding: 'utf8', env: environment, timeout: 5000,
+    maxBuffer: 4096, windowsHide: true, shell: false })
+  if (auth.error || auth.status !== 0 || `${auth.stdout ?? ''}${auth.stderr ?? ''}`.trim() !== 'Logged in using ChatGPT') throw new Error('Existing ChatGPT CLI login required')
   const workspace = mkdtempSync(join(tmpdir(), 'bookclub-oncall-'))
   try {
     writeFileSync(join(workspace, 'schema.json'), JSON.stringify(schema))

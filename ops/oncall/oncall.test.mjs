@@ -88,13 +88,14 @@ test('agent environment excludes API/deploy/Docker/GitHub secrets and tool setti
   const args = agentArguments('fictional-temp')
   for (const flag of ['--ignore-user-config', '--ignore-rules', '--ephemeral', '--output-schema', '--json']) assert.ok(args.includes(flag))
   assert.equal(args[args.indexOf('--sandbox') + 1], 'read-only')
-  for (const setting of ['features.shell_tool=false', 'features.plugins=false', 'features.apps=false', 'features.multi_agent=false', 'web_search="disabled"', 'project_doc_max_bytes=0']) assert.ok(args.includes(setting))
+  for (const setting of ['features.shell_tool=false', 'features.plugins=false', 'features.apps=false', 'features.multi_agent=false', 'web_search="disabled"', 'project_doc_max_bytes=0', 'features.hooks=false', 'features.browser_use=false', 'features.computer_use=false', 'features.view_image=false', 'features.image_generation=false', 'features.code_mode_host=false', 'features.daemon_auto_start=false']) assert.ok(args.includes(setting))
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'))
 })
 test('headless runner audits completion, validates output and cleans exact isolated directory', () => {
   let directory
   const result = runDiagnosis(packet(), { run: (_program, args, options) => {
     if (args[0] === '--version') return { status: 0, stdout: 'codex-cli 0.163.0' }
+    if (args[0] === 'login') return { status: 0, stderr: 'Logged in using ChatGPT' }
     directory = options.cwd
     assert.equal(options.shell, false); assert.equal(options.timeout, 120000)
     assert.ok(!options.input.includes(marker)); assert.equal(options.env.OPENAI_API_KEY, undefined)
@@ -113,6 +114,7 @@ test('tool activity, subprocess faults, raw malformed output and unknown event t
     let directory
     assert.throws(() => runDiagnosis(packet(), { run: (_program, args, options) => {
       if (args[0] === '--version') return { status: 0, stdout: 'codex-cli 0.163.0' }
+    if (args[0] === 'login') return { status: 0, stderr: 'Logged in using ChatGPT' }
       directory = options.cwd
       writeFileSync(join(directory, 'diagnosis.json'), fault === 'invalid-json' ? marker : JSON.stringify(diagnosis()))
       return { status: fault === 'status' ? 1 : 0, error: fault === 'timeout' ? new Error(marker) : undefined,
@@ -130,4 +132,16 @@ test('actual shell entrypoint rejects injected project input before Docker', () 
   const result = spawnSync(shell, ['ops/collect-evidence.sh', `../${marker};whoami`], { encoding: 'utf8', timeout: 10000, windowsHide: true })
   assert.equal(result.status, 1)
   assert.ok(!`${result.stdout}${result.stderr}`.includes(marker))
+})
+
+test('API-key authentication or unreviewed CLI versions fail before model execution', () => {
+  for (const value of ['api-key', 'new-cli']) {
+    let called = false
+    assert.throws(() => runDiagnosis(packet(), { run: (_program, args) => {
+      if (args[0] === '--version') return { status: 0, stdout: value === 'new-cli' ? 'codex-cli 9.9.9' : 'codex-cli 0.163.0' }
+      if (args[0] === 'login') return { status: 0, stderr: 'Logged in using an API key: fictional-private-token' }
+      called = true
+    } }))
+    assert.equal(called, false)
+  }
 })
