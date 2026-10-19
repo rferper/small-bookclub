@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import { collectEvidence, projectEvidence, services, readSignals } from './collect.mjs'
 import { agentArguments, agentEnvironment, auditEvents, runDiagnosis, validateDiagnosis } from './diagnose.mjs'
@@ -335,7 +336,7 @@ test('tool activity, subprocess faults, raw malformed output and unknown event t
 })
 test('actual shell entrypoint rejects injected project input before Docker', () => {
   const shell = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'sh'
-  const result = spawnSync(shell, ['ops/collect-evidence.sh', `../${marker};whoami`], { encoding: 'utf8', timeout: 10000, windowsHide: true })
+  const result = spawnSync(shell, ['ops/collect-evidence.sh', `../${marker};whoami`], { cwd: fileURLToPath(new URL('../../', import.meta.url)), encoding: 'utf8', timeout: 10000, windowsHide: true })
   assert.equal(result.status, 1)
   assert.ok(!`${result.stdout}${result.stderr}`.includes(marker))
 })
