@@ -39,6 +39,8 @@ If the lean flow fails on an issue (a check fails after a fix attempt, a review 
 
 Use the former PM → engineer → QA loop when the user requests it or defects/rework show the lean flow is insufficient. A PM grooms the issue (`docs/team/pm.md`), an engineer implements and tests it (`docs/team/software-engineer.md`), and an independent QA engineer checks every criterion (`docs/team/qa-engineer.md`). The orchestrator coordinates those roles, sends QA failures back for fixes, and merges/closes only after `## QA: PASS`. After three QA FAIL rounds on one issue, ask the user how to proceed. Role-specific restrictions in those documents apply when the full loop is invoked.
 
+Ready-made subagent definitions for these roles and a spoiler-leak specialist are in [`agent-capabilities/agents/`](../agent-capabilities/agents/README.md) and `custom-agent/`; they delegate to the role documents above.
+
 ### Stop conditions
 
 Every loop needs a checkable stop condition, for example:
