@@ -5,7 +5,7 @@
   "hostVulnerabilityScanPerformed": false,
   "sources": [
     { "revision": "4a0565a803d2c077247c931ef9faa47dd8ceaddf", "availability": "merged", "paths": ["AGENTS.md", "docs/process.md", ".github/workflows/ci.yml", ".github/workflows/deploy.yml", "ops/compose.observability.yml"] },
-    { "revision": "96a70470fe2082c0943b737dc29a49ce84ceefda", "availability": "local-unmerged-candidate", "paths": ["ops/oncall/diagnose.mjs", "ops/oncall/collect.mjs", "ops/oncall/verification.md", "ops/oncall/autonomy-policy.json"] },
+    { "revision": "1bfc525ca373850ff0054961dccd58bded8b212f", "availability": "local-unmerged-candidate", "paths": ["ops/oncall/diagnose.mjs", "ops/oncall/collect.mjs", "ops/oncall/verification.md", "ops/oncall/autonomy-policy.json"] },
     { "revision": "0322da1152d08ed5ac5bc359b02416a2400ee9bc", "availability": "remote-unmerged-candidate", "paths": ["security/scan.mjs", "security/triage.json", "security/pr-audit-112.md"] }
   ],
   "components": [
@@ -47,10 +47,11 @@
       "authority": ["intended-read-projected-packet", "intended-return-closed-advisory-JSON"],
       "intendedTools": [],
       "outboundToolsEstablished": false,
+      "latestObservation": { "topLevelState": "omitted", "embeddedState": "nonempty", "embeddedDeclarations": 2, "declarationNamesEstablished": false, "accepted": false },
       "credentials": ["existing-ChatGPT-login-used-by-trusted-CLI-transport-only"],
       "modelData": ["fictional-projected-fixture-only-until-acceptance"],
       "limits": { "inputBytes": 65536, "timeoutMs": 120000, "eventBytes": 131072, "outputBytes": 16384 },
-      "knownGaps": ["The complete runner has not accepted a real fictional diagnosis.", "Two bounded local observations ended in a missing-stdin timeout and fixture rejection; empty observed arrays do not establish zero capabilities.", "Strict event/schema/fact gates remain unchanged; no remediation is permitted.", "Read-only sandbox alone does not prevent secret reads or establish provider data handling."]
+      "knownGaps": ["The complete runner has not accepted a real fictional diagnosis.", "The original two observations ended in a missing-stdin timeout and fixture rejection. A separately groomed third observation rejected two embedded declarations; exact names and executable authority were not established.", "Top-level tools can be omitted while Responses Lite embeds declarations in input; both channels must be inspected.", "Strict event/schema/fact gates remain unchanged; no remediation is permitted.", "Read-only sandbox alone does not prevent secret reads or establish provider data handling."]
     },
     {
       "id": "security-scanners",

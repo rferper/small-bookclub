@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "source": "fictional-fixture",
+  "collectedAt": "2026-10-19T00:00:00.000Z",
+  "services": [
+    {
+      "service": "backend",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "frontend",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "otel-collector",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "prometheus",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "loki",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "tempo",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "grafana",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "alertmanager",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    },
+    {
+      "service": "alert-receiver",
+      "status": "running",
+      "health": "healthy",
+      "oomKilled": false,
+      "restarts": 0
+    }
+  ],
+  "alertRule": {
+    "state": "firing",
+    "health": "ok"
+  },
+  "notifications": [
+    {
+      "alertname": "BookclubApiErrors",
+      "status": "firing",
+      "environment": "test",
+      "version": "release-4444444444444444444444444444444444444444",
+      "errorRatio": 0.75,
+      "receivedAt": "2026-10-19T00:00:00.000Z"
+    }
+  ]
+}

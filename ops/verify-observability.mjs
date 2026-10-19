@@ -8,6 +8,7 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { collectEvidence } from './oncall/collect.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const project = `bookclub-observability-${randomBytes(6).toString('hex')}`
@@ -157,6 +158,17 @@ try {
     return result.data.groups.flatMap(group => group.rules).find(rule => rule.name === 'BookclubApiErrors')?.state === 'inactive'
   })
   console.log('PASS: unchanged API-error rule delivered private firing and resolved notifications.')
+  start('read-only-oncall-evidence')
+  const packet = collectEvidence(project)
+  assert.equal(packet.source, 'local-compose')
+  assert.equal(packet.services.length, 9)
+  assert.ok(packet.services.every(item => item.status === 'running' && !item.oomKilled && item.restarts === 0))
+  assert.equal(packet.alertRule.state, 'inactive')
+  assert.equal(packet.alertRule.health, 'ok')
+  assert.ok(packet.notifications.some(event => event.status === 'firing'))
+  assert.equal(packet.notifications.at(-1).status, 'resolved')
+  assert.ok(!JSON.stringify(packet).includes(marker))
+  console.log('PASS: bounded read-only on-call evidence collected from actual private services.')
   start('collector-outage')
   command(['stop', 'otel-collector'])
   assert.deepEqual(await json(`${app}/api/health`),
