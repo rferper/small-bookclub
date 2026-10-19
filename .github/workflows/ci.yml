@@ -146,10 +146,41 @@ jobs:
           path: /tmp/bookclub-observability-check-*/dashboard.png
           retention-days: 3
 
+  security:
+    name: Security scans and redaction checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITLEAKS_BIN: ${{ runner.temp }}/bookclub-security-tools/gitleaks
+      SEMGREP_SEND_METRICS: 'off'
+      SEMGREP_ENABLE_VERSION_CHECK: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.12.7'
+      - run: uv python install 3.13
+      - run: uv run --no-project --python 3.13 python security/install_gitleaks.py --destination "$RUNNER_TEMP/bookclub-security-tools"
+      - run: node --test security/scan.test.mjs
+      - run: node security/test-rules.mjs
+      - run: node security/scan.mjs "$RUNNER_TEMP/bookclub-security-report"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-summary
+          path: ${{ runner.temp }}/bookclub-security-report/scan-summary.json
+          retention-days: 3
+          if-no-files-found: ignore
+
   required:
     name: All CI checks passed
     if: always()
-    needs: [backend, frontend, containers, observability]
+    needs: [backend, frontend, containers, observability, security]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
@@ -159,11 +190,13 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           CONTAINERS_RESULT: ${{ needs.containers.result }}
           OBSERVABILITY_RESULT: ${{ needs.observability.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
         run: |
           test "$BACKEND_RESULT" = success
           test "$FRONTEND_RESULT" = success
           test "$CONTAINERS_RESULT" = success
           test "$OBSERVABILITY_RESULT" = success
+          test "$SECURITY_RESULT" = success
 
   deploy:
     needs: required

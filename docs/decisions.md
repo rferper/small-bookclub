@@ -1184,3 +1184,21 @@ rate exists, preserving missing-data state when baseline metrics are unavailable
 ## 2026-10-19: Local user-impact alert (#80)
 
 Keep monitoring opt-in and local. One Prometheus API-error predicate requires an estimated three 5xx responses and 20% errors over two minutes, sustained for one minute, grouped by environment/release; exclude health, unmatched and status-less overflow. Add published `prom/alertmanager:v0.32.0` (Apache-2.0) for grouped firing/resolved delivery to a private standard-library Node 24 receiver. No npm/Python dependency, account or secret. The terminal is the supported watched notification channel; no hosted/phone/email notification promise. Receiver projects fixed operational fields into a 64-event memory buffer/rotated console logs with bounded HTTP input/connections/timeouts; no outward calls or actions. Internal network is trusted, not an authentication boundary. An explicit test profile emits synthetic OTLP counters with a separate test release to exercise the unchanged rule and real delivery/recovery; never alter app responses or owner data. Missing telemetry and complete outages remain outside this single error-rate alert. Record each issue independently before starting the next.
+
+## 2026-10-19: Deterministic security tooling (#82)
+
+Use Semgrep Community Edition 1.181.0 (LGPL-2.1), pip-audit 2.10.1 (Apache-2.0),
+Gitleaks 8.30.1 (MIT), and the installed npm audit command (npm: Artistic-2.0).
+These are isolated operator/CI tools, installed with pinned uv tool invocations
+and checksum-verified official Gitleaks binaries; no application dependency,
+account, proprietary rule pack or scanning-service subscription. Commit original
+local Semgrep rules and fictional fixtures; disable metrics/version checks and
+isolate settings in temporary storage. Audit full backend/dev and frontend locks;
+package identities/versions go to public advisory services, never source/secrets.
+Scan only tracked working files plus full local git refs for secrets. Project
+reports before retaining them; discard raw scanner output and exact temporary
+copies. Fail execution errors and untriaged findings. False positives require
+exact finding identity, rationale and expiring review, never category suppression.
+References: [Semgrep CE](https://semgrep.dev/products/community-edition/),
+[pip-audit](https://github.com/pypa/pip-audit),
+[Gitleaks](https://github.com/gitleaks/gitleaks).

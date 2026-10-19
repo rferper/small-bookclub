@@ -1,0 +1,25 @@
+rules:
+  - id: python-dynamic-execution
+    languages: [python]
+    severity: ERROR
+    message: Review dynamic code execution.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+  - id: python-shell-execution
+    languages: [python]
+    severity: ERROR
+    message: Review shell execution.
+    pattern-either:
+      - pattern: os.system(...)
+      - pattern: subprocess.$METHOD(..., shell=True, ...)
+  - id: python-disabled-tls
+    languages: [python]
+    severity: ERROR
+    message: Review disabled TLS certificate validation.
+    pattern: requests.$METHOD(..., verify=False, ...)
+  - id: python-unsafe-yaml
+    languages: [python]
+    severity: ERROR
+    message: Use safe YAML deserialization.
+    pattern: yaml.unsafe_load(...)

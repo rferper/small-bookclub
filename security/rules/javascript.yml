@@ -1,0 +1,21 @@
+rules:
+  - id: javascript-dynamic-execution
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Review dynamic code execution.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: javascript-shell-execution
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Review command execution through a shell.
+    pattern-either:
+      - pattern: $CHILD.exec(...)
+      - pattern: $CHILD.execSync(...)
+      - pattern: '$SPAWN(..., { ..., shell: true, ... })'
+  - id: react-html-injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Review direct HTML injection.
+    pattern: <$TAG ... dangerouslySetInnerHTML={$VALUE} ... />
