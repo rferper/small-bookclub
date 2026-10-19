@@ -1182,3 +1182,8 @@ rate exists, preserving missing-data state when baseline metrics are unavailable
 ## 2026-10-16: Bounded Linux transport investigation (#110)
 
 Use up to three serial actual Linux CI baseline invocations with opt-in, loopback-only closed CDP transport evidence and exact own-container/cgroup state snapshots before selecting any evidence-connected perturbation. Preserve all application/proxy behavior, assertions, timeouts and required gates. No concurrent dependency installs, public-service experiments or new dependency. Do not open a duplicate-CI PR before a justified repair. The hypothesis matrix, historical limits and mandatory unresolved checkpoint are recorded in [the investigation report](../ops/render-verification-investigation.md); generic diagnostics or green samples are not a repair.
+
+
+## 2026-10-19: One authorized candidate diagnostic invocation (#110)
+
+After a natural ERR_NETWORK_CHANGED recurrence blocked #79, the owner explicitly authorized one serial Linux CI diagnostic invocation on candidate 6d50349, followed by an evidence checkpoint. Transplant the already reviewed opt-in evidence without changing behavior, assertions, timeouts or deployment guards; preserve newer environment/revision checks and monitoring CI. This is a changed baseline from the initial three runs. Trigger only one branch push; no duplicate PR, dispatch or rerun. A passing sample establishes neither cause nor repair and cannot replace #79's failed PR gate. No dependency added.

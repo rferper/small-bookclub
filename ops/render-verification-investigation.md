@@ -1,9 +1,11 @@
 # Intermittent disposable Render verification (#110)
 
-Status: **unresolved checkpoint**; three serial Linux baselines passed without
-reproducing the historical failure. No cause or repair established. Awaiting
-the owner's decision; no further experiment, merge or closure is authorized
-by the initial budget.
+Status: **one additional diagnostic invocation authorized** on 2026-10-19.
+The initial three Linux baselines did not reproduce the historical failure.
+The owner authorized one serial Linux CI diagnostic check on #79's candidate,
+using the previously reviewed instrumentation and all existing assertions,
+then a mandatory evidence checkpoint. No cause, repair, merge or closure is
+established by this authorization.
 
 The [pre-experiment hypothesis matrix](https://github.com/rferper/small-bookclub/issues/110#issuecomment-6215567213)
 defines the evidence and stop conditions. The relevant baseline is
@@ -171,3 +173,36 @@ The report is committed locally without a branch push, which would otherwise
 start an unbudgeted fourth CI baseline. The GitHub issue checkpoint retains
 run links and conclusions. No PR, merge, issue closure or final repair QA is
 performed at this unresolved stop.
+
+
+## Authorized candidate diagnostic plan (2026-10-19)
+
+Natural recurrence: #79 candidate `6d50349`, PR #112, CI
+[38956515222 attempt 1](https://github.com/rferper/small-bookclub/actions/runs/38956515222/attempts/1)
+failed production-demo native smoke at `/api/session` with `ERR_NETWORK_CHANGED`;
+[attempt 2](https://github.com/rferper/small-bookclub/actions/runs/38956515222/attempts/2)
+failed `/api/home` with the same code at 2026-10-17T20:08:55Z. Both had completed
+TLS readiness. Candidate push CI passed; required PR aggregate remains failed.
+These observations do not identify the cause.
+
+The owner explicitly authorized **one** additional serial Linux CI diagnostic
+invocation, preserving all assertions, followed by an evidence checkpoint.
+Branch `issue-110-candidate-diagnostics` starts at exact candidate `6d50349` and
+transplants reviewed instrumentation from `726aea6`, preserving #78 environment/
+revision checks, #79 monitoring CI, and newer release/operator tests. Compared
+with the original baseline it includes #78/#79, so this is a changed baseline.
+Only a branch push triggers this invocation; do not open a PR, dispatch or rerun.
+No application/proxy behavior correction, timeout change or public deployment.
+
+| Hypothesis | Supporting/refuting next observation |
+|---|---|
+| Browser transport changes during a failing request | Capture actual CDP error, response protocol/status, canceled/blocked flags and phase alongside Playwright failure. A passing invocation leaves the mechanism unknown. |
+| Unexpected service lifecycle/resource pressure | Compare pre-smoke/pre-cleanup owned-container state, restarts/OOM and numeric cgroup counters. Stable samples fail to support this hypothesis for this invocation; snapshots cannot exclude transient events. |
+| Later verifier operation is a separate failure | Closed active/last-completed phase identifies an actual later failure; completion leaves the historical suppressed phase unknown. |
+| Observer changes timing | Instrumentation is present in this sole invocation; success cannot distinguish an intermittent mechanism from observer effects. No extra comparison run is authorized. |
+
+Before the single push: run offline operator regressions and renew independent
+review of the transplant. After completion: record exact SHA/run, versions,
+phase/request evidence, screenshots if retained and cleanup; stop with an honest
+checkpoint regardless of outcome. A green diagnostic branch does not satisfy
+#79's currently failed PR gate or justify a repair claim or merge.
