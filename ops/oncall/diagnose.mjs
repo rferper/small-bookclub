@@ -33,7 +33,7 @@ export function agentArguments(workspace) {
     '--sandbox', 'read-only', '--json', '--color', 'never', '--output-schema', join(workspace, 'schema.json'),
     '--output-last-message', join(workspace, 'diagnosis.json')]
   for (const setting of ['approval_policy="never"', 'web_search="disabled"', 'project_doc_max_bytes=0', 'analytics.enabled=false',
-    'features.shell_tool=false', 'features.unified_exec=false', 'features.apps=false', 'features.plugins=false',
+    'features.shell_tool=false', 'features.apps=false', 'features.plugins=false',
     'features.multi_agent=false', 'features.skill_search=false', 'features.skill_mcp_dependency_install=false',
     'features.skip_host_skill_discovery=true', 'features.in_app_browser=false', 'features.hooks=false',
     'features.browser_use=false', 'features.browser_use_external=false', 'features.browser_use_full_cdp_access=false',
@@ -71,6 +71,7 @@ export function runDiagnosis(input, { run = spawnSync, allowLocal = false } = {}
     maxBuffer: 4096, windowsHide: true, shell: false })
   if (auth.error || auth.status !== 0 || `${auth.stdout ?? ''}${auth.stderr ?? ''}`.trim() !== 'Logged in using ChatGPT') throw new Error('Existing ChatGPT CLI login required')
   const workspace = mkdtempSync(join(tmpdir(), 'bookclub-oncall-'))
+  let phase = 'agent-startup'
   try {
     writeFileSync(join(workspace, 'schema.json'), JSON.stringify(schema))
     const task = readFileSync(new URL('./task.md', import.meta.url), 'utf8')
@@ -78,14 +79,22 @@ export function runDiagnosis(input, { run = spawnSync, allowLocal = false } = {}
       input: `${task}\n<operational-evidence>\n${JSON.stringify(packet)}\n</operational-evidence>`,
       timeout: 120000, maxBuffer: 131072, windowsHide: true, shell: false })
     if (result.error || result.status !== 0 || typeof result.stdout !== 'string' || result.stdout.length > 131072) throw new Error('Agent run failed')
+    phase = 'event-audit'
     const events = auditEvents(result.stdout)
+    phase = 'output-file'
     const output = join(workspace, 'diagnosis.json')
     if (statSync(output).size > 16384) throw new Error('Diagnosis limit')
-    const diagnosis = validateDiagnosis(JSON.parse(readFileSync(output, 'utf8')), packet)
+    const parsed = JSON.parse(readFileSync(output, 'utf8'))
+    phase = 'schema-and-facts'
+    const diagnosis = validateDiagnosis(parsed, packet)
     return { diagnosis, provenance: { runner: 'codex-exec', cliVersion: '0.163.0', mode: 'read-only-no-tools',
       source: packet.source, inputSha256: createHash('sha256').update(JSON.stringify(packet)).digest('hex'),
       toolEvents: 0, events } }
-  } catch { throw new Error('Read-only diagnosis failed') }
+  } catch {
+    const error = new Error('Read-only diagnosis failed')
+    error.phase = phase
+    throw error
+  }
   finally {
     // Verify the exact generated temporary target before recursive Windows cleanup.
     try {
@@ -100,5 +109,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (statSync(process.argv[2]).size > 65536) throw new Error('Evidence limit')
     console.log(JSON.stringify(runDiagnosis(JSON.parse(readFileSync(process.argv[2], 'utf8')),
       { allowLocal: process.argv[3] === '--allow-local-evidence' }), null, 2))
-  } catch { console.error('Read-only diagnosis failed; raw agent, credential and evidence details suppressed'); process.exitCode = 1 }
+  } catch (error) {
+    const phase = ['agent-startup', 'event-audit', 'output-file', 'schema-and-facts'].includes(error.phase) ? error.phase : 'preflight'
+    console.error(`Read-only diagnosis failed at ${phase}; raw agent, credential and evidence details suppressed`)
+    process.exitCode = 1
+  }
 }

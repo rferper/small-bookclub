@@ -90,6 +90,7 @@ test('agent environment excludes API/deploy/Docker/GitHub secrets and tool setti
   assert.equal(args[args.indexOf('--sandbox') + 1], 'read-only')
   for (const setting of ['features.shell_tool=false', 'features.plugins=false', 'features.apps=false', 'features.multi_agent=false', 'web_search="disabled"', 'project_doc_max_bytes=0', 'features.hooks=false', 'features.browser_use=false', 'features.computer_use=false', 'features.view_image=false', 'features.image_generation=false', 'features.code_mode_host=false', 'features.daemon_auto_start=false']) assert.ok(args.includes(setting))
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'))
+  assert.ok(!args.includes('features.unified_exec=false'), 'CLI ignores this override; shell_tool is the command-tool gate')
 })
 test('headless runner audits completion, validates output and cleans exact isolated directory', () => {
   let directory
