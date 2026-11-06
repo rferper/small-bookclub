@@ -32,13 +32,30 @@ Limits that still apply: the input was fictional, the output is advisory only, a
 no real-incident run has happened. Assurance depends on the pinned trusted CLI and
 a host without managed tool injection; a read-only sandbox does not prevent secret
 reads or establish provider data handling. Strict error/unknown-event/tool-event
-rejection is unchanged, and no remediation is permitted. Sending live operational
+rejection is unchanged. The model itself has no remediation authority; since #127 a
+separate deterministic watcher may restart the backend of the private local monitoring
+stack after a firing alert (see below). Sending live operational
 evidence to a model still needs explicit operator opt-in and review.
 
 Merged #79/#80 supply private opt-in telemetry and a deterministic local alert.
 Issue82's remote candidate `0322da1` has sanitized scanner evidence and a pending
 human PR-audit validation; it is not merged/closed in this snapshot. Later
 acceptance must be recorded with its actual revision/evidence.
+
+## Alert-triggered remediation (#127)
+
+`ops/oncall/remediate.mjs` is deterministic code, not an AI role. It acts only when the
+user-impact rule is firing, the responder's validated enum diagnosis agrees
+(`api-errors-observed` or `service-unhealthy`), the backend state is known and the
+15-minute per-project cooldown has passed. The single allowed action runs
+`docker compose -p <validated project> ... restart backend` without a shell. The model
+never supplies commands, project names or arguments. Every decision and outcome is
+appended to an audit file that must be outside the repository.
+
+Remaining risk: the watcher runs with the operator's Docker authority, so the allowlist is
+a program control, not Docker RBAC; forged telemetry on the private network could
+trigger one restart per cooldown of a fictional local service (availability only, no data
+access); acceptance covers a disposable local stack, not a real incident.
 
 ## Threats and controls
 

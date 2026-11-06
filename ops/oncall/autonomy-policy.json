@@ -23,10 +23,23 @@
     "get-prometheus-rules",
     "get-receiver-events"
   ],
+  "codeRemediation": {
+    "scope": "private local monitoring Compose project only (bookclub-monitor-* or bookclub-observability-*)",
+    "allowedActions": [
+      "restart-backend"
+    ],
+    "requires": [
+      "alert-rule-firing",
+      "validated-model-diagnosis-api-errors-observed-or-service-unhealthy",
+      "backend-service-state-known",
+      "cooldown-15-minutes-per-project",
+      "audit-file-outside-repository"
+    ]
+  },
   "ownerOnly": [
     "deploy",
     "rollback",
-    "restart",
+    "restart-of-real-club-or-hosted-services",
     "database-restore",
     "secret-management"
   ],

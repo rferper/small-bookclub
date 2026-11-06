@@ -69,11 +69,21 @@
       "credentials": ["no-scanning-account-or-key", "service-credential-environment-stripped"],
       "modelData": [],
       "knownGaps": ["These are not agents and do not perform an AI security judgment.", "Small local SAST rules and public advisory databases are incomplete.", "Owner validated the real PR audit on 2026-11-06; this is not proof that all vulnerabilities are absent."]
+    },
+    {
+      "id": "oncall-remediation-watcher",
+      "kind": "deterministic",
+      "status": "candidate-issue-127",
+      "provenance": "ops/oncall/remediate.mjs; fixed code, no model-chosen commands.",
+      "authority": ["collect-local-evidence", "run-fixed-diagnosis", "restart-backend-of-local-monitor-compose-project"],
+      "credentials": ["operator-local-docker-access", "existing-ChatGPT-login-via-diagnosis-runner"],
+      "modelData": ["same-projected-packet-as-responder"],
+      "knownGaps": ["Docker authority is the operator's; the allowlist is a program control, not RBAC.", "Forged private telemetry can trigger one restart per cooldown of a local fictional service.", "Verified on a disposable local stack only, not a real incident."]
     }
   ],
   "prohibitedModelData": ["real-club-records", "database-or-backup-content", "private-review-or-meeting-content", "member-identities-or-Discord-IDs", "private-media-or-personal-screenshots", "tokens-cookies-keys-and-credential-files", "raw-logs-headers-or-request-bodies"],
   "newAccountsOrCredentialsRequireOwnerDecision": true,
   "paidServicesAllowed": false,
-  "automaticOncallRemediationAllowed": false,
+  "automaticOncallRemediationAllowed": "local-monitoring-restart-backend-only",
   "policyIsTechnicalEnforcement": false
 }

@@ -1261,3 +1261,16 @@ gains an agent-pack section, because `product-spec.md` names that file for both.
 
 Limit: hooks see command text and submitted content only; they are a second check, not
 a sandbox.
+
+## Bounded on-call remediation (#127)
+
+Course criterion: an on-call agent wakes on an alert and fixes the issue. The model
+stays advisory (its schema and `actionsTaken: []` invariant are unchanged). A separate
+deterministic watcher, `ops/oncall/remediate.mjs`, runs the existing collect and
+diagnose steps when `BookclubApiErrors` fires, and only if the validated diagnosis
+agrees may it restart the `backend` service of the exact private local monitoring
+Compose project. Why not let the model pick the action: a closed enum still needs code to
+map it, and keeping the choice in fixed code leaves one reviewable allowlist. Limits:
+one action, 15-minute cooldown per project, audit file outside git, local fictional stack
+only. No new dependency or paid service. Rollback is removing the watcher; nothing runs
+unless the operator starts it.
