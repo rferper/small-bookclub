@@ -10,7 +10,7 @@ because a broken hook must not stop all work.
 |---|---|---|
 | [`guard-git.mjs`](guard-git.mjs) | `Bash` | `git push` straight to `main`/`master`, force or delete pushes, `git commit --no-verify`/`-n`, `git reset --hard`, `git clean`, and commits that stage `.env`, SQLite databases, keys/certificates or `media/` uploads. |
 | [`guard-commit-checks.mjs`](guard-commit-checks.mjs) | `Bash` | `git commit` when the fast check for the staged area fails: `ruff check` for backend Python, `npm run lint` for frontend TypeScript/CSS. |
-| [`guard-fixtures.mjs`](guard-fixtures.mjs) | `Write`, `Edit`, `MultiEdit` | Writing real-looking data into test, fixture, seed, demo or mock files: emails on non-reserved domains (use `example.com`), API/GitHub/Slack tokens, private keys, Discord webhook URLs and bot tokens. |
+| [`guard-fixtures.mjs`](guard-fixtures.mjs) | `Write`, `Edit`, `MultiEdit` | Writing real-looking data into test, fixture, seed, demo or mock files: emails on public mail providers such as gmail or outlook (use `example.com`), API/GitHub/Slack tokens, private keys, Discord webhook URLs and bot tokens. |
 
 Why the commit hook runs lint and not the whole test suite: the backend suite takes
 about two minutes and the frontend suite about one and a half, too slow for every

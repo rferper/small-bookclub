@@ -4,7 +4,8 @@
 import { block, readEvent } from "./lib.mjs";
 
 const FIXTURE_PATH = /(^|[\/])(tests?|__tests__|fixtures?|seeds?|demo|mock)([\/]|$)|\.(test|spec)\.[cm]?[jt]sx?$|(^|[\/])(conftest|test_[^\/]*)\.py$/i;
-const RESERVED_DOMAIN = /(^|\.)(example\.(com|org|net)|[^.]+\.(test|invalid|localhost|example)|localhost)$/i;
+// Real people use public mail providers; invented addresses on made-up domains are fine.
+const REAL_MAIL_PROVIDER = /(^|\.)(gmail|googlemail|hotmail|outlook|live|msn|yahoo|ymail|icloud|me|aol|proton|protonmail|gmx|web|mail|yandex|qq|163)\.[a-z.]+$/i;
 const EMAIL = /[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/g;
 const TOKENS = [
   [/\bgh[pousr]_[A-Za-z0-9]{30,}\b/, "GitHub token"],
@@ -22,7 +23,7 @@ export function isFixturePath(path) {
 export function findProblems(text) {
   const problems = [];
   for (const [, domain] of String(text).matchAll(EMAIL)) {
-    if (!RESERVED_DOMAIN.test(domain)) problems.push(`email on a real-looking domain (@${domain}); use example.com`);
+    if (REAL_MAIL_PROVIDER.test(domain)) problems.push(`email on a real mail provider (@${domain}); use example.com`);
   }
   for (const [re, label] of TOKENS) if (re.test(text)) problems.push(`${label}`);
   return [...new Set(problems)];
