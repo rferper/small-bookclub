@@ -42,7 +42,7 @@ Browser ── React app ──(one API client module)──▶ nginx proxy ─�
 | Database | SQLite | Club data. One file per environment (development, test, demo, production), chosen by `DATABASE_PATH` and `BOOKCLUB_ENV`; see [backend setup](docs/backend-setup.md). |
 | Containers | Docker, `docker-compose.yml` | Backend (Gunicorn, non-root) and proxy serving the built frontend; data in a named volume. |
 | CI/CD | GitHub Actions (`.github/workflows/`) | Tests, scans and image builds on every push and PR; when they pass on `main`, staging and then the demo deploy to Render Free. |
-| Observability | OpenTelemetry, Prometheus, Loki, Tempo, Grafana (`ops/`) | Opt-in local stack, an alert rule and a read-only on-call responder. |
+| Observability | OpenTelemetry, Prometheus, Loki, Tempo, Grafana (`ops/`) | Opt-in local stack, an alert rule, a read-only AI on-call responder and an opt-in watcher that restarts the backend of the local monitoring stack after a firing alert. |
 
 Request flow: the browser loads the static React build from the proxy; the app calls `/api/...` on the same
 origin; Django authenticates the session, checks membership and spoiler rules, reads/writes SQLite and returns
@@ -110,6 +110,7 @@ Environments, database settings and the HTTP client switch are described in
 | Frontend lint, type-check, build | `npm run lint`, `npm run build` | `frontend/` |
 | Contract validation and generated types | `npm run validate:contract`, `npm run check:api` | `frontend/` |
 | Accessibility and browser journeys | `npm run test:a11y`, `npm run test:e2e` | `frontend/` |
+| On-call remediation (offline, no model) | `node --test ops/oncall/remediate.test.mjs` | root |
 | Agent hooks and MCP server | `node --test agent-hooks/hooks.test.mjs mcp-server/server.test.mjs` | root |
 
 Backend tests need `BOOKCLUB_ENV=test` and `DATABASE_PATH=:memory:`; they use fictional data only and no
@@ -133,6 +134,32 @@ policy) and [`docs/operations-and-security-report.md`](docs/operations-and-secur
 security report). Runbooks are in [`ops/runbooks/`](ops/runbooks/).
 
 ## How AI was used
+
+### AI models used and how they were managed
+
+Several models were used as coding agents: Claude Opus 5.5 and Claude Sonnet 5.5 (Claude Code),
+and GPT Sol (medium reasoning) and GPT Luna (Codex). I did not keep a record of which model did
+which task, so none is claimed. What matters is the structure around them, which is the same for
+every model:
+
+- **Tasks come from issues.** The owner writes the spec and the issue with acceptance criteria;
+  the agent works one issue at a time on its own branch.
+- **Rules live in files, not in chat.** `AGENTS.md` and linked docs define the stack, commands
+  and limits; corrections are written back into them.
+- **Risk decides the care taken.** Authentication, permission and spoiler changes get an
+  independent security review; routine work follows the lean flow.
+- **Every result is verified.** Tests, the OpenAPI contract, CI and security scans apply to every
+  change, and the owner reviews pull requests and approves merges, hosting and anything paid.
+- **Data and authority are limited.** Models receive only fictional data or reviewed operational
+  metadata, and no model chooses commands for the one automatic action (a fixed backend restart).
+  The runtime on-call responder uses a pinned model (`gpt-6.1-sol`) with no tools and schema-checked
+  output, and never runs in CI.
+
+Details: [`docs/ai-workflow.md`](docs/ai-workflow.md),
+[`security/ai-tool-data-policy.md`](security/ai-tool-data-policy.md) and
+[`security/agent-security.md`](security/agent-security.md).
+
+### Workflow
 
 The project is built with AI coding agents under a written process: specification first, work delegated through
 GitHub issues, a PM → engineer → QA flow (with a leaner default), context files, and manual review plus automated
