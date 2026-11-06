@@ -1,4 +1,10 @@
-# Verification checkpoint - not accepted yet
+# Verification record - accepted on a fictional run (merged in #113)
+
+**Status:** #81 merged as PR #113 (`a0cdba4`) with security and QA PASS. The accepted
+result is the fictional diagnosis in the last section; the sections before it are the
+chronological history of earlier rejected or incomplete observations and are kept
+unchanged. Their "pending" and "not accepted" wording describes the state at that
+time. Limits: fictional input, advisory only, no real-incident run.
 
 ## Static-catalogue redesign awaiting independent pre-observation confirmation
 
