@@ -1,239 +1,142 @@
 # small-bookclub
 
 A private website for a book club of 6–10 friends: a calm, cottage-style digital library in Spanish.
+It is also the author's final project for an AI-assisted development course.
 
-> Status: specification done, implementation starting. Sections marked *(to do)* are filled in as the project is built.
+**Demo (fictional data, no Discord needed):** https://small-bookclub-demo.onrender.com
+· staging: https://small-bookclub-staging.onrender.com. Use the Spanish trial-account button on
+the sign-in page. The free host can take about a minute to wake, and fictional edits reset on restart.
 
 ## The problem
 
 The club reads one book about every two months, meets weekly on Discord, and splits each book into weekly portions. Today that lives in chat messages and memory: who is reading what, which pages are due this week, what was said at each meeting, which book is next and what everyone thought of past books.
 
-The site gives the club one private place to:
+## What it does
 
-- See the current book, this week's reading (percentage and page range) and the next meeting.
-- Mark weekly reading as done, visible to the other members, with no pressure or reminders.
-- Browse every club book as a bookshelf or a timeline.
-- Vote on the next book: the curator proposes a shortlist and members approve as many as they like.
-- Rate books on five criteria (Disfrute, Estilo, Personajes, Trama, Huella) and see others' ratings only after submitting their own.
-- Read meeting summaries and highlights, unlocked only after reading that week's portion.
-- Explore simple statistics and taste similarities between members.
+- Shows the current book, this week's reading (percentage and page range) and the next meeting.
+- Lets members mark weekly reading as done, visible to the others, with no pressure or reminders.
+- Browses every club book as a bookshelf or a timeline.
+- Runs the vote for the next book: the curator proposes a shortlist and members approve as many as they like.
+- Collects ratings on five criteria (Disfrute, Estilo, Personajes, Trama, Huella); others' ratings appear only after submitting one's own.
+- Shows meeting summaries and highlights, unlocked only after reading that week's portion.
+- Offers simple statistics and taste similarities between members.
+- Gives admins screens for the member allowlist, reading plan, meetings, attendance, summaries, recycle bin, export and audit log.
 
-Only approved members can sign in (Discord login plus an admin-managed allowlist). The full specification is in [`product-spec.md`](product-spec.md).
+Expected behaviour: only approved members can sign in (Discord login plus an admin-managed allowlist).
+Every permission and spoiler rule is enforced by the backend, which never returns data a member may not see.
+The full specification, including non-goals, is in [`product-spec.md`](product-spec.md).
 
 ## Architecture
 
+```
+Browser ── React app ──(one API client module)──▶ nginx proxy ──▶ Django Ninja API ──▶ SQLite + media volume
+                                     ▲                                  │
+                              openapi.yaml (contract) ◀── tests check responses
+```
+
 | Part | Technology | Role |
 |---|---|---|
-| Frontend | React, Vite, TypeScript, Tailwind (`frontend/`) | Screens; calls the backend only through one API client module. |
-| Backend | Django + Django Ninja (`backend/`) | JSON API, permissions and spoiler gating, admin. |
-| API contract | `openapi.yaml` | Agreed endpoints; the backend follows it, the frontend is built against it. |
-| Database | SQLite | Club data; settings per environment (dev, test, demo, production). |
-| Containers | Docker, `docker-compose.yml` | Runs the full system with one command. |
-| CI/CD | GitHub Actions (`.github/workflows/`) | Runs tests on every push; deploys the demo when they pass. |
+| Frontend | React, Vite, TypeScript, Tailwind (`frontend/`) | Screens. Talks to the backend only through the central API client (`src/api/`), which has a mock implementation (fictional data) and an HTTP implementation. |
+| Backend | Django 5.2 + Django Ninja (`backend/`) | JSON API, authentication (Discord OAuth via django-allauth), permissions, spoiler gating, admin features. |
+| API contract | `openapi.yaml` | Agreed endpoints. The frontend types are generated from it and the backend tests check responses against it. |
+| Database | SQLite | Club data. One file per environment (development, test, demo, production), chosen by `DATABASE_PATH` and `BOOKCLUB_ENV`; see [backend setup](docs/backend-setup.md). |
+| Containers | Docker, `docker-compose.yml` | Backend (Gunicorn, non-root) and proxy serving the built frontend; data in a named volume. |
+| CI/CD | GitHub Actions (`.github/workflows/`) | Tests, scans and image builds on every push and PR; when they pass on `main`, staging and then the demo deploy to Render Free. |
+| Observability | OpenTelemetry, Prometheus, Loki, Tempo, Grafana (`ops/`) | Opt-in local stack, an alert rule and a read-only on-call responder. |
 
-## Running it
+Request flow: the browser loads the static React build from the proxy; the app calls `/api/...` on the same
+origin; Django authenticates the session, checks membership and spoiler rules, reads/writes SQLite and returns
+JSON shaped by `openapi.yaml`.
+
+Repository map: `frontend/`, `backend/`, `openapi.yaml`, `docker-compose.yml`, `.github/workflows/`,
+`docs/` (supporting docs), `security/` (scans, PR audit, agent security notes, AI data policy),
+`ops/` (runbooks, observability, diagnosis), `agent-capabilities/`, `agent-hooks/`, `mcp-server/`,
+`custom-agent/` (agent extension pack, see [`docs/agent-extension-pack.md`](docs/agent-extension-pack.md)).
+
+## Set up and run
+
+Requirements: Git, Docker Desktop (for the full system), Node.js 24 and npm, Python 3.13 with
+[uv](https://docs.astral.sh/uv/getting-started/installation/) (for development servers and tests).
 
 ### Full system with Docker Compose
 
-With Docker Desktop running, from the repository root:
+From the repository root:
 
 ```sh
 docker compose up --build
 ```
 
-Open http://localhost:8080. The built React app uses the real Django API through
-one origin; no Discord credentials are needed to view the Spanish sign-in page
-or check `/api/health` and `/api/session`. Discord sign-in needs the owner's
-credentials and a bootstrapped approved identity; demo sign-in is issue #75.
-
-SQLite and private media live in the Compose named volume, separate from the
-host development database. Migrations run before Gunicorn starts, and the proxy
-waits for backend health. Both runtime processes run without root. Stop with
-`docker compose down`; it preserves data. **Do not use `down --volumes` for an
-instance whose data you want to keep.**
-
-Optional shell variables: `BOOKCLUB_PORT` (default 8080), `CLUB_TIMEZONE`
-(default Europe/Madrid), `SECRET_KEY`, `DISCORD_CLIENT_ID`,
-`DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI`. If changing the port, set
-the redirect URI to `http://localhost:<port>/api/auth/discord/callback` too.
-The club timezone is used at backend runtime and frontend build time; rebuild
-after changing it. The fallback secret and loopback HTTP are for local use only.
-Public HTTPS, isolated trusted proxy configuration and secret management are #76.
-
-Use `docker compose exec backend python manage.py bootstrap_admin` only after
-providing the intended `INITIAL_ADMIN_DISCORD_ID` explicitly (see the bootstrap
-section below). No member is created or elevated automatically. See
-[container operation and verification](docs/containers.md) for commands,
-persistence checks and backup guidance.
-
-### Separate development servers
-
-The frontend runs with fictional mock data by default. The backend implements public health and finite Discord sign-in, session lookup and logout:
+Open http://localhost:8080. The built React app uses the real Django API through one origin. No Discord
+credentials are needed to see the Spanish sign-in page. To try the app with fictional data and the
+trial-account button, start it in demo mode on its own project and volume:
 
 ```sh
-cd frontend
-npm ci
-npm run dev   # http://localhost:5173
+DEMO_MODE=true BOOKCLUB_PORT=18875 docker compose -p bookclub-demo up --build -d --wait
+docker compose -p bookclub-demo exec backend python manage.py seed_demo
 ```
 
-The backend uses Python 3.13 and Django 5.2 LTS. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+(PowerShell: set `$env:DEMO_MODE = 'true'` and `$env:BOOKCLUB_PORT = '18875'` first.) See
+[`docs/demo.md`](docs/demo.md). Never enable demo mode on a volume holding real club data.
+
+SQLite and uploaded media live in the Compose named volume. `docker compose down` keeps data;
+**never use `down --volumes` on an instance whose data you want to keep.** Migrations run before the
+backend starts. Optional shell variables: `BOOKCLUB_PORT` (default 8080), `CLUB_TIMEZONE`
+(default Europe/Madrid), `SECRET_KEY`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`
+(set it to `http://localhost:<port>/api/auth/discord/callback` if you change the port). The fallback secret
+and plain HTTP are for local use only. Details: [`docs/containers.md`](docs/containers.md).
+
+To create the first admin, set `INITIAL_ADMIN_DISCORD_ID` and run `bootstrap_admin`; see
+[`docs/backend-setup.md`](docs/backend-setup.md#explicit-initial-owner-bootstrap-6).
+
+### Development servers
 
 ```sh
-cd backend
-uv sync --locked
-uv run python manage.py check
-uv run python manage.py runserver 127.0.0.1:8000
-# In another terminal:
-curl http://localhost:8000/api/health
-# {"status":"ok"}
+cd frontend && npm ci && npm run dev          # http://localhost:5173, fictional mock data by default
+cd backend && uv sync --locked && uv run python manage.py migrate && uv run python manage.py runserver
 ```
 
-Health is public process liveness, without database readiness probes, session or provider access. Explicit HTTP mode enables session, Discord navigation and logout only; other client methods reject with 503. Default mock mode stays fictional. Discord credentials are optional for startup; absent credentials make OAuth start return safe Spanish 503. See [authentication configuration and isolated HTTP checking](docs/api.md#finite-discord-authentication-5). Compose is available as described above.
+Environments, database settings and the HTTP client switch are described in
+[`docs/backend-setup.md`](docs/backend-setup.md) and [`docs/api.md`](docs/api.md).
 
-`backend/.env.example` documents shell variables; it is a reference, not automatically loaded. Defaults are `BOOKCLUB_ENV=development`, `DEBUG=true`, local allowed hosts, `DATABASE_PATH=development.sqlite3` and `CLUB_TIMEZONE=UTC`. Relative database paths resolve inside backend; `:memory:` is supported for tests. Timezone never follows the machine. `LANGUAGE_CODE=es` and `USE_TZ=True` always apply.
+## Test
 
-| Selector | Debug default | Secret/hosts | Secure session/CSRF cookies |
-|---|---|---|---|
-| development | true | Public development fallback/local hosts | false |
-| test | false | Public development fallback/local hosts | false |
-| demo | false | Set private key and actual hosts before deployment | false (local bootstrap only) |
-| production | false (true is refused) | Explicit `SECRET_KEY` and comma-separated `ALLOWED_HOSTS` required | true |
+| Suite | Command | Where |
+|---|---|---|
+| Backend unit | `uv run pytest -m "not integration"` | `backend/` |
+| Backend integration (real database and HTTP workflows, migrations) | `uv run pytest -m integration` | `backend/` |
+| Backend lint and format | `uv run ruff check .` and `uv run ruff format --check .` | `backend/` |
+| Contract drift | `uv run python -m config.contract` | `backend/` |
+| Frontend unit and component | `npm test` | `frontend/` |
+| Frontend lint, type-check, build | `npm run lint`, `npm run build` | `frontend/` |
+| Contract validation and generated types | `npm run validate:contract`, `npm run check:api` | `frontend/` |
+| Accessibility and browser journeys | `npm run test:a11y`, `npm run test:e2e` | `frontend/` |
+| Agent hooks and MCP server | `node --test agent-hooks/hooks.test.mjs mcp-server/server.test.mjs` | root |
 
-Invalid selector, boolean (`true`/`false` only), IANA timezone or blank database path fails clearly. These settings are a bootstrap, not deployed authentication/TLS security. Production configuration requires a private generated secret and actual deployment host; never commit either. Demo configuration alone does not create demo users or sign-in (#75).
+Backend tests need `BOOKCLUB_ENV=test` and `DATABASE_PATH=:memory:`; they use fictional data only and no
+Discord account or network. Integration tests are separated by the `integration` pytest marker. Full
+instructions: [`docs/testing.md`](docs/testing.md), [`docs/browser-tests.md`](docs/browser-tests.md).
 
-PowerShell test example (POSIX: prefix commands with `BOOKCLUB_ENV=test DATABASE_PATH=:memory:`):
+## CI/CD and deployment
 
-```powershell
-$env:BOOKCLUB_ENV = 'test'
-$env:DATABASE_PATH = ':memory:'
-uv run python manage.py check
-uv run pytest -m "not integration"
-uv run pytest -m integration
-uv run ruff check .
-uv run ruff format --check .
-uv run python -m config.contract
-```
+`.github/workflows/ci.yml` runs backend, frontend, container, observability and security jobs on every push
+and pull request, ending in one required aggregate job ([`docs/ci.md`](docs/ci.md)). On `main`, when it passes,
+`deploy.yml` deploys staging, verifies it and then deploys the demo; rollback is a documented manual procedure
+([`docs/release-process.md`](docs/release-process.md)). Both run on Render Free from the repository's Docker
+images ([`docs/public-demo.md`](docs/public-demo.md)). A production-style deployment for the real club (HTTPS
+Compose override, persistence, backups, hosting comparison) is in [`docs/deployment.md`](docs/deployment.md)
+and [`docs/backups.md`](docs/backups.md). Local observability: [`ops/observability/README.md`](ops/observability/README.md).
 
-Optional club timezone override: `$env:CLUB_TIMEZONE = 'Europe/Madrid'`. Production example: set `BOOKCLUB_ENV=production`, `DEBUG=false`, a generated private `SECRET_KEY`, `ALLOWED_HOSTS` to the deployed hostname and `DATABASE_PATH` to an intended absolute SQLite location. Settings consume environment variables directly; keep local databases and credentials out of Git.
+## Security and operations
 
-The custom `users.User` is configured before auth/contenttypes migrations, with an independent website key, exact Discord string identity, native profile and deny-by-default membership. Its initial migration never creates `auth_user`. Django database sessions and authentication now precede a default backend membership guard: private requests require current persisted approval without revocation, and ineligible sessions are invalidated. Membership refusal precedes CSRF and private work; eligible unsafe requests require CSRF even on Ninja views. The only implemented HTTP operation remains health; no sign-in/session endpoint workflow is available yet. Exact public exceptions and implementation boundaries are documented in [docs/api.md](docs/api.md). The frontend still uses fictional mock data on localhost.
+[`security/README.md`](security/README.md) (deterministic scans, PR audit, agent security, AI tool and data
+policy) and [`docs/operations-and-security-report.md`](docs/operations-and-security-report.md) (operations and
+security report). Runbooks are in [`ops/runbooks/`](ops/runbooks/).
 
-Verify migrations against a disposable database, never by resetting or migrating the owner's existing development database. From `backend/` in PowerShell:
+## How AI was used
 
-```powershell
-$previousDatabase = $env:DATABASE_PATH
-$migrationDirectory = Join-Path $env:TEMP ('bookclub-migration-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $migrationDirectory | Out-Null
-try {
-  $env:DATABASE_PATH = Join-Path $migrationDirectory 'empty.sqlite3'
-  uv run python manage.py migrate --noinput
-  uv run python manage.py migrate --noinput # No migrations to apply.
-  uv run python manage.py makemigrations --check --dry-run
-} finally {
-  $env:DATABASE_PATH = $previousDatabase
-}
-```
-
-The integration suite reproduces this verification in pytest's temporary directory and checks the actual table, initial migration, uniqueness and SQL checks. Its test database is separate from development storage. On Unix, set `DATABASE_PATH` to a new temporary absolute path before running the same commands. The temporary verification database can be removed afterwards.
-
-### Explicit initial owner bootstrap (#6)
-
-`bootstrap_admin` reads only `INITIAL_ADMIN_DISCORD_ID`: an exact string of 17–20
-ASCII digits, without trimming or numeric conversion. It creates an approved native
-admin with placeholder display name `Administrador`, empty avatar and null bio/quote,
-and an unusable password. No OAuth credentials/provider requests, email, Django
-staff/superuser, SocialAccount or SocialToken are needed. Website profiles remain
-independent of Discord and can be edited through the later profile feature (#9).
-
-Example from `backend/`, using a fictional ID and a new disposable database:
-
-```powershell
-$bootstrapDirectory = Join-Path $env:TEMP ('bookclub-bootstrap-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $bootstrapDirectory | Out-Null
-$previousDatabase = $env:DATABASE_PATH
-$previousAdminIdentity = $env:INITIAL_ADMIN_DISCORD_ID
-$previousEnvironment = $env:BOOKCLUB_ENV
-try {
-  $env:BOOKCLUB_ENV = 'test'
-  $env:DATABASE_PATH = Join-Path $bootstrapDirectory 'disposable.sqlite3'
-  uv run python manage.py migrate --noinput
-  $env:INITIAL_ADMIN_DISCORD_ID = '100000000000000001'
-  uv run python manage.py bootstrap_admin
-  uv run python manage.py bootstrap_admin # Already configured; no persisted changes.
-} finally {
-  $env:DATABASE_PATH = $previousDatabase
-  $env:INITIAL_ADMIN_DISCORD_ID = $previousAdminIdentity
-  $env:BOOKCLUB_ENV = $previousEnvironment
-}
-```
-
-POSIX equivalent, again on a disposable database:
-
-```sh
-bootstrap_directory=$(mktemp -d)
-BOOKCLUB_ENV=test DATABASE_PATH="$bootstrap_directory/disposable.sqlite3" uv run python manage.py migrate --noinput
-BOOKCLUB_ENV=test DATABASE_PATH="$bootstrap_directory/disposable.sqlite3" INITIAL_ADMIN_DISCORD_ID=100000000000000001 uv run python manage.py bootstrap_admin
-```
-
-Existing pending/approved/revoked members and the same-identity admin are reused;
-explicit execution promotes/reapproves and clears revocation while retaining the
-native key, identity, profile, creation time, last login and password. Any different
-admin-role row blocks the operation, including pending/revoked admins: changing the
-variable cannot transfer ownership. Malformed persisted rows fail without repairs.
-No positional ID or override option exists. Missing/invalid input makes this command
-fail safely in Spanish without writes; Django startup/check and OAuth never consult
-the variable or provision/reapprove anyone. An already configured rerun changes no
-field, including `updated_at`. `.env.example` is reference-only and is never loaded
-automatically. Never run these provisioning/migration examples on the owner's
-development database. There is no HTTP bootstrap or new route; the frontend remains
-the existing mock preview on localhost:5173.
-
-The schema command compares every registered/generated implemented operation against its handwritten contract, reports the implemented subset and fails on missing/undocumented handlers or changed behavioural schemas/security/statuses/media. See [docs/api.md](docs/api.md). It does not pretend the 74 future club/provider operations are implemented. CI runs locked uv install, checks, Ruff, both real nonempty test selections and schema drift checking; frontend CI continues its complete existing suite.
-
-The mock admin can maintain independent page/percentage targets at
-`/administracion/lecturas`: add, edit, reorder and confirm recoverable removal.
-Warnings require acknowledgement; removed weeks retain completion history for
-30-day recovery and lock linked meeting records. No automatic plan generation
-or recovery UI is included. All changes last for the mock-client session.
-
-The mock admin can manage meeting dates, optional catalogue book/existing week links,
-cancellations and attendance at `/administracion/reuniones`. Meeting form times use
-`VITE_CLUB_TIMEZONE` (default `Europe/Madrid`); nonexistent or ambiguous DST times
-must be changed before saving. Attendance is editable only after the mock clock's
-meeting start and while not cancelled. Revoked attendees remain read-only history.
-Saved changes appear on the next navigation to member screens; mock state lasts
-only for the client lifetime. Summary/highlight editors and reading-plan editing
-are separate issues.
-
-## Testing
-
-```sh
-cd frontend
-npm test        # unit and component tests
-npm run lint
-npm run build   # type-check and build
-```
-
-CI (`.github/workflows/ci.yml`) runs backend, frontend and deployment artifact checks
-on every push and pull request. See [CI operation](docs/ci.md).
-
-## Deployment and demo
-
-See the [portable production deployment guide](docs/deployment.md) for the
-explicit HTTPS Compose override, SQLite/media persistence, hosting comparison,
-maintenance and recovery. The public fictional demos run on Render Free:
-[reviewer demo](https://small-bookclub-demo.onrender.com) and
-[staging](https://small-bookclub-staging.onrender.com). Use the Spanish trial-account
-button to enter without Discord. Free services can take about a minute to wake;
-fictional edits and uploads reset on restart, redeploy or spin-down.
-See the [Render deployment and verification guide](docs/public-demo.md) for manual
-rollout, storage limits and the verified hosted rollout/rollback evidence for #76.
-See [continuous delivery](docs/release-process.md) for the tested main-to-staging-to-demo
-workflow, activation requirements and failure recovery.
-See [fictional demo operation](docs/demo.md) for opt-in seeding.
-See [local private observability](ops/observability/README.md) for the opt-in
-OpenTelemetry stack, read-only Grafana dashboard and disposable verification.
-
-## How AI was used *(to do)*
-
-This project is built with AI coding agents following a PM → engineer → QA process. See [`AGENTS.md`](AGENTS.md) and [`docs/process.md`](docs/process.md).
+The project is built with AI coding agents under a written process: specification first, work delegated through
+GitHub issues, a PM → engineer → QA flow (with a leaner default), context files, and manual review plus automated
+verification of every result. Full description, with example prompts:
+[`docs/ai-workflow.md`](docs/ai-workflow.md). Agent rules: [`AGENTS.md`](AGENTS.md); process:
+[`docs/process.md`](docs/process.md); extension pack (skills, subagents, MCP server, hooks, permissions):
+[`docs/agent-extension-pack.md`](docs/agent-extension-pack.md).
