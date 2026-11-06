@@ -100,24 +100,19 @@ are not a sandbox ([`agent-extension-pack.md`](agent-extension-pack.md),
 
 ## 8. Models used and how they were managed
 
-- **Models.** Claude Opus 5.5 and Claude Sonnet 5.5 (Claude Code), GPT Sol with medium
-  reasoning (coding agent for the remaining work), and GPT Luna. The repository does not
-  record Luna's role or settings, so none is claimed here.
+Several models were used as coding agents: Claude Opus 5.5 and Claude Sonnet 5.5 (Claude Code),
+GPT Sol (medium reasoning) and GPT Luna (Codex). No record was kept of which model did which
+task, so none is claimed; the process above is the same for all of them.
+
 - **Selection by risk (policy).** [`process.md`](process.md) assigns Sonnet to grooming,
   routine CRUD, infrastructure and documentation, and Opus to authentication, permission and
-  spoiler logic and every security review. Issues were also batched so related work shared one
-  session and its context.
-- **Tracking.** Only some commits carry a `Co-Authored-By` line, so which model wrote which
-  commit was not tracked systematically. Treat this section as a description of use.
+  spoiler logic and every security review.
 - **Runtime model.** The on-call responder runs `gpt-6.1-sol` through the installed Codex CLI
-  0.163.0 with the owner's existing ChatGPT login. The name is pinned, API-key mode is refused,
-  tools are disabled, input is a projected packet and output is a closed JSON enum schema.
-  Model inference never runs in CI.
+  0.163.0 with the owner's existing ChatGPT login: name pinned, API-key mode refused, tools
+  disabled, input a projected packet, output a closed JSON schema, never run in CI.
 - **Data and authority.** Models receive only fictional data or reviewed operational metadata
   ([`ai-tool-data-policy.md`](../security/ai-tool-data-policy.md)). Models never choose commands;
   the one automatic action is fixed code (#127). Merges, hosting accounts and paid services need
   the owner.
-- **Cost.** The project added no paid API or service integration. The responder uses the owner's
-  existing ChatGPT login; this document does not account for the coding agents' own plan costs.
 - **Checks on model output.** Tests, the OpenAPI contract, CI, security scans and the owner's
   review apply to every change regardless of which model wrote it.

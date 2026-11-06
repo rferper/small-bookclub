@@ -137,25 +137,27 @@ security report). Runbooks are in [`ops/runbooks/`](ops/runbooks/).
 
 ### AI models used and how they were managed
 
-Four models were used:
+Several models were used as coding agents: Claude Opus 5.5 and Claude Sonnet 5.5 (Claude Code),
+and GPT Sol (medium reasoning) and GPT Luna (Codex). I did not keep a record of which model did
+which task, so none is claimed. What matters is the structure around them, which is the same for
+every model:
 
-| Model | Where | How it was managed |
-|---|---|---|
-| Claude Opus 5.5 | Coding agent (Claude Code). | Reserved for risky work by `docs/process.md`: authentication, permission and spoiler logic, security reviews. |
-| Claude Sonnet 5.5 | Coding agent (Claude Code). | Default tier for routine work: grooming, CRUD, infrastructure, documentation. |
-| GPT Sol (medium reasoning) | Coding agent for the work not done by the Claude models; also the pinned runtime model of the on-call responder (`gpt-6.1-sol`, Codex CLI 0.163.0). | Responder: name pinned in `ops/oncall/model-catalog.mjs`, existing ChatGPT login, API-key mode refused, no tools, schema-validated output, never run in CI. |
-| GPT Luna | Used during development. | The role and settings were not recorded in the repository. |
+- **Tasks come from issues.** The owner writes the spec and the issue with acceptance criteria;
+  the agent works one issue at a time on its own branch.
+- **Rules live in files, not in chat.** `AGENTS.md` and linked docs define the stack, commands
+  and limits; corrections are written back into them.
+- **Risk decides the care taken.** Authentication, permission and spoiler changes get an
+  independent security review; routine work follows the lean flow.
+- **Every result is verified.** Tests, the OpenAPI contract, CI and security scans apply to every
+  change, and the owner reviews pull requests and approves merges, hosting and anything paid.
+- **Data and authority are limited.** Models receive only fictional data or reviewed operational
+  metadata, and no model chooses commands for the one automatic action (a fixed backend restart).
+  The runtime on-call responder uses a pinned model (`gpt-6.1-sol`) with no tools and schema-checked
+  output, and never runs in CI.
 
-All models worked under the same rules: the owner chose the task through a GitHub issue,
-reviewed every pull request and approved merges, hosting and anything paid; tests, the
-OpenAPI contract, CI and security scans apply to every change whichever model wrote it;
-models receive only fictional data or reviewed operational metadata, and never choose
-commands for the one automatic action (a fixed backend restart). Which model wrote which
-commit was not tracked systematically (only some commits carry a `Co-Authored-By` line), so
-this is a description of use, not a per-commit accounting. Details:
-[`security/ai-tool-data-policy.md`](security/ai-tool-data-policy.md),
-[`security/agent-security.md`](security/agent-security.md) and
-[`docs/ai-workflow.md`](docs/ai-workflow.md#8-models-used-and-how-they-were-managed).
+Details: [`docs/ai-workflow.md`](docs/ai-workflow.md),
+[`security/ai-tool-data-policy.md`](security/ai-tool-data-policy.md) and
+[`security/agent-security.md`](security/agent-security.md).
 
 ### Workflow
 
