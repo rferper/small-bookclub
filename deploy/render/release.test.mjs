@@ -205,6 +205,11 @@ test('actual caller and reusable guards require trusted main success, including 
   assert.equal(ci.jobs.deploy.needs, 'required')
   assert.equal(cd.jobs['production-demo'].needs, 'staging')
 })
+test('only the demo job waits on the production-demo environment approval gate', () => {
+  assert.equal(cd.jobs['production-demo'].environment, 'production-demo')
+  assert.equal(cd.jobs.staging.environment, undefined)
+  assert.equal(cd.jobs['record-release'].environment, undefined)
+})
 test('secrets remain step-scoped and each target receives only its own hook', () => {
   assert.deepEqual(cd.permissions, { contents: 'read' })
   for (const [id, hook] of [['staging', 'RENDER_STAGING_DEPLOY_HOOK'], ['production-demo', 'RENDER_DEMO_DEPLOY_HOOK']]) {

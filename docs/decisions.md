@@ -1261,3 +1261,15 @@ gains an agent-pack section, because `product-spec.md` names that file for both.
 
 Limit: hooks see command text and submitted content only; they are a second check, not
 a sandbox.
+
+## Manual approval gate for the production demo (#126)
+
+The demo is the production stage of the delivery pipeline. Its job in `deploy.yml`
+declares the GitHub environment `production-demo`; the owner configures that
+environment with required reviewers, so the run pauses until someone approves. Staging
+stays automatic. Why an environment and not a separate `workflow_dispatch` workflow:
+it keeps the existing guarded, tested release scripts unchanged (they still require a
+trusted push on `main`), and a stale approval is safe because the job rechecks that
+its SHA is still the current `main` head. Without the environment's reviewers the job
+runs unattended as before, so the gate is only active once the owner enables it.
+Free for public repositories.
