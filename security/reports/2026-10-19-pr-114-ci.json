@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "revision": "070d5cbef63a0887179de58bd9eec3cb62e1b977",
+  "collectedAt": "2026-10-19T19:35:40.908Z",
+  "versions": {
+    "semgrep": "1.181.0",
+    "pipAudit": "2.10.1",
+    "gitleaks": "8.30.1",
+    "npm": "11.19.1",
+    "node": "v24.22.0"
+  },
+  "scope": "tracked-working-tree-and-all-local-git-refs",
+  "scans": [
+    {
+      "tool": "semgrep",
+      "status": "findings",
+      "findings": [
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/scripts/contract-tests.mjs",
+          "line": 19,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/scripts/contract-tests.mjs:19:source-5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "sourceSha256": "5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/scripts/contract-tests.mjs",
+          "line": 31,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/scripts/contract-tests.mjs:31:source-5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "sourceSha256": "5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/scripts/contract-tests.mjs",
+          "line": 39,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/scripts/contract-tests.mjs:39:source-5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "sourceSha256": "5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/scripts/contract-tests.mjs",
+          "line": 43,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/scripts/contract-tests.mjs:43:source-5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "sourceSha256": "5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/scripts/contract-tests.mjs",
+          "line": 47,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/scripts/contract-tests.mjs:47:source-5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "sourceSha256": "5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/scripts/contract-tests.mjs",
+          "line": 51,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/scripts/contract-tests.mjs:51:source-5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "sourceSha256": "5135d8d78ca0540daf145d99d9ce924179765a9a057220d0d8e6ce0d60a01bd0",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "frontend/src/lib/format.ts",
+          "line": 74,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:frontend/src/lib/format.ts:74:source-581ddf20e8a76a8b176d0cd610f097eaa17b35e3d945d7465b4d7cbc117738a3",
+          "sourceSha256": "581ddf20e8a76a8b176d0cd610f097eaa17b35e3d945d7465b4d7cbc117738a3",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "javascript-shell-execution",
+          "path": "ops/oncall/startup-protocol.mjs",
+          "line": 76,
+          "severity": "error",
+          "key": "semgrep:javascript-shell-execution:ops/oncall/startup-protocol.mjs:76:source-851106780f0e1926c24a55e41e6c2fade421df6e79bf9922de5f1b1940e260f2",
+          "sourceSha256": "851106780f0e1926c24a55e41e6c2fade421df6e79bf9922de5f1b1940e260f2",
+          "disposition": "false-positive"
+        }
+      ]
+    },
+    {
+      "tool": "pip-audit",
+      "status": "passed",
+      "findings": []
+    },
+    {
+      "tool": "npm-audit",
+      "status": "passed",
+      "findings": []
+    },
+    {
+      "tool": "gitleaks-history",
+      "status": "findings",
+      "findings": [
+        {
+          "id": "discord-client-id",
+          "path": "backend/tests/integration/test_backups.py",
+          "line": 298,
+          "commit": "8eb9099ea804c87cbff68181ddad185a5d56b276",
+          "severity": "high",
+          "key": "gitleaks-history:discord-client-id:backend/tests/integration/test_backups.py:298:8eb9099ea804c87cbff68181ddad185a5d56b276",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "discord-client-id",
+          "path": "frontend/src/api/mock/adminMembers.test.ts",
+          "line": 181,
+          "commit": "374da0ba16a1b5327db60d709da1848055bb2aa7",
+          "severity": "high",
+          "key": "gitleaks-history:discord-client-id:frontend/src/api/mock/adminMembers.test.ts:181:374da0ba16a1b5327db60d709da1848055bb2aa7",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "discord-client-id",
+          "path": "frontend/src/api/mock/adminMembers.test.ts",
+          "line": 185,
+          "commit": "374da0ba16a1b5327db60d709da1848055bb2aa7",
+          "severity": "high",
+          "key": "gitleaks-history:discord-client-id:frontend/src/api/mock/adminMembers.test.ts:185:374da0ba16a1b5327db60d709da1848055bb2aa7",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "discord-client-id",
+          "path": "frontend/src/pages/AdminMembersPage.test.tsx",
+          "line": 154,
+          "commit": "93ac8e4717cd378294cc0b59a47a11f61c29c575",
+          "severity": "high",
+          "key": "gitleaks-history:discord-client-id:frontend/src/pages/AdminMembersPage.test.tsx:154:93ac8e4717cd378294cc0b59a47a11f61c29c575",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "generic-api-key",
+          "path": "backend/users/migrations/0001_initial.py",
+          "line": 89,
+          "commit": "4a43f4bcacc92845fe7f827f4dc69734a758ebe7",
+          "severity": "high",
+          "key": "gitleaks-history:generic-api-key:backend/users/migrations/0001_initial.py:89:4a43f4bcacc92845fe7f827f4dc69734a758ebe7",
+          "disposition": "false-positive"
+        }
+      ]
+    },
+    {
+      "tool": "gitleaks-tree",
+      "status": "findings",
+      "findings": [
+        {
+          "id": "discord-client-id",
+          "path": "backend/tests/integration/test_backups.py",
+          "line": 314,
+          "severity": "high",
+          "key": "gitleaks-tree:discord-client-id:backend/tests/integration/test_backups.py:314:source-3512db9c670ea35746e6b59bb2ad52c6942849a989f178de58ac6a84a39edc6e",
+          "sourceSha256": "3512db9c670ea35746e6b59bb2ad52c6942849a989f178de58ac6a84a39edc6e",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "discord-client-id",
+          "path": "frontend/src/api/mock/adminMembers.test.ts",
+          "line": 181,
+          "severity": "high",
+          "key": "gitleaks-tree:discord-client-id:frontend/src/api/mock/adminMembers.test.ts:181:source-832880fba8a85ed2ea3b750b5b9149655d4e2dc5c45ed4af28fecd83f2bdfa8b",
+          "sourceSha256": "832880fba8a85ed2ea3b750b5b9149655d4e2dc5c45ed4af28fecd83f2bdfa8b",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "discord-client-id",
+          "path": "frontend/src/api/mock/adminMembers.test.ts",
+          "line": 185,
+          "severity": "high",
+          "key": "gitleaks-tree:discord-client-id:frontend/src/api/mock/adminMembers.test.ts:185:source-832880fba8a85ed2ea3b750b5b9149655d4e2dc5c45ed4af28fecd83f2bdfa8b",
+          "sourceSha256": "832880fba8a85ed2ea3b750b5b9149655d4e2dc5c45ed4af28fecd83f2bdfa8b",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "discord-client-id",
+          "path": "frontend/src/pages/AdminMembersPage.test.tsx",
+          "line": 210,
+          "severity": "high",
+          "key": "gitleaks-tree:discord-client-id:frontend/src/pages/AdminMembersPage.test.tsx:210:source-eb8de280b16779a192f43df446290a3c51c9619ae06818397c7490b8d33e9317",
+          "sourceSha256": "eb8de280b16779a192f43df446290a3c51c9619ae06818397c7490b8d33e9317",
+          "disposition": "false-positive"
+        },
+        {
+          "id": "generic-api-key",
+          "path": "backend/users/migrations/0001_initial.py",
+          "line": 89,
+          "severity": "high",
+          "key": "gitleaks-tree:generic-api-key:backend/users/migrations/0001_initial.py:89:source-7b0df6b9e70e13064ee2e2719b2f1a14bc0a7c9971772b69fb06826edf6adea5",
+          "sourceSha256": "7b0df6b9e70e13064ee2e2719b2f1a14bc0a7c9971772b69fb06826edf6adea5",
+          "disposition": "false-positive"
+        }
+      ]
+    }
+  ],
+  "passed": true
+}
