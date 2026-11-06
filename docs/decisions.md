@@ -1274,3 +1274,15 @@ map it, and keeping the choice in fixed code leaves one reviewable allowlist. Li
 one action, 15-minute cooldown per project, audit file outside git, local fictional stack
 only. No new dependency or paid service. Rollback is removing the watcher; nothing runs
 unless the operator starts it.
+
+## Manual approval gate for the production demo (#126)
+
+The demo is the production stage of the delivery pipeline. Its job in `deploy.yml`
+declares the GitHub environment `production-demo`; the owner configures that
+environment with required reviewers, so the run pauses until someone approves. Staging
+stays automatic. Why an environment and not a separate `workflow_dispatch` workflow:
+it keeps the existing guarded, tested release scripts unchanged (they still require a
+trusted push on `main`), and a stale approval is safe because the job rechecks that
+its SHA is still the current `main` head. Without the environment's reviewers the job
+runs unattended as before, so the gate is only active once the owner enables it.
+Free for public repositories.
