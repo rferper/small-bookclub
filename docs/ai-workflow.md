@@ -97,3 +97,25 @@ Hooks refuse risky git commands, run fast checks on commit and block real data i
 fixtures; the MCP server exposes read-only project facts. They reduce mistakes and
 are not a sandbox ([`agent-extension-pack.md`](agent-extension-pack.md),
 [`permissions.md`](permissions.md)).
+
+## 8. Models used and how they were managed
+
+- **Selection by risk (policy).** The commit trailers do not show which task each model did. [`process.md`](process.md) assigns Sonnet to grooming, routine
+  CRUD, infrastructure and documentation, Opus to authentication, permission and spoiler
+  logic and every security review, and Haiku only to mechanical edits. Issues were also
+  batched so related work shared one session and context.
+- **Evidence of use.** Commit trailers record Claude Opus 5.5 (67 commits) and Claude Sonnet 5.5
+  (24) out of 400 commits. Earlier sessions did not sign commits, so these numbers are a lower
+  bound. No record shows Haiku was used.
+- **Runtime model.** The on-call responder runs GPT-6.1-Sol through the installed Codex CLI
+  0.163.0 with the owner's existing ChatGPT login. The model name is pinned, API-key mode is
+  refused, tools are disabled, input is a projected packet and output is a closed JSON enum
+  schema. Model inference never runs in CI.
+- **Data and authority.** Models receive only fictional data or reviewed operational metadata
+  ([`ai-tool-data-policy.md`](../security/ai-tool-data-policy.md)). Models never choose commands;
+  the one automatic action is fixed code (#127). Merges, hosting accounts and paid services need
+  the owner.
+- **Cost.** The project added no paid API or service integration. The responder uses the owner's
+  existing ChatGPT login; this document does not account for the coding agents' own plan costs.
+- **Checks on model output.** Tests, the OpenAPI contract, CI, security scans and the owner's
+  review apply to every change regardless of which model wrote it.

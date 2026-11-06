@@ -42,7 +42,7 @@ Browser ── React app ──(one API client module)──▶ nginx proxy ─�
 | Database | SQLite | Club data. One file per environment (development, test, demo, production), chosen by `DATABASE_PATH` and `BOOKCLUB_ENV`; see [backend setup](docs/backend-setup.md). |
 | Containers | Docker, `docker-compose.yml` | Backend (Gunicorn, non-root) and proxy serving the built frontend; data in a named volume. |
 | CI/CD | GitHub Actions (`.github/workflows/`) | Tests, scans and image builds on every push and PR; when they pass on `main`, staging and then the demo deploy to Render Free. |
-| Observability | OpenTelemetry, Prometheus, Loki, Tempo, Grafana (`ops/`) | Opt-in local stack, an alert rule and a read-only on-call responder. |
+| Observability | OpenTelemetry, Prometheus, Loki, Tempo, Grafana (`ops/`) | Opt-in local stack, an alert rule, a read-only AI on-call responder and an opt-in watcher that restarts the backend of the local monitoring stack after a firing alert. |
 
 Request flow: the browser loads the static React build from the proxy; the app calls `/api/...` on the same
 origin; Django authenticates the session, checks membership and spoiler rules, reads/writes SQLite and returns
@@ -110,6 +110,7 @@ Environments, database settings and the HTTP client switch are described in
 | Frontend lint, type-check, build | `npm run lint`, `npm run build` | `frontend/` |
 | Contract validation and generated types | `npm run validate:contract`, `npm run check:api` | `frontend/` |
 | Accessibility and browser journeys | `npm run test:a11y`, `npm run test:e2e` | `frontend/` |
+| On-call remediation (offline, no model) | `node --test ops/oncall/remediate.test.mjs` | root |
 | Agent hooks and MCP server | `node --test agent-hooks/hooks.test.mjs mcp-server/server.test.mjs` | root |
 
 Backend tests need `BOOKCLUB_ENV=test` and `DATABASE_PATH=:memory:`; they use fictional data only and no
@@ -133,6 +134,26 @@ policy) and [`docs/operations-and-security-report.md`](docs/operations-and-secur
 security report). Runbooks are in [`ops/runbooks/`](ops/runbooks/).
 
 ## How AI was used
+
+### AI models used and how they were managed
+
+| Model | Where | How it was managed |
+|---|---|---|
+| Claude Opus 5.5 | Coding agent (Claude Code). Policy: authentication, permission and spoiler logic, security reviews. | The strongest tier is reserved for risky work by `docs/process.md`. 67 commits carry its `Co-Authored-By` line; the line does not say which task it did. |
+| Claude Sonnet 5.5 | Coding agent (Claude Code). Policy: grooming, routine CRUD, infrastructure, documentation. | Default tier for routine work. 24 commits carry its line. |
+| Claude Haiku | Allowed in `docs/process.md` for mechanical tasks only. | No commit in the history records it, so I do not claim it was used. |
+| GPT-6.1-Sol via Codex CLI 0.163.0 | Runtime on-call responder (`ops/oncall/`): reads a projected, fictional or local packet and returns a closed JSON diagnosis. | Model name pinned in `ops/oncall/model-catalog.mjs`; existing ChatGPT login, API-key mode refused; no tools, no web, no files; output validated against a schema. CI never calls it. |
+
+Limits of this record: 91 of 400 commits have a model line; earlier commits were not signed,
+so the split above is a lower bound, not a full accounting. Models were chosen by task risk,
+not benchmarked against each other. The coding agents ran under the owner's tool-permission
+mode, and the owner reviewed pull requests and approved merges, hosting and anything paid.
+Rules for what data models may see, tool authority and known gaps:
+[`security/ai-tool-data-policy.md`](security/ai-tool-data-policy.md),
+[`security/agent-security.md`](security/agent-security.md) and
+[`docs/ai-workflow.md`](docs/ai-workflow.md#8-models-used-and-how-they-were-managed).
+
+### Workflow
 
 The project is built with AI coding agents under a written process: specification first, work delegated through
 GitHub issues, a PM → engineer → QA flow (with a leaner default), context files, and manual review plus automated
