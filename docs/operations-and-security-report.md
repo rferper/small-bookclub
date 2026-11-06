@@ -2,7 +2,7 @@
 
 One path through the project's operations evidence, from a deployed version to an
 incident's resolution, followed by the security findings and what is *not* proven.
-Observation date: 2026-10-19. Everything here uses fictional data. Claims link to the
+Observation date: 2026-11-06 (updated from 2026-10-19). Everything here uses fictional data. Claims link to the
 document or artifact that holds the evidence; this report adds no new evidence.
 
 ## 1. Release: what is deployed and how to tell
@@ -12,12 +12,16 @@ document or artifact that holds the evidence; this report adds no new evidence.
 - Each service exposes the exact running commit: `X-Bookclub-Revision` on `/` and
   the matching identity in `/api/health` ([inspection](release-process.md#source-release-tags-and-inspection)).
 - After both services verify, CI records the lightweight tag `release-<full SHA>`.
-  Four tags exist today (the newest is `release-5af7f8f…`, from run 39250444759).
-- **Known gap:** the latest `main` run (39309184984, merge of #113) passed backend,
+  Seven tags exist today; the newest is `release-488a054…`, from main run 42243010129
+  (the #116 merge, 2026-11-06).
+- **Resolved gap:** the `main` run after the #113 merge (39309184984) passed backend,
   frontend and observability, but its Render verifier timed out at staging
-  `profile-edit`, so deployment was skipped and no tag was written. That is tracked
-  as [#110](https://github.com/rferper/small-bookclub/issues/110) and is unresolved.
-  The demos therefore run an earlier tagged revision than `main`. Check
+  `profile-edit`, so deployment was skipped and no tag was written. That
+  intermittent browser-startup failure was tracked as
+  [#110](https://github.com/rferper/small-bookclub/issues/110). PR #121 added a 2 s
+  wait after Chromium starts (2 failures in 9 smokes before, 0 in 12 after); main runs
+  deployed and tagged normally afterwards. The cause was never reproduced
+  deterministically, so #110 was closed as mitigated, not as root-caused. Check
   `/api/health` for what is live now; an absent tag does not prove a commit never
   reached a service.
 
@@ -74,7 +78,7 @@ Not exercised: a real incident, or a hosted rollback during this review.
 
 | Source | Result |
 |---|---|
-| Dependency audits (`pip-audit`, `npm audit`, full lockfiles incl. dev) | Zero known vulnerabilities at observation time. |
+| Dependency audits (`pip-audit`, `npm audit`, full lockfiles incl. dev) | 2026-10-19: zero. 2026-11-06: the CI gate failed on 42 new Python advisories (pillow, certifi, oauthlib) and 2 npm advisories (undici, fast-uri) published since. Fixed by targeted upgrades (not automatic fix tooling); both audits report zero again, with backend 1628 and frontend 1273 tests passing. |
 | Semgrep CE, seven local rules | Seven RegExp false positives, each triaged with an exact identity. |
 | Gitleaks, full history and tracked tree | Five history and five current-file matches, all fictional IDs or unusable passwords; no real secret found. |
 | Triage | 17 records in [`security/triage.json`](../security/triage.json); current-file exceptions bind a source hash and expire when the file changes. |
@@ -84,14 +88,16 @@ Not exercised: a real incident, or a hosted rollback during this review.
 
 ## 7. Limits and open items
 
-- **Human validation pending:** the owner has not yet validated the PR #112 AI audit
-  (credential-header stripping, private-data projection, bounded failure handling,
-  trusted-local-network limitation). Issue #82 stays open until it is recorded.
-- **#110 unresolved:** the intermittent Render verifier failure blocks the latest
-  delivery and has no established cause.
-- **Stale text:** `security/agent-security.md` ("Responder status: not accepted") and
-  `ops/oncall/verification.md` predate the merge of #81 and contradict section 4.
-  They should be reconciled in a follow-up.
+- **Human validation done:** the owner reviewed the four dispositions of the PR #112
+  AI audit and agreed they are fair on 2026-11-06 (recorded in
+  [the audit](../security/pr-audit-112.md)). This confirms the stated limits; it is
+  not a claim that all vulnerabilities are absent.
+- **Dependency drift:** new advisories appeared within 18 days, so the audit result
+  is only valid for its date. The CI gate catches this on every run.
+- **#110 closed as mitigated:** no established cause; the wait could stop being
+  enough, and a new issue should be opened if the network error returns.
+- The status text about the responder in `security/agent-security.md` and
+  `ops/oncall/verification.md` was reconciled with the merge of #81 in #116.
 - Scanners are small, syntactic and incomplete, not a full audit. The tooling
   proves nothing about the real club instance, which has no deployment yet.
 - The monitoring stack is local; there is no hosted monitoring, paging or SLO.
