@@ -120,7 +120,7 @@ instructions: [`docs/testing.md`](docs/testing.md), [`docs/browser-tests.md`](do
 
 `.github/workflows/ci.yml` runs backend, frontend, container, observability and security jobs on every push
 and pull request, ending in one required aggregate job ([`docs/ci.md`](docs/ci.md)). On `main`, when it passes,
-`deploy.yml` deploys staging, verifies it and then deploys the demo; rollback is a documented manual procedure
+`deploy.yml` deploys staging automatically and verifies it, then waits for a reviewer's approval (GitHub environment `production-demo`) before deploying the demo; rollback is a documented manual procedure
 ([`docs/release-process.md`](docs/release-process.md)). Both run on Render Free from the repository's Docker
 images ([`docs/public-demo.md`](docs/public-demo.md)). A production-style deployment for the real club (HTTPS
 Compose override, persistence, backups, hosting comparison) is in [`docs/deployment.md`](docs/deployment.md)

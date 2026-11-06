@@ -35,7 +35,12 @@ to distinguish prepared configuration from a completed hosted release.
    browser, real demo member sign-in/home/library/sign-out, secure cookies,
    privacy headers and browser/network checks. Its subprocess gets no deploy-hook,
    GitHub token, local test CA or TLS override. It is bounded to three minutes.
-6. Only a delivered staging result permits the production-demo job. That job has
+6. Only a delivered staging result permits the production-demo job. That job
+   declares the GitHub environment `production-demo`, which the owner configures
+   with required reviewers: the run pauses there until a reviewer approves, so the
+   demo (the production stage) is deployed manually while staging stays automatic.
+   If main has advanced meanwhile, the approved job's current-main check skips the
+   stale candidate. That job has
    only its own hook and repeats the current-main, exact-revision, health and
    browser checks for the same tested commit.
 7. Only successful delivery outputs from both jobs permit `record-release`.

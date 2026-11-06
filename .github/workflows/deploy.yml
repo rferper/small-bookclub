@@ -55,6 +55,8 @@ jobs:
 
   production-demo:
     needs: staging
+    # Manual gate: the GitHub environment requires reviewer approval (see docs/release-process.md).
+    environment: production-demo
     if: inputs.ci_passed && needs.staging.outputs.delivered == 'true' && github.repository == 'rferper/small-bookclub' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
