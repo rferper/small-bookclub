@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node agent-hooks/guard-git.mjs" },
+          { "type": "command", "command": "node agent-hooks/guard-commit-checks.mjs" }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "node agent-hooks/guard-fixtures.mjs" }
+        ]
+      }
+    ]
+  }
+}
