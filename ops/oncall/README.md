@@ -7,6 +7,29 @@ commands, query production, inspect a database, deploy, restart, restore, messag
 anyone or carry out its recommendations. See the machine-readable
 [autonomy policy](autonomy-policy.json) and [task](task.md).
 
+## Alert-triggered remediation (#127)
+
+An opt-in watcher closes the loop for the **private local monitoring stack only**:
+
+```sh
+BOOKCLUB_ONCALL_AUDIT=/private/oncall-audit.jsonl node ops/oncall/remediate.mjs bookclub-monitor-local
+```
+
+The audit path must be absolute and outside the repository. Every 30 seconds the
+watcher collects evidence. When `BookclubApiErrors` is firing it runs the same
+read-only diagnosis, and only if the validated diagnosis is `api-errors-observed` or
+`service-unhealthy`, the backend state is known and no restart ran for that project in
+the last 15 minutes, fixed code restarts the `backend` service of that exact Compose
+project (`docker compose -p <project> ... restart backend`, no shell). It then polls
+until the alert resolves (90 s) and writes each step to the audit file as JSON lines.
+
+The model still never chooses a command: its enum diagnosis is a required gate and the
+single action is decided by `planAction` in [`remediate.mjs`](remediate.mjs). Real-club
+and hosted services, deploys, rollbacks, restores and secrets stay owner-only
+([autonomy policy](autonomy-policy.json)). Offline tests (no model, no Docker) are in
+`remediate.test.mjs`; the disposable end-to-end result is in
+[`verification.md`](verification.md).
+
 ## Collect
 
 With the existing monitoring project running, from the repository root:

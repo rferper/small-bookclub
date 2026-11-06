@@ -220,3 +220,25 @@ including alert firing/recovery, private read-only evidence collection,
 collector outage handling, dashboard permissions and exact cleanup. Final
 independent security confirmation, full CI and independent QA remain required
 before merge.
+
+## Alert-triggered remediation on a disposable stack (#127)
+
+Command: `node ops/oncall/verify-remediation.mjs` (random `bookclub-observability-*`
+project, fictional data, Docker Desktop, existing Codex CLI 0.163.0 login).
+
+Result of the accepted run: the synthetic alert fixture drove `BookclubApiErrors`
+from inactive to pending to firing; the watcher's `respond()` collected local evidence,
+the real model diagnosis passed the schema and fact gates, `planAction` selected
+`restart-backend`, the backend container's start time changed, and the audit file
+recorded `executed` then `alert-resolved`. The exact project was removed and cleanup
+was verified.
+
+Limits, stated plainly:
+
+- The alert is the project's synthetic fixture, not a real application failure. The
+  restart is real, but the alert resolved because the fixture entered its recovery
+  phase, not because the restart cured anything.
+- One earlier attempt failed with "Alert never fired" within the 240 s wait, before
+  diagnostics were added. The cause was not established; the script now logs the rule
+  state on each poll. The next run passed without other changes.
+- One model call on fictional, projected data; no real incident.
