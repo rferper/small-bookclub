@@ -61,7 +61,7 @@
       "authority": ["tracked-source-and-local-history-scan", "public-package-version-advisory-lookups", "projected-report-write"],
       "credentials": ["no-scanning-account-or-key", "service-credential-environment-stripped"],
       "modelData": [],
-      "knownGaps": ["These are not agents and do not perform an AI security judgment.", "Small local SAST rules and public advisory databases are incomplete.", "Human validation of the real PR audit remains pending separately."]
+      "knownGaps": ["These are not agents and do not perform an AI security judgment.", "Small local SAST rules and public advisory databases are incomplete.", "Owner validated the real PR audit on 2026-11-06; this is not proof that all vulnerabilities are absent."]
     }
   ],
   "prohibitedModelData": ["real-club-records", "database-or-backup-content", "private-review-or-meeting-content", "member-identities-or-Discord-IDs", "private-media-or-personal-screenshots", "tokens-cookies-keys-and-credential-files", "raw-logs-headers-or-request-bodies"],

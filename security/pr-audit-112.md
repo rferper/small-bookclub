@@ -30,7 +30,8 @@ unchanged between the PR head and current main. Ran
 
 ## Human validation
 
-**Pending owner review.** A human must confirm or correct the four dispositions
-and the stated limits. Neither this AI-authored report nor merging a previous
-AI-authored change counts as human validation. Record the owner's actual response
-and date here before claiming this acceptance criterion complete.
+**Confirmed by the owner on 2026-11-06.** The owner reviewed the four dispositions
+and the stated limits above and agreed they are fair ("yes that looks fair"). No
+corrections were requested. This confirms the dispositions as written, including
+the residual limits (possible missing telemetry, trusted local network only). It
+is not a claim that all vulnerabilities are absent.
