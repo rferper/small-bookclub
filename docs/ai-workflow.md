@@ -100,17 +100,19 @@ are not a sandbox ([`agent-extension-pack.md`](agent-extension-pack.md),
 
 ## 8. Models used and how they were managed
 
-- **Selection by risk (policy).** The commit trailers do not show which task each model did. [`process.md`](process.md) assigns Sonnet to grooming, routine
-  CRUD, infrastructure and documentation, Opus to authentication, permission and spoiler
-  logic and every security review, and Haiku only to mechanical edits. Issues were also
-  batched so related work shared one session and context.
-- **Evidence of use.** Commit trailers record Claude Opus 5.5 (67 commits) and Claude Sonnet 5.5
-  (24) out of 400 commits. Earlier sessions did not sign commits, so these numbers are a lower
-  bound. No record shows Haiku was used.
-- **Runtime model.** The on-call responder runs GPT-6.1-Sol through the installed Codex CLI
-  0.163.0 with the owner's existing ChatGPT login. The model name is pinned, API-key mode is
-  refused, tools are disabled, input is a projected packet and output is a closed JSON enum
-  schema. Model inference never runs in CI.
+- **Models.** Claude Opus 5.5 and Claude Sonnet 5.5 (Claude Code), GPT Sol with medium
+  reasoning (coding agent for the remaining work), and GPT Luna. The repository does not
+  record Luna's role or settings, so none is claimed here.
+- **Selection by risk (policy).** [`process.md`](process.md) assigns Sonnet to grooming,
+  routine CRUD, infrastructure and documentation, and Opus to authentication, permission and
+  spoiler logic and every security review. Issues were also batched so related work shared one
+  session and its context.
+- **Tracking.** Only some commits carry a `Co-Authored-By` line, so which model wrote which
+  commit was not tracked systematically. Treat this section as a description of use.
+- **Runtime model.** The on-call responder runs `gpt-6.1-sol` through the installed Codex CLI
+  0.163.0 with the owner's existing ChatGPT login. The name is pinned, API-key mode is refused,
+  tools are disabled, input is a projected packet and output is a closed JSON enum schema.
+  Model inference never runs in CI.
 - **Data and authority.** Models receive only fictional data or reviewed operational metadata
   ([`ai-tool-data-policy.md`](../security/ai-tool-data-policy.md)). Models never choose commands;
   the one automatic action is fixed code (#127). Merges, hosting accounts and paid services need

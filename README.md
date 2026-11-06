@@ -137,18 +137,22 @@ security report). Runbooks are in [`ops/runbooks/`](ops/runbooks/).
 
 ### AI models used and how they were managed
 
+Four models were used:
+
 | Model | Where | How it was managed |
 |---|---|---|
-| Claude Opus 5.5 | Coding agent (Claude Code). Policy: authentication, permission and spoiler logic, security reviews. | The strongest tier is reserved for risky work by `docs/process.md`. 67 commits carry its `Co-Authored-By` line; the line does not say which task it did. |
-| Claude Sonnet 5.5 | Coding agent (Claude Code). Policy: grooming, routine CRUD, infrastructure, documentation. | Default tier for routine work. 24 commits carry its line. |
-| Claude Haiku | Allowed in `docs/process.md` for mechanical tasks only. | No commit in the history records it, so I do not claim it was used. |
-| GPT-6.1-Sol via Codex CLI 0.163.0 | Runtime on-call responder (`ops/oncall/`): reads a projected, fictional or local packet and returns a closed JSON diagnosis. | Model name pinned in `ops/oncall/model-catalog.mjs`; existing ChatGPT login, API-key mode refused; no tools, no web, no files; output validated against a schema. CI never calls it. |
+| Claude Opus 5.5 | Coding agent (Claude Code). | Reserved for risky work by `docs/process.md`: authentication, permission and spoiler logic, security reviews. |
+| Claude Sonnet 5.5 | Coding agent (Claude Code). | Default tier for routine work: grooming, CRUD, infrastructure, documentation. |
+| GPT Sol (medium reasoning) | Coding agent for the work not done by the Claude models; also the pinned runtime model of the on-call responder (`gpt-6.1-sol`, Codex CLI 0.163.0). | Responder: name pinned in `ops/oncall/model-catalog.mjs`, existing ChatGPT login, API-key mode refused, no tools, schema-validated output, never run in CI. |
+| GPT Luna | Used during development. | The role and settings were not recorded in the repository. |
 
-Limits of this record: 91 of 400 commits have a model line; earlier commits were not signed,
-so the split above is a lower bound, not a full accounting. Models were chosen by task risk,
-not benchmarked against each other. The coding agents ran under the owner's tool-permission
-mode, and the owner reviewed pull requests and approved merges, hosting and anything paid.
-Rules for what data models may see, tool authority and known gaps:
+All models worked under the same rules: the owner chose the task through a GitHub issue,
+reviewed every pull request and approved merges, hosting and anything paid; tests, the
+OpenAPI contract, CI and security scans apply to every change whichever model wrote it;
+models receive only fictional data or reviewed operational metadata, and never choose
+commands for the one automatic action (a fixed backend restart). Which model wrote which
+commit was not tracked systematically (only some commits carry a `Co-Authored-By` line), so
+this is a description of use, not a per-commit accounting. Details:
 [`security/ai-tool-data-policy.md`](security/ai-tool-data-policy.md),
 [`security/agent-security.md`](security/agent-security.md) and
 [`docs/ai-workflow.md`](docs/ai-workflow.md#8-models-used-and-how-they-were-managed).
