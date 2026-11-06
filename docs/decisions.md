@@ -1245,3 +1245,19 @@ Decision: wait 2 s after launching Chromium before the first request. No retry, 
 Evidence: 2 failures in 9 smokes before the wait (1 uninstrumented, plus 1 in 8 instrumented smokes); 0 failures in 12 smokes with it, the event firing at 279-1019 ms, before the wait ended, in all 12. A later `NETWORK_CHANGED` at about 2.3-2.5 s appeared in 2 of the 12 without failure. With a 2/9 baseline rate, 0/12 has roughly a 5% chance by luck, so this is suggestive, not proof.
 
 Limits: statistical only; there is no deterministic regression that fails on the old code and passes on the new. A 2 s wait is a mitigation of the observed startup window, so a later event could still abort a request. Attribution is to Chromium's notifier, not the application, Docker or Render. The historical post-smoke failure in run 38893519614 remains unexplained. Owner decides whether this closes #110.
+
+## 2026-11-06: Agent guardrail hooks (#88)
+
+Three Claude Code `PreToolUse` hooks in `agent-hooks/`, written as dependency-free Node
+scripts (same runtime as the MCP server and ops scripts) and tested with `node --test` in
+the backend CI job. They refuse risky git commands, run fast lint before a commit, and
+reject real-looking data in test and fixture files. They fail open on malformed input.
+
+Why lint, not the full tests, on commit: the suites take minutes and would make every
+commit slow; the full suites still run before merge and in CI. Why they are not enabled in
+the repository's settings: hooks run shell commands, so installing them is the owner's
+choice (`agent-hooks/README.md`). `docs/permissions.md` keeps its backend content and
+gains an agent-pack section, because `product-spec.md` names that file for both.
+
+Limit: hooks see command text and submitted content only; they are a second check, not
+a sandbox.
